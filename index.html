@@ -102,6 +102,8 @@ svg.fa{display:inline-block;height:1em;vertical-align:-.125em;overflow:visible;f
   .side.open{transform:none}
   .topbar{display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:30;padding:10px max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px));background:var(--bg);border-bottom:1px solid var(--line2)}
   .topbar .brand-name{font-size:23px;margin-left:4px}
+.brand-sm{display:flex;align-items:center;gap:6px;color:inherit;text-decoration:none;border-radius:10px;min-height:44px}
+.brand-sm:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
   .toolrow{display:none}
 }
 main{padding-block:40px 64px;width:100%}
@@ -463,7 +465,7 @@ svg.staff.mini{max-width:420px;width:100%}
 <div class="main-wrap">
   <div class="topbar">
     <button class="icon-btn plain" id="menuBtn" type="button" aria-label="Open menu"><svg class="fa fa-bars" width="0.875em" height="1em" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></button>
-    <span class="logo-tile sm"><img src="icon.png" alt="" style="width:100%;height:100%;display:block"></span><span class="brand-name">Measure Up!</span><span style="flex:1"></span>
+    <a class="brand-sm" href="#" id="brandHomeSm" aria-label="Measure Up! — go to Lessons"><span class="logo-tile sm"><img src="icon.png" alt="" style="width:100%;height:100%;display:block"></span><span class="brand-name">Measure Up!</span></a><span style="flex:1"></span>
   </div>
 <main class="wrap">
   <section data-view="hub" id="viewHub"></section>
@@ -8754,7 +8756,7 @@ $('#menuBtn').onclick=()=>drawer(true);$('#scrim').onclick=()=>drawer(false);
 $('#exToLessons').onclick=()=>{if(Session.mod&&Session.mod.id==='soundprops'){openLesson(isInst()?'bt0':'s0',0);return;}const id=Session.mod&&trackOf({skill:Session.mod.id});showView('learn');const t=id&&$('#track-'+id);if(t)t.scrollIntoView({block:'start'});};
 Store.load();
 $$('.tab').forEach(t=>t.onclick=()=>{drawer(false);showView(t.dataset.go);});
-$('#brandHome').onclick=e=>{e.preventDefault();showView('hub');};
+$('#brandHome').onclick=$('#brandHomeSm').onclick=e=>{e.preventDefault();drawer(false);showView('learn');};
 $('#exBack').onclick=()=>showView('hub');
 $('#micChip').onclick=async()=>{if(Engine.on)turnOffMic();else await ensureMic();};
 $('#whoChip').onclick=()=>showView('settings');
