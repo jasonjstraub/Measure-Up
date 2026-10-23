@@ -1165,7 +1165,7 @@ const Engine={
       const L=this.live;L.t=this.ctx.currentTime;L.db=db;L.peak=pk;if(pk>0.98)this.clipT=L.t;const S=this.sens();
       L.sdb=L.sdb<-99?db:L.sdb*0.72+db*0.28;
       let p=null;
-      if(db>this.noiseDb+S[0]&&db>S[1]){const fr=pitchRange();p=detectPitch(this.buf,this.ctx.sampleRate,fr[0],fr[1]);if(p&&(p.hz<fr[0]*0.95||p.hz>fr[1]*1.05))p=null;}
+      if(db>this.noiseDb+S[0]&&db>S[1]){const fr=pitchRange(),sr=this.ctx.sampleRate;let pb=this.buf;if(this.fastFn&&this.frameFn===this.fastFn){const need=Math.min(pb.length,(fr[0]<200?2048:1024)+Math.ceil(sr/fr[0])+4);pb=pb.subarray(pb.length-need);}p=detectPitch(pb,sr,fr[0],fr[1]);if(p&&(p.hz<fr[0]*0.95||p.hz>fr[1]*1.05))p=null;}
       L.hz=p?p.hz:0;L.midi=p?hzToMidi(p.hz):null;L.pitched=!!p;this.trackCenter(L,p);if(p){if(L.smidi==null||Math.abs(L.midi-L.smidi)>1.5)L.smidi=L.midi;else L.smidi+=(L.midi-L.smidi)*(1-Math.exp(-Math.min(0.1,L.t-(L.pt||L.t))/0.16));L.pt=L.t;}else L.smidi=null;L.voiced=!!p||db>this.noiseDb+S[0]+6;
       if(this.noiseSampler)this.noiseSampler(db);
       const pct=clamp((db+70)/60,0,1)*100;
@@ -1986,7 +1986,7 @@ ICONS.intervals='<svg viewBox="0 0 34 34" fill="currentColor"><ellipse cx="9" cy
 const App={mode:'practice',redraw:null};
 const Session={
   start(modId,level,focus){
-    const me=Store.me;if(!me){showView('learn');window.scrollTo(0,0);const n=$('#inName');if(n){n.focus();toast('Sign in first so your results are saved under your name.');}return;}
+    const me=Store.me;if(!me){showView('hub');const n=$('#inName');if(n){n.focus();toast('Sign in first so your results are saved under your name.');}return;}
     if(!(Modules[modId]&&Modules[modId].hidden)&&!modList().some(m=>m.id===modId)){toast('That skill needs a pitched instrument. Choose your instrument in Settings.');showView('hub');return;}
     this.mod=Modules[modId];this.spTally=null;this.level=level||(this.mod.ownLevel?(me.spLevel||1):curLevel());this.focus=focusList(modId).some(x=>x.id===focus)?focus:'mix';this.mode=App.mode;this.idx=0;this.results=[];this.total=this.mode==='assess'?5:0;this.tempo=null;
     $('#exTitle').textContent=this.mod.title;this.renderCtl();
@@ -2075,7 +2075,6 @@ function restoreScroll(v){const m=ScrollMem[v];if(!m){window.scrollTo(0,0);retur
     const b=Learn.lastId&&$(`#viewLearn [data-lesson="${Learn.lastId}"]`);if(b){const ol=b.closest('.lessons'),r=b.getBoundingClientRect(),o=ol.getBoundingClientRect();if(r.top<o.top||r.bottom>o.bottom)ol.scrollTop+=r.top-o.top-8;}}
   window.scrollTo(0,m.y);requestAnimationFrame(()=>window.scrollTo(0,m.y));}
 function showView(v){
-  if(!Store.me&&v==='hub')v='learn';
   saveScroll();stopNarrate();saveNav(v);
   if(v!=='ex'&&Session.token)Session.cleanup();
   if(v!=='settings'&&Engine._mon){Engine.taps.delete(Engine._mon);Engine._mon=null;}
@@ -2109,7 +2108,7 @@ function bootNav(){
     if(nav.v==='game'&&nav.g&&typeof GAMES!=='undefined'&&GAMES[nav.g]){Game.id=nav.g;showView('game');return;}
     if(['hub','learn','tools','progress','settings','miccheck','spec','assess'].indexOf(nav.v)>=0){showView(nav.v);return;}
   }
-  showView('learn');
+  showView(Store.me?'learn':'hub');
 }
 
 function whoChip(){const me=Store.me,c=$('#whoChip');c.hidden=!me;if(me)c.innerHTML=`<svg class="fa fa-user who-ic" width="0.875em" height="1em" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><path d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512H418.3c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304H178.3z"/></svg><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(me.name)} · ${esc(partName(me))}</span>`;}
@@ -2120,21 +2119,9 @@ function renderHub(){
   const top=me?`<div class="hub-top">
       <div><p class="eyebrow">Gateway Music · Practice room</p><h1>Hi, ${esc(me.name.split(' ')[0])}.</h1><p class="lede">Pick a skill, then choose what to focus on and your level. The app listens through your microphone and tells you exactly what it heard: pitch to the cent, claps to the millisecond, volume in decibels.</p></div>
       ${me.path==='both'?`<div class="card setbox"><div><p class="lab">Path</p>${pathSwitch()}</div>`:'<div>'}      </div></div>`
-    :`<div class="hub-top"><div><p class="eyebrow">Gateway Music · Practice room</p><h1>Practice the skills your choir and band run on.</h1><p class="lede">Solfege, scales, intervals, notation, rhythm and dynamics for singers and band players, checked through your computer’s microphone. Sign in so your results are saved.</p></div><div></div></div>`;
-  v.innerHTML=top+(me?`<h2 class="g-h">Games</h2><div class="mods g-games">${Object.entries(GAMES).filter(([k,g])=>!(g.vocal&&isInst())).map(([k,g])=>{const D=gData(k),n=Object.keys(D.best||{}).length;return`<button class="mod g-card" type="button" data-game="${k}"><span class="mod-ic">${GICON[k]}</span><span class="mod-t">${g.title}</span><span class="mod-d">${g.blurb}</span><span class="mod-meta"><span class="lf">${g.kind}</span><span class="pill ${n?'good':''}">${n?n+' record'+(n>1?'s':''):'Play'}</span></span></button>`;}).join('')}</div><h2 class="g-h">Skills</h2>`:'')+`<div class="mods">${modList().map(m=>{const b=bestFor(me,m.id);return`<button class="mod" type="button" data-mod="${m.id}"><span class="mod-ic">${ICONS[m.id]}</span><span class="mod-t">${m.title}</span><span class="mod-d">${m.blurb}</span><span class="mod-meta"><span class="lf">${m.listens}</span>${b!=null?`<span class="pill ${b>=85?'good':b>=55?'close':'miss'}">Best ${b}%</span>`:'<span class="pill">Not assessed yet</span>'}</span></button>`;}).join('')}</div>
-    <div class="card miccard" id="micCard"></div>`;
-  renderHubMic();
-  $$('[data-mod]',v).forEach(b=>b.onclick=()=>openSetup(b.dataset.mod));
-  $$('[data-game]',v).forEach(b=>b.onclick=()=>openGame(b.dataset.game));
-  $$('[data-mode]',v).forEach(b=>b.onclick=()=>{App.mode=b.dataset.mode;renderHub();});
-  $$('[data-level]',v).forEach(b=>b.onclick=()=>{setLevel(+b.dataset.level);renderHub();});bindPathSwitch(v,renderHub);
-}
-/* sign in: shown on the Lessons page until a student is signed in; signing in opens their lessons */
-function renderSignin(v){
-  const others=Object.values(Store.data.students);
-  v.innerHTML=`<div class="hub-top"><div><p class="eyebrow">Gateway Music · Lessons</p><h1>Practice the skills your choir and band run on.</h1><p class="lede">Solfege, scales, intervals, notation, rhythm and dynamics for singers and band players, checked through your computer’s microphone. Sign in so your results are saved.</p></div><div></div></div>
+    :`<div class="hub-top"><div><p class="eyebrow">Gateway Music · Practice room</p><h1>Practice the skills your choir and band run on.</h1><p class="lede">Solfege, scales, intervals, notation, rhythm and dynamics for singers and band players, checked through your computer’s microphone. Sign in so your results are saved.</p></div><div></div></div>
     <form class="card signin" id="signin">
-      <h2>About the Artist</h2>
+      <h2>Who’s Practicing?</h2>
       <div class="grid2">
         <label class="field">Your name<input type="text" id="inName" autocomplete="name" placeholder="First and last name" required></label>
         <div class="field"><span>Learning path</span><div class="opts"><label class="opt"><input type="radio" name="path" value="vocal" checked><span>Vocal<small>Choir · solfege</small></span></label><label class="opt"><input type="radio" name="path" value="inst"><span>Instrumental<small>Band · note names</small></span></label><label class="opt"><input type="radio" name="path" value="both"><span>Both<small>Choir and band</small></span></label></div></div>
@@ -2143,12 +2130,19 @@ function renderSignin(v){
       <label class="field" data-for="inst both" hidden style="max-width:420px">Instrument${instSelect('inInst','clarinet')}</label>
       <div class="field" data-for="vocal both"><span>Choir class</span><div class="opts">${VOCAL_CLASSES.map(k=>`<label class="opt"><input type="radio" name="cls" value="${k}" ${k==='msc'?'checked':''}><span>${CLASSES[k].name}<small>${CLASSES[k].grades}</small></span></label>`).join('')}</div></div>
       <div class="field" data-for="inst both" hidden><span>Band class</span><div class="opts">${Object.keys(BAND_CLASSES).map(k=>`<label class="opt"><input type="radio" name="bcls" value="${k}" ${k==='mband'?'checked':''}><span>${CLASSES[k].name}<small>${CLASSES[k].grades}</small></span></label>`).join('')}</div></div>
-      <div class="row"><button class="btn primary" type="submit">Start Measuring Up!</button>${others.length?`<span class="muted">or continue as</span>${others.map(s=>`<button class="btn" type="button" data-as="${esc(s.name.toLowerCase())}">${esc(s.name)}</button>`).join('')}`:''}</div>
+      <div class="row"><button class="btn primary" type="submit">Start practicing</button>${others.length?`<span class="muted">or continue as</span>${others.map(s=>`<button class="btn" type="button" data-as="${esc(s.name.toLowerCase())}">${esc(s.name)}</button>`).join('')}`:''}</div>
     </form>`;
-  const f=$('#signin');const sync=()=>{const pv=f.path.value;$$('[data-for]',f).forEach(x=>x.hidden=!x.dataset.for.split(' ').includes(pv));};$$('input[name=path]',f).forEach(r=>r.onchange=sync);sync();
-  f.onsubmit=e=>{e.preventDefault();const n=$('#inName').value.trim();if(!n){$('#inName').focus();return;}const pv=f.path.value;Store.signIn(n,f.cls.value,f.voice.value,pv,pv!=='vocal'?$('#inInst').value:null,f.bcls.value);Engine.mfDb=null;whoChip();showView('learn');window.scrollTo(0,0);toast('Welcome, '+n.split(' ')[0]+'.');};
-  const d=document.createElement('div');d.innerHTML=progCardHTML(false);v.appendChild(d.firstElementChild);bindProgressBox(v);
-  $$('[data-as]',v).forEach(b=>b.onclick=()=>{Store.data.current=b.dataset.as;Store.save();Engine.mfDb=null;whoChip();showView('learn');window.scrollTo(0,0);});
+  v.innerHTML=top+(me?`<h2 class="g-h">Games</h2><div class="mods g-games">${Object.entries(GAMES).filter(([k,g])=>!(g.vocal&&isInst())).map(([k,g])=>{const D=gData(k),n=Object.keys(D.best||{}).length;return`<button class="mod g-card" type="button" data-game="${k}"><span class="mod-ic">${GICON[k]}</span><span class="mod-t">${g.title}</span><span class="mod-d">${g.blurb}</span><span class="mod-meta"><span class="lf">${g.kind}</span><span class="pill ${n?'good':''}">${n?n+' record'+(n>1?'s':''):'Play'}</span></span></button>`;}).join('')}</div><h2 class="g-h">Skills</h2>`:'')+`<div class="mods">${modList().map(m=>{const b=bestFor(me,m.id);return`<button class="mod" type="button" data-mod="${m.id}"><span class="mod-ic">${ICONS[m.id]}</span><span class="mod-t">${m.title}</span><span class="mod-d">${m.blurb}</span><span class="mod-meta"><span class="lf">${m.listens}</span>${b!=null?`<span class="pill ${b>=85?'good':b>=55?'close':'miss'}">Best ${b}%</span>`:'<span class="pill">Not assessed yet</span>'}</span></button>`;}).join('')}</div>
+    <div class="card miccard" id="micCard"></div>`;
+  renderHubMic();
+  $$('[data-mod]',v).forEach(b=>b.onclick=()=>openSetup(b.dataset.mod));
+  $$('[data-game]',v).forEach(b=>b.onclick=()=>openGame(b.dataset.game));
+  $$('[data-mode]',v).forEach(b=>b.onclick=()=>{App.mode=b.dataset.mode;renderHub();});
+  $$('[data-level]',v).forEach(b=>b.onclick=()=>{setLevel(+b.dataset.level);renderHub();});bindPathSwitch(v,renderHub);
+  const f=$('#signin');if(f){const sync=()=>{const pv=f.path.value;$$('[data-for]',f).forEach(x=>x.hidden=!x.dataset.for.split(' ').includes(pv));};$$('input[name=path]',f).forEach(r=>r.onchange=sync);sync();}
+  if(f)f.onsubmit=e=>{e.preventDefault();const n=$('#inName').value.trim();if(!n){$('#inName').focus();return;}const pv=f.path.value;Store.signIn(n,f.cls.value,f.voice.value,pv,pv!=='vocal'?$('#inInst').value:null,f.bcls.value);Engine.mfDb=null;whoChip();showView('learn');toast('Welcome, '+n.split(' ')[0]+'.');};
+  if(!me){const d=document.createElement('div');d.innerHTML=progCardHTML(false);v.appendChild(d.firstElementChild);bindProgressBox(v);}
+  $$('[data-as]',v).forEach(b=>b.onclick=()=>{Store.data.current=b.dataset.as;Store.save();Engine.mfDb=null;whoChip();showView('learn');});
 }
 function instSelect(id,sel){const fams={};Object.entries(INSTR).forEach(([k,i])=>(fams[i.fam]=fams[i.fam]||[]).push([k,i]));
   return`<select id="${id}">${Object.entries(fams).map(([f,list])=>`<optgroup label="${f}">${list.map(([k,i])=>`<option value="${k}" ${k===sel?'selected':''}>${i.name}</option>`).join('')}</optgroup>`).join('')}</select>`;}
@@ -2204,7 +2198,7 @@ function voiceCard(me){
 
 function renderProgress(){
   const v=$('#viewProgress');const me=Store.me;whoChip();
-  if(!me){v.innerHTML=`<div class="card"><h2>Sign In to See Your Progress</h2><p class="muted" style="margin-top:8px">Assessment scores are saved under your name in this browser.</p><div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="pgGo">Go to sign in</button></div></div>`;$('#pgGo').onclick=()=>showView('learn');return;}
+  if(!me){v.innerHTML=`<div class="card"><h2>Sign In to See Your Progress</h2><p class="muted" style="margin-top:8px">Assessment scores are saved under your name in this browser.</p><div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="pgGo">Go to sign in</button></div></div>`;$('#pgGo').onclick=()=>showView('hub');return;}
   const h=[...me.history].sort((a,b)=>b.ts-a.ts);
   v.innerHTML=`<div><p class="eyebrow">${esc(me.name)} · ${CLASSES[curClassKey()].name} · ${partName(me)}</p><h1>My Progress</h1>${me.path==='both'?`<div style="margin-top:12px">${pathSwitch()}</div>`:''}</div>
     <div class="sumgrid">${modList().map(m=>{const x=me.history.filter(e=>e.mod===m.id&&entryPath(e)===curPath());const last=x[x.length-1];const best=x.length?Math.max(...x.map(e=>e.pct)):null;return`<div class="card"><p class="eyebrow">${m.title}</p><p class="big">${best!=null?best+'%':'—'}</p><p class="muted" style="font-size:14px">${x.length?`Best of ${x.length} · latest ${last.pct}% (rubric ${last.rubric})`:'No assessments yet'}</p></div>`;}).join('')}</div>
@@ -2218,7 +2212,7 @@ function renderProgress(){
 }
 function renderSettings(){
   const v=$('#viewSettings');const me=Store.me;whoChip();
-  if(!me){v.innerHTML=`<div class="card"><h2>Sign In First</h2><p class="muted" style="margin-top:8px">Settings are saved for each student.</p><div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="stGo">Go to sign in</button></div></div>`;$('#stGo').onclick=()=>showView('learn');return;}
+  if(!me){v.innerHTML=`<div class="card"><h2>Sign In First</h2><p class="muted" style="margin-top:8px">Settings are saved for each student.</p><div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="stGo">Go to sign in</button></div></div>`;$('#stGo').onclick=()=>showView('hub');return;}
   const lat=typeof me.latency==='number';
   v.innerHTML=`<div><p class="eyebrow">${esc(me.name)}</p><h1>Settings</h1></div>
   <div class="setgrid">
@@ -2276,7 +2270,7 @@ function renderSettings(){
   $('#calGo').onclick=calibrateLatency;
   $$('[data-sw]',v).forEach(b=>b.onclick=()=>{Store.data.current=b.dataset.sw;Store.save();Engine.mfDb=null;renderSettings();});
   const sAs=$('#sAssess');if(sAs)sAs.onclick=()=>showView('assess');
-  $('#sOut').onclick=()=>{Store.data.current=null;Store.save();Engine.mfDb=null;showView('learn');window.scrollTo(0,0);};
+  $('#sOut').onclick=()=>{Store.data.current=null;Store.save();Engine.mfDb=null;showView('hub');};
   $('#sClear').onclick=()=>{const nl=Object.keys(me.lessons||{}).length;$('#sConfirm').innerHTML=`<div class="confirm">Delete all ${me.history.length} saved scores and all lesson progress (${nl} finished lesson${nl===1?'':'s'}) for ${esc(me.name)}? <button class="btn danger" type="button" id="sYes">Delete</button><button class="btn" type="button" id="sNo">Cancel</button></div>`;$('#sYes').onclick=()=>{me.history=[];me.lessons={};me.lessonPass={};Learn.mem={};Store.save();renderSettings();toast('Scores and lesson progress cleared.');};$('#sNo').onclick=()=>$('#sConfirm').innerHTML='';};
   bindProgressBox(v);
 }
@@ -7184,7 +7178,7 @@ function gMemory(host){
       ${gSeg('first',[['do','Always do'],['any','Any note']],S.first,'First note')}
       ${gSeg('wait',[[10,'10 s'],[20,'20 s'],[30,'30 s'],[0,'No limit']],S.wait,'Time to answer each note')}
       ${gSeg('lights',[[1,'On'],[0,'Off (ears only)']],S.lights,'Light up while it plays')}
-      ${gSeg('len',[['profile','Student setting'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
+      ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
       <p class="muted">Listen to the melody, then ${S.inp==='mic'?V('sing','play')+' it back':S.inp==='syl'?'tap the solfege for each note':'play it back on the keyboard'} in order. Any octave counts. Each round adds one note. One wrong note${S.wait?', or running out of time,':''} ends the game.${S.inp==='mic'?' Wear headphones if you can.':''} Records are kept separately for each way of answering.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">${S.inp==='mic'?micIcon:'▶'} Start</button><span class="pill ${best?'good':''}">${best?`Longest melody: ${best} notes`:'No record yet'}</span></div></div>${gHistory(D,key,v=>v+' notes')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;}
@@ -7232,17 +7226,17 @@ function gMemory(host){
     judge(mod(s-run.pads[run.seq[run.k]],12)===0,label,el);}
   function listen(){
     let win=[],need=false,acc=null,lastP=-9,onset=-9;
-    Learn.listen(L=>{if(run.over||!run.turn)return;const t=L.t;
+    const fn=L=>{if(run.over||!run.turn)return;const t=L.t;
       if(!L.pitched){if(t-lastP>0.1){need=false;win=[];onset=-9;}return;}
       if(t-lastP>0.15)onset=t;
       lastP=t;const m=L.cmidi!=null?L.cmidi:L.midi;
       if(need){if(acc!=null&&Math.abs(pcDiff(m,acc))<0.8)return;need=false;win=[];onset=t;}
-      if(onset>=0&&t-onset<0.25)return; /* attack grace: never judge the scoop/overshoot at the start of a note */
-      win.push(m);if(win.length>FR(30))win.shift();if(win.length<FR(24))return;
-      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>0.7)return;
-      const recent=win.slice(-10).sort((a,b)=>a-b),med=recent[recent.length>>1]; /* judge the settled pitch, not the whole window */
-      if(Math.abs(m-med)>0.45)return; /* still travelling toward the note: wait */
-      const want=run.base+run.pads[run.seq[run.k]];let d=pcDiff(med,want),tol=(S.len&&S.len!=='profile'?+S.len:TOL().close)/100;
+      if(onset>=0&&t-onset<0.12)return; /* attack grace: never judge the scoop/overshoot at the start of a note */
+      win.push(m);if(win.length>FR(16))win.shift();if(win.length<FR(12))return;
+      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0)return;
+      const recent=win.slice(-6).sort((a,b)=>a-b),med=recent[recent.length>>1]; /* judge the settled pitch, not the whole window */
+      if(Math.abs(m-med)>0.6)return; /* still travelling toward the note: wait */
+      const want=run.base+run.pads[run.seq[run.k]];let d=pcDiff(med,want),tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
       /* acceptance: this game's leniency setting if one is chosen, else the student's tolerance
          (the pattern grader's "close" band: 50c Standard, 65c Relaxed, 80c Wide). Harmonic rescue,
          same rule as the pattern grader: on low notes the tracker can ride the 3rd harmonic, which
@@ -7250,7 +7244,7 @@ function gMemory(host){
          tolerance, count the note as sung. */
       if(want<=52&&Math.abs(d+5)<tol)d+=5;
       const ok=Math.abs(d)<tol;
-      acc=med;need=true;win=[];onset=t;judge(ok,chrSyl(Math.round(med)-run.base));});}
+      acc=med;need=true;win=[];onset=t;judge(ok,chrSyl(Math.round(med)-run.base));};Engine.fastFn=fn;Learn.listen(fn);}
   function fail(msg){if(run.over)return;run.over=true;run.turn=false;Learn.cleanup();const cd=$('.g-cd',host);if(cd)cd.hidden=true;
     const len=run.seq.length-1,key=recKey(),old=D.best[key]||0,nb=len>old;if(nb)D.best[key]=len;
     gLog(D,key,null,len,len>0);$('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Game over';
@@ -8096,7 +8090,6 @@ function fitLessonLists(){
 window.addEventListener('resize',()=>{if(!$('#viewLearn').hidden)fitLessonLists();});
 function renderLearn(){
   whoChip();const me=Store.me,done=(me&&me.lessons)||{};const v=$('#viewLearn');
-  if(!me){renderSignin(v);return;}
   v.innerHTML=`${assessCardsHTML()}<div><p class="eyebrow">Gateway Music · Lessons · ${isInst()?'Instrumental path':'Vocal path'}</p><h1>Lessons</h1>${Store.me&&Store.me.path==='both'?`<div style="margin-top:12px">${pathSwitch()}</div>`:''}<p class="lede muted" style="max-width:60ch;margin-top:10px;font-size:17px">Short lessons you can click and hear. Each one ends with a quick check and a button to practice the skill with the microphone.</p></div>
   <div class="tracks track-rows">${[TRACK_ORDER.filter(t=>trackList().includes(t))].map(col=>`${col.map(id=>{const num=TRACK_ORDER.filter(t=>trackList().includes(t)).indexOf(id)+1;const m=Modules[id]||{id,title:TRACK_TITLE[id]};const ls=curLessons().filter(l=>trackOf(l)===id);const n=ls.filter(l=>done[l.id]).length;return`<div class="card track" id="track-${m.id}" style="order:${num}"><div class="track-h"><span class="mod-ic">${ICONS[m.id]}</span><div><h2>${num}. ${trackTitle(id,m)}</h2><p class="muted" style="font-size:14px">${n} of ${ls.length} lessons done</p></div></div>
     <ol class="lessons">${ls.map((l,i)=>`<li><button type="button" data-lesson="${l.id}"><span class="lnum">${i+1}</span><span><b>${l.title}</b><small>Level ${l.level} · ${l.steps.length} steps</small></span>${done[l.id]?'<span class="pill good">Done</span>':''}</button></li>`).join('')}</ol></div>`;}).join('')}`).join('')}</div>`;
