@@ -7175,6 +7175,8 @@ function gMemory(host){
   const chrSyl=s=>(S.scale==='minor'?{0:'do',1:'ra',2:'re',3:'me',4:'mi',5:'fa',6:'fi',7:'sol',8:'le',9:'la',10:'te',11:'ti'}:{0:'do',1:'di',2:'re',3:'ri',4:'mi',5:'fa',6:'fi',7:'sol',8:'si',9:'la',10:'te',11:'ti'})[mod(s,12)];
   const recKey=()=>`${S.scale}|${S.rng}|${S.first}`+(S.inp==='mic'?'':'|'+S.inp)+(S.len&&S.len!=='profile'?'|len'+S.len:'');
   let run=null;
+  /* Repeated notes are kept (they're real music) but rarer: an immediate repeat is re-rolled once, and never three in a row. */
+  const nextNote=seq=>{const n=run.pads.length,a=seq[seq.length-1],b=seq[seq.length-2];let i=rint(n);if(i===a)i=rint(n);if(i===a&&i===b)while(i===a)i=rint(n);return i;};
   function settings(){clearInterval(Game.timer);if(S.key!=='rand'&&fitBase(parseKey(S.key).pc)==null)S.key='rand';D.set=S;Store.save();const key=recKey(),best=D.best[key];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${gSeg('inp',[['mic',V('Sing it','Play it')],['syl','Tap the solfege'],['piano','Digital piano']],S.inp,'How you answer')}
@@ -7224,15 +7226,20 @@ function gMemory(host){
     if(!ok)return fail(`That was ${heardLabel}. The note was ${sylOf(run.pads[run.seq[run.k]])}.`);
     lit(el||padEl(run.seq[run.k]),'good',400);run.k++;run.deadline=performance.now()+S.wait*1000;
     if(run.k>=run.seq.length){run.turn=false;Learn.cleanup();$('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Correct!';const cd=$('.g-cd',host);if(cd)cd.hidden=true;
-      run.seq.push(rint(run.pads.length));Learn.later(round,1000);}}
+      run.seq.push(nextNote(run.seq));Learn.later(round,1000);}}
   function tap(s,label,el){
     actx();try{pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.5,0.8);}catch(e){}
     if(!run.turn||run.over){lit(el,'on',250);return;}
     judge(mod(s-run.pads[run.seq[run.k]],12)===0,label,el);}
   function listen(){
-    let win=[],need=false,acc=null,lastP=-9,onset=-9;
+    let win=[],need=false,acc=null,lastP=-9,onset=-9,pk=-200,lo=200,dip=false,accT=-9;
     const fn=L=>{if(run.over||!run.turn)return;const t=L.t;
-      if(!L.pitched){if(t-lastP>0.1){need=false;win=[];onset=-9;}return;}
+      /* Repeated pitch: when the next note is the same as the one just accepted, a fresh syllable shows up as a
+         loudness dip and rise (the consonant) rather than silence. Watch for it so "do-do" at tempo counts twice. */
+      if(need&&acc!=null&&run.k<run.seq.length&&Math.abs(pcDiff(acc,run.base+run.pads[run.seq[run.k]]))<0.5&&t-accT>0.12){
+        const db=L.db;if(!dip){pk=Math.max(pk,db);if(db<pk-6){dip=true;lo=db;}}
+        else{lo=Math.min(lo,db);if(db>lo+4&&L.pitched){need=false;win=[];onset=t;dip=false;}}}
+      if(!L.pitched){if(t-lastP>0.06){need=false;win=[];onset=-9;}return;}
       if(t-lastP>0.15)onset=t;
       lastP=t;const m=L.cmidi!=null?L.cmidi:L.midi;
       if(need){if(acc!=null&&Math.abs(pcDiff(m,acc))<0.8)return;need=false;win=[];onset=t;}
@@ -7249,7 +7256,7 @@ function gMemory(host){
          tolerance, count the note as sung. */
       if(want<=52&&Math.abs(d+5)<tol)d+=5;
       const ok=Math.abs(d)<tol;
-      acc=med;need=true;win=[];onset=t;judge(ok,chrSyl(Math.round(med)-run.base));};Engine.fastFn=fn;Learn.listen(fn);}
+      acc=med;need=true;win=[];onset=t;accT=t;pk=L.db;dip=false;judge(ok,chrSyl(Math.round(med)-run.base));};Engine.fastFn=fn;Learn.listen(fn);}
   function fail(msg){if(run.over)return;run.over=true;run.turn=false;Learn.cleanup();const cd=$('.g-cd',host);if(cd)cd.hidden=true;
     const len=run.seq.length-1,key=recKey(),old=D.best[key]||0,nb=len>old;if(nb)D.best[key]=len;
     gLog(D,key,null,len,len>0);$('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Game over';
