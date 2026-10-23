@@ -7164,17 +7164,23 @@ function gRacer(host){
 function gMemory(host){
   const D=gData('memory'),S=Object.assign({scale:'major',rng:'sol',key:'rand',first:'do',inp:'mic',wait:20,lights:1,len:'profile'},D.set);
   const PADS={major:{mi:[0,2,4],sol:[0,2,4,5,7],full:[0,2,4,5,7,9,11,12]},minor:{mi:[0,2,3],sol:[0,2,3,5,7],full:[0,2,3,5,7,8,10,12]},chromatic:{mi:[0,1,2,3,4],sol:[0,1,2,3,4,5,6,7],full:[0,1,2,3,4,5,6,7,8,9,10,11,12]}};
+  // Comfortable game zones (sounding MIDI): [lowest, highest, highest for full scale]
+  const GZONE={S:[57,69,72],A:[53,65,67],T:[48,62,64],B:[43,57,60]},VNAME={S:'Sopranos',A:'Altos',T:'Tenors',B:'Basses'};
+  const gVoice=()=>GZONE[vMe().voice]?vMe().voice:'S';
+  const fitBase=pc=>{if(isInst())return 55+mod(pc-55,12);const z=GZONE[gVoice()],pd=PADS[S.scale][S.rng],top=S.rng==='full'?z[2]:z[1],sp=Math.max(...pd);
+    for(let m=top-sp;m>=z[0];m--)if(!mod(m-pc,12))return m;return null;};
+  const fitKeys=()=>G_MAJ_KEYS.slice(0,12).filter(k=>fitBase(parseKey(k).pc)!=null);
   const COL=['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#4f46e5','#059669','#be123c','#2563eb'];
   const sylOf=s=>S.scale==='chromatic'?G_CHR_UP[mod(s,12)]+(s>=12?'′':''):(S.scale==='minor'?{0:'do',2:'re',3:'me',5:'fa',7:'sol',8:'le',10:'te',12:'do′'}:{0:'do',2:'re',4:'mi',5:'fa',7:'sol',9:'la',11:'ti',12:'do′'})[s];
   const chrSyl=s=>(S.scale==='minor'?{0:'do',1:'ra',2:'re',3:'me',4:'mi',5:'fa',6:'fi',7:'sol',8:'le',9:'la',10:'te',11:'ti'}:{0:'do',1:'di',2:'re',3:'ri',4:'mi',5:'fa',6:'fi',7:'sol',8:'si',9:'la',10:'te',11:'ti'})[mod(s,12)];
   const recKey=()=>`${S.scale}|${S.rng}|${S.first}`+(S.inp==='mic'?'':'|'+S.inp)+(S.len&&S.len!=='profile'?'|len'+S.len:'');
   let run=null;
-  function settings(){clearInterval(Game.timer);D.set=S;Store.save();const key=recKey(),best=D.best[key];
+  function settings(){clearInterval(Game.timer);if(S.key!=='rand'&&fitBase(parseKey(S.key).pc)==null)S.key='rand';D.set=S;Store.save();const key=recKey(),best=D.best[key];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${gSeg('inp',[['mic',V('Sing it','Play it')],['syl','Tap the solfege'],['piano','Digital piano']],S.inp,'How you answer')}
       ${gSeg('scale',[['major','Major scale'],['minor','Minor scale'],['chromatic','Chromatic scale']],S.scale,'Notes from')}
       ${gSeg('rng',[['mi','do – mi'],['sol','do – sol'],['full','Full scale']],S.rng,'Range')}
-      ${gSel('key',[['rand','Random key'],...G_MAJ_KEYS.slice(0,12).map(k=>[k,k])],S.key,'Key (do =)')}
+      ${gSel('key',[['rand','Random key'],...fitKeys().map(k=>[k,k])],S.key,isInst()?'Key (do =)':`Key (do =) · keys that fit ${VNAME[gVoice()]}`)}
       ${gSeg('first',[['do','Always do'],['any','Any note']],S.first,'First note')}
       ${gSeg('wait',[[10,'10 s'],[20,'20 s'],[30,'30 s'],[0,'No limit']],S.wait,'Time to answer each note')}
       ${gSeg('lights',[[1,'On'],[0,'Off (ears only)']],S.lights,'Light up while it plays')}
@@ -7189,8 +7195,7 @@ function gMemory(host){
       if(!isB(m))return`<button type="button" class="kw" data-s="${s}" aria-label="${nm}" style="width:${W}%">${s===0||s===12?'<i>do</i>':''}<span>${nm}</span></button>`;
       const wi=whites.filter(x=>x<m).length;return`<button type="button" class="kb" data-s="${s}" aria-label="${nm}" style="left:${wi*W-W*0.31}%;width:${W*0.62}%"></button>`;}).join('')}</div>`;}
   async function start(){
-    if(S.inp==='mic'&&!await ensureMic())return;Learn.cleanup();clearInterval(Game.timer);const keyName=S.key==='rand'?pick(G_MAJ_KEYS.slice(0,12)):S.key,pc=parseKey(keyName).pc;
-    const v=vMe().voice,base=isInst()?55+mod(pc-55,12):(()=>{const R=VRANGE[v]||VRANGE.S;let m=R[0]+2;while(mod(m-pc,12))m++;return m;})();
+    if(S.inp==='mic'&&!await ensureMic())return;Learn.cleanup();clearInterval(Game.timer);let keyName=S.key==='rand'||fitBase(parseKey(S.key).pc)==null?pick(fitKeys()):S.key;const pc=parseKey(keyName).pc,base=fitBase(pc);
     const pads=PADS[S.scale][S.rng];run={pads,base,seq:[],keyName,over:false,turn:false,k:0,deadline:0};Game.run=run;
     const clickPads=S.inp==='syl',tag=clickPads?'button type="button"':'div';
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Round 1</span><span class="pill royal">do = ${keyName} · ${S.scale} · ${S.rng==='full'?'full scale':'do – '+S.rng}</span><span class="grow"></span><span class="pill g-st">Listen…</span><span class="pill g-cd" hidden></span><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
