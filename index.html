@@ -1317,13 +1317,14 @@ function makeTuner(el,assess){
   const C=[110,118],R=88;
   const p=c=>{const a=clamp(c,-50,50)*1.8*Math.PI/180;return[(C[0]+R*Math.sin(a)).toFixed(1),(C[1]-R*Math.cos(a)).toFixed(1)];};
   const arc=(a,b,cls)=>{const s=p(a),e=p(b);return`<path class="${cls}" d="M${s[0]} ${s[1]} A${R} ${R} 0 0 1 ${e[0]} ${e[1]}" fill="none" stroke-width="13"/>`;};
-  el.innerHTML=`<div class="tuner"><svg viewBox="0 0 220 132" aria-hidden="true">${arc(-50,-25,'z-close')}${arc(-25,25,'z-good')}${arc(25,50,'z-close')}
+  el.innerHTML=`<div class="tuner"><svg viewBox="-16 0 252 132" aria-hidden="true">${arc(-50,-25,'z-close')}${arc(-25,25,'z-good')}${arc(25,50,'z-close')}
     ${[-50,-25,0,25,50].map(c=>{const a=c*1.8*Math.PI/180;return`<text class="tk" x="${(110+108*Math.sin(a)).toFixed(1)}" y="${(122-108*Math.cos(a)).toFixed(1)}">${c>0?'+':''}${c}</text>`;}).join('')}
     <line class="needle idle" x1="110" y1="118" x2="110" y2="34" style="transform-origin:110px 118px"/><circle cx="110" cy="118" r="6" fill="currentColor"/></svg>
     <div class="tuner-read"><span class="t-target">—</span><span class="t-cents">${assess?'':'—'}</span></div>
     <div class="t-sub">${assess?'Assessment: tuning shows after each note':'Needle shows cents from the target. Green = in tune.'}</div></div>`;
   const nd=$('.needle',el),tt=$('.t-target',el),tc=$('.t-cents',el),ts=$('.t-sub',el),sub0=ts.textContent;
-  return{target(l){tt.textContent=l;},set(c,vib){if(assess)return;ts.textContent=vib?`Vibrato ${vib.rate.toFixed(1)}/s · needle shows its center`:sub0;if(c==null){nd.classList.add('idle');tc.textContent='—';return;}nd.classList.remove('idle');nd.style.transform=`rotate(${clamp(c,-60,60)*1.8}deg)`;tc.textContent=fmtC(c);}};
+  return{target(l){tt.textContent=l;},result(r){if(!assess||!r)return;if(r.miss||r.dev==null){nd.classList.add('idle');nd.style.transform='';tc.textContent='not heard';return;}nd.classList.remove('idle');nd.style.transform=`rotate(${clamp(r.dev,-60,60)*1.8}deg)`;tc.textContent=fmtC(r.dev);},
+    set(c,vib){if(assess)return;ts.textContent=vib?`Vibrato ${vib.rate.toFixed(1)}/s · needle shows its center`:sub0;if(c==null){nd.classList.add('idle');tc.textContent='—';return;}nd.classList.remove('idle');nd.style.transform=`rotate(${clamp(c,-60,60)*1.8}deg)`;tc.textContent=fmtC(c);}};
 }
 
 /* solfege ladder canvas */
@@ -1550,7 +1551,7 @@ function mountSung(item,ui,o){
   App.redraw=()=>ladder.draw();
   pitchControls(item,ui,{
     onNote(k){$$('.sy').forEach(e=>e.classList.remove('cur'));const e=$('#sy'+k);if(e)e.classList.add('cur');ladder.setCur(k);tuner.target(lab(item.targets[k]));},
-    onDone(k,r){const t=item.targets[k];t.revealed=true;const e=$('#sy'+k);e.classList.remove('cur');e.classList.add(resultClass(r));$('.w',e).textContent=t.label;$('#syr'+k).textContent=resultText(r);ladder.draw();},
+    onDone(k,r){tuner.result(r);const t=item.targets[k];t.revealed=true;const e=$('#sy'+k);e.classList.remove('cur');e.classList.add(resultClass(r));$('.w',e).textContent=t.label;$('#syr'+k).textContent=resultText(r);ladder.draw();},
     onLive(L,tg){tuner.set(L.pitched?pcDiff(L.cmidi??L.smidi??L.midi,tg.midi)*100:null,L.vib);},
     frame(L){if(L.t>=Engine.busyUntil)ladder.push(L);},
   },o.remount);
@@ -1621,7 +1622,7 @@ Modules.notation={
     const tuner=makeTuner($('#tunerHost'),ui.mode==='assess');
     pitchControls(item,ui,{
       onNote(i){setCur(i);tuner.target(showSyl||ui.mode==='practice'?item.targets[i].label:`note ${i+1}`);},
-      onDone(i,r){done[i]=r;mark(i,r);},
+      onDone(i,r){done[i]=r;mark(i,r);tuner.result(r);},
       onLive(L,tg){tuner.set(L.pitched?pcDiff(L.cmidi??L.smidi??L.midi,tg.midi)*100:null,L.vib);},
     },()=>Modules.notation.mount(item,ui));
   },
@@ -1872,7 +1873,7 @@ function mountScaleStaff(item,ui){
   const tuner=makeTuner($('#tunerHost'),ui.mode==='assess');
   pitchControls(item,ui,{
     onNote(i){setCur(i);tuner.target(item.targets[i].label);},
-    onDone(i,r){done[i]=r;mark(i,r);},
+    onDone(i,r){done[i]=r;mark(i,r);tuner.result(r);},
     onLive(L,tg){tuner.set(L.pitched?pcDiff(L.cmidi??L.smidi??L.midi,tg.midi)*100:null,L.vib);},
   },()=>Modules.scales.mount(item,ui));
 }
