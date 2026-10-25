@@ -2006,10 +2006,10 @@ const Session={
     $('#exFocus').onchange=e=>{this.focus=e.target.value;rememberFocus(this.mod.id,this.focus);this.newItem();toast(`Focus: ${focusLabel(this.mod.id,this.focus)}`);};
     $('#exLvl').onchange=e=>{this.level=+e.target.value;if(this.mod.ownLevel){Store.me.spLevel=this.level;Store.save();}else setLevel(this.level);this.tempo=null;$('#exLevel').textContent=`Level ${this.level} · ${LEVELS[this.level]}`;this.newItem();toast(`Level ${this.level} · ${LEVELS[this.level]}`);};
   },
-  newItem(){this.item=this.mod.make(this.level,partKey(),this.focus);if(isInst()&&this.item.targets)relabelInst(this.item);this.mountItem();},
+  newItem(){this.tries=[];this.item=this.mod.make(this.level,partKey(),this.focus);if(isInst()&&this.item.targets)relabelInst(this.item);this.mountItem();},
   mountItem(){
     this.cleanup();if(this.item&&this.item.targets)this.item.targets.forEach(t=>{t.revealed=false;});const tok=this.token={alive:true};this.cleanups=[];
-    $('#exCount').textContent=this.mode==='assess'?`Item ${this.idx+1} of ${this.total}`:'Unlimited practice';
+    $('#exCount').textContent=this.mode==='assess'?`Item ${this.idx+1} of ${this.total} · Try ${Math.min(3,(this.tries||[]).length+1)} of 3`:'Unlimited practice';
     $('#exFeedback').innerHTML='';
     const ui={stage:$('#exStage'),instr:$('#exInstr'),actions:$('#exActions'),mode:this.mode,level:this.level,token:tok,session:this,
       done:r=>{if(tok.alive)this.done(r);},
@@ -2025,15 +2025,19 @@ const Session={
     if(this.mode==='practice'){
       setActions($('#exActions'),[{label:'New one →',kind:'primary',on:()=>this.newItem()},{label:'Try this one again',on:()=>this.mountItem()}]);
     }else{
-      this.results.push({pct,summary:r.summary});this.idx++;
-      if(this.idx<this.total)setActions($('#exActions'),[{label:'Next item →',kind:'primary',on:()=>this.newItem()}]);
-      else setActions($('#exActions'),[{label:'See my results →',kind:'primary',on:()=>this.finishAssessment()}]);
+      /* up to 3 tries per item; the best try is the score that counts */
+      this.tries=this.tries||[];this.tries.push({pct,summary:r.summary});const n=this.tries.length,best=this.tries.reduce((a,b)=>b.pct>a.pct?b:a);
+      $('#exFeedback').insertAdjacentHTML('beforeend',`<p class="muted" style="margin-top:8px"><b>Try ${n} of 3.</b> ${n>1?`Your best try so far: <b>${best.pct}%</b>. Your best try is the score that counts.`:'You can move on, or try this item again (up to 3 tries). Your best try counts.'}${n>=3?' That was your last try for this item.':''}</p>`);
+      const last=this.idx+1>=this.total,next=()=>{this.results.push({pct:best.pct,summary:best.summary,tries:this.tries.map(t=>t.pct)});this.idx++;if(last)this.finishAssessment();else this.newItem();};
+      const acts=[{label:(last?'See my results →':'Next item →')+(n>1?` (keep ${best.pct}%)`:''),kind:'primary',on:next}];
+      if(n<3)acts.push({label:`Try again (${3-n} ${3-n===1?'try':'tries'} left)`,on:()=>this.mountItem()});
+      setActions($('#exActions'),acts);
     }
     const b=$('#exActions .btn.primary');if(b)b.focus({preventScroll:true});
   },
   finishAssessment(){
     this.cleanup();const me=Store.me;const pct=Math.round(mean(this.results.map(r=>r.pct)));const rb=rubric(pct);
-    const entry={ts:Date.now(),mod:this.mod.id,level:this.level,focus:this.focus,pct,rubric:rb.n,rl:rb.l,items:this.results.map(r=>r.pct),cls:curClassKey(),voice:partKey(),path:curPath()};
+    const entry={ts:Date.now(),mod:this.mod.id,level:this.level,focus:this.focus,pct,rubric:rb.n,rl:rb.l,items:this.results.map(r=>r.pct),tries:this.results.map(r=>r.tries||[r.pct]),cls:curClassKey(),voice:partKey(),path:curPath()};
     me.history.push(entry);Store.save();renderResults(entry,this.results);showView('results');
   },
 };
