@@ -382,6 +382,16 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .n-holdwrap{max-width:520px;margin:0 auto;display:grid;gap:4px}
 .n-holdbar{height:12px;border-radius:999px;background:var(--surface-2);border:1.5px solid var(--line);overflow:hidden}
 .n-holdbar i{display:block;height:100%;width:0;background:var(--good);transition:width .08s linear}
+.n-tank.cascade{overflow:hidden}
+.n-line{position:absolute;left:0;right:0;top:258px;border-top:3px dashed var(--royal);z-index:3;pointer-events:none}
+.n-line span{position:absolute;right:8px;top:-11px;background:var(--royal);color:#fff;font:700 11px var(--f-body);padding:2px 8px;border-radius:999px;letter-spacing:.4px}
+.n-cbar{position:absolute;left:12%;width:76%;border-radius:12px;border:2.5px solid var(--c,#888);background:color-mix(in srgb,var(--c,#888) 16%,var(--surface));z-index:2;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:opacity .45s}
+.n-cbar i{position:absolute;left:0;top:0;height:100%;width:0;background:color-mix(in srgb,var(--good) 42%,transparent)}
+.n-cbar .n-clab{position:relative;z-index:1;font:800 17px var(--f-display);color:var(--ink);background:color-mix(in srgb,var(--surface) 85%,transparent);padding:1px 10px;border-radius:999px;white-space:nowrap}
+.n-cbar.live{box-shadow:0 0 0 3px color-mix(in srgb,var(--royal) 40%,transparent)}
+.n-cbar.hot{border-color:var(--good)}
+.n-cbar.saved{border-color:var(--good);opacity:.3}
+.n-cbar.sunk{border-color:var(--miss);opacity:.4}
 .g-pad.bad{background:var(--miss);border-color:var(--miss)}.g-kb .kw.bad,.g-kb .kb.bad{background:var(--miss)}
 .g-pads{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px;margin:16px 0}.g-pad{aspect-ratio:1;border-radius:18px;background:color-mix(in srgb,var(--c) 18%,var(--surface));border:2px solid var(--c);display:grid;place-content:center;text-align:center;transition:transform .12s,background .12s}
 .g-pad b{font:800 24px var(--f-body);color:var(--ink)}.g-pad small{color:var(--muted)}.g-pad.on{background:var(--c);transform:scale(1.07)}.g-pad.on b,.g-pad.good b{color:#fff}.g-pad.good{background:var(--good);border-color:var(--good)}.ref-tab{width:100%;table-layout:fixed}.ref-tab td,.ref-tab th{text-align:left!important;vertical-align:middle}.ref-tab th:first-child{width:30%}.or-w svg.staff,.or-p svg.staff,.ph-st svg.staff,.hw-a svg.staff,.hw-b svg.staff,.bl-st svg.staff{width:100%;min-width:0;height:auto}.nq-fig .sp-card svg.staff{width:100%;min-width:0}.rs-row .rs-r,.rs-row .rs-n{width:90px;overflow:hidden}.rs-row svg.staff.nr-svg{width:90px;min-width:0;max-width:90px;height:auto;display:block}
@@ -7369,30 +7379,34 @@ function gDaily(host){
   const D=gData('daily'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile'},D.set),N=nShared(S),me=Store.me;
   if(!me){host.innerHTML='<div class="card"><p>Sign in first — your Daily Do is saved under your name.</p></div>';return;}
   me.daily=me.daily||{done:'',log:[]};
+  /* Difficulty follows the student: Middle School Chorus, or anyone still early in the lessons, gets the
+     beginner set — 8 items (2 of each kind), more time on the singing items, and unlimited replays. */
+  const lessonsDone=Object.keys(me.lessons||{}).length,clsLvl={msc:1,hcc:2,msi:3}[me.cls]||2;
+  const beginner=clsLvl<=1||lessonsDone<5,perCat=beginner?2:3,singMs=beginner?45000:30000;
   let run=null;
   function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();
     const doneToday=me.daily.done===dailyToday(),last=me.daily.log[me.daily.log.length-1];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
       ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (singing items)')}</div>
-      <p class="muted">Twelve items, about two minutes: 3 × name the pitch you hear, 3 × find one pitch inside a group of four, 3 × say which of two pitches is the one asked for, and 3 × ${isInst()?'play':'sing'} the step you are given. The session opens by playing do, so you can center first. ${doneToday?'Today’s Daily Do is done — this run is an extra.':'Finishing today’s Daily Do unlocks the rest of Measure Up! for the day.'}</p>
+      <p class="muted">${beginner?'Eight':'Twelve'} items${beginner?' — the beginner set for your class and lesson progress':''}, about ${beginner?'a minute and a half':'two minutes'}: ${perCat} × name the pitch you hear, ${perCat} × find one pitch inside a group of four, ${perCat} × say which of two pitches is the one asked for, and ${perCat} × ${isInst()?'play':'sing'} the step you are given. The session opens by playing do, so you can center first.${beginner?' Beginners also get extra time on the singing items, and can hear do and replay the pitches as many times as they need.':''} ${doneToday?'Today’s Daily Do is done — this run is an extra.':'Finishing today’s Daily Do unlocks the rest of Measure Up! for the day.'}</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">▶ ${doneToday?'Do an extra Daily Do':'Start today’s Daily Do'}</button>${N.doBtn()}<span class="pill ${doneToday?'good':''}">${doneToday?`Today: done${last&&last.d===dailyToday()?` · ${last.pct}%`:''}`:'Today: not done yet'}</span></div></div>
       ${me.daily.log.length?`<p class="eyebrow" style="margin-top:14px">Your recent Daily Dos</p><table class="maptab ref-tab"><tr><th>Day</th><td><b>Score</b></td></tr>${me.daily.log.slice(-6).reverse().map(x=>`<tr><th>${x.d===dailyToday()?'Today':x.d}</th><td>${x.right} of ${x.n} (${x.pct}%)${x.skip?` · ${x.skip} skipped`:''}</td></tr>`).join('')}</table>`:''}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   function buildItems(pads){
     const deg=()=>pads[rint(pads.length)],P={pos:[],name:[],which:[],sing:[]};
-    for(let k=0;k<3;k++){const seq=[deg(),deg(),deg(),deg()],pos=rint(4);P.pos.push({type:'pos',seq,pos,ans:seq[pos]});}
-    for(let k=0;k<3;k++)P.name.push({type:'name',s:deg()});
-    for(let k=0;k<3;k++){const target=deg();let other=deg();if(pads.length>1&&other===target)other=deg();const first=Math.random()<0.5;P.which.push({type:'which',pair:first?[target,other]:[other,target],target,ansIdx:first?0:1});}
-    for(let k=0;k<3;k++)P.sing.push({type:'sing',s:deg()});
-    const out=[];for(let k=0;k<3;k++)out.push(P.pos[k],P.name[k],P.which[k],P.sing[k]);
+    for(let k=0;k<perCat;k++){const seq=[deg(),deg(),deg(),deg()],pos=rint(4);P.pos.push({type:'pos',seq,pos,ans:seq[pos]});}
+    for(let k=0;k<perCat;k++)P.name.push({type:'name',s:deg()});
+    for(let k=0;k<perCat;k++){const target=deg();let other=deg();if(pads.length>1&&other===target)other=deg();const first=Math.random()<0.5;P.which.push({type:'which',pair:first?[target,other]:[other,target],target,ansIdx:first?0:1});}
+    for(let k=0;k<perCat;k++)P.sing.push({type:'sing',s:deg()});
+    const out=[];for(let k=0;k<perCat;k++)out.push(P.pos[k],P.name[k],P.which[k],P.sing[k]);
     return out;}
   async function start(){
     Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
     run={pads,base,keyName,items:buildItems(pads),i:0,right:0,skip:0,over:false,lock:true,doneItem:false,noMic:false,replayed:false};Game.run=run;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     if(!isInst())run.noMic=!(await ensureMic());
-    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Daily Do</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-prog">Item 1 of 12</span><span class="pill g-score">0 right</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button></div></div>
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Daily Do</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-prog">Item 1 of ${run.items.length}</span><span class="pill g-score">0 right</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button></div></div>
       <div class="card g-stage" style="display:grid;gap:14px;justify-items:center;text-align:center;padding:22px 16px">
         <p class="g-q" style="font:700 20px var(--f-display);margin:0">First, center on do…</p>
         <div class="g-dots" style="display:flex;gap:10px;min-height:16px;align-items:center"></div>
@@ -7412,18 +7426,18 @@ function gDaily(host){
     Learn.later(done,(t-c.currentTime+0.3)*1000);}
   const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(run.base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`;
   function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.4,0.7);fn(s);});}
-  function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.replayed||run.doneItem)return;run.replayed=true;$('#gRe').disabled=true;fn();};}
+  function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.doneItem||(!beginner&&run.replayed))return;run.replayed=true;const b=$('#gRe');if(b)b.disabled=true;fn(()=>{const b2=$('#gRe');if(b2&&beginner&&!run.doneItem)b2.disabled=false;});};}
   function item(){if(!run||run.over)return;const it=run.items[run.i];run.lock=true;run.doneItem=false;run.replayed=false;
-    $('.g-prog',host).textContent=`Item ${run.i+1} of 12`;$('.g-score',host).textContent=`${run.right} right`;
+    $('.g-prog',host).textContent=`Item ${run.i+1} of ${run.items.length}`;$('.g-score',host).textContent=`${run.right} right`;
     const q=$('.g-q',host),dots=$('.g-dots',host),ans=$('.g-ans',host),msg=$('.g-msg',host);msg.textContent='';ans.innerHTML='';
     if(it.type==='pos'){q.textContent='Listen to the four pitches…';dots.innerHTML=dotRow(4);
-      playSeq(it.seq,()=>{q.innerHTML=`What was the <b>${ORD[it.pos]}</b> pitch?`;ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.ans,12)===0,`The ${ORD[it.pos]} pitch was ${N.sylOf(it.ans)}.`));replayBtn(()=>playSeq(it.seq,()=>{}));run.lock=false;});}
+      playSeq(it.seq,()=>{q.innerHTML=`What was the <b>${ORD[it.pos]}</b> pitch?`;ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.ans,12)===0,`The ${ORD[it.pos]} pitch was ${N.sylOf(it.ans)}.`));replayBtn(done=>playSeq(it.seq,done));run.lock=false;});}
     else if(it.type==='name'){q.textContent='Listen…';dots.innerHTML=dotRow(1);
-      playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(()=>playSeq([it.s],()=>{}));run.lock=false;});}
+      playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(done=>playSeq([it.s],done));run.lock=false;});}
     else if(it.type==='which'){q.textContent='Listen to the two pitches…';dots.innerHTML=dotRow(2);
       playSeq(it.pair,()=>{q.innerHTML=`Which one was <b>${N.sylOf(it.target)}</b>?`;ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
         $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;resolve(+b.dataset.w===it.ansIdx,`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
-        replayBtn(()=>playSeq(it.pair,()=>{}));run.lock=false;});}
+        replayBtn(done=>playSeq(it.pair,done));run.lock=false;});}
     else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base)}</div>`;
       $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.5,0.8);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
     else if(run.noMic){dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
@@ -7432,12 +7446,12 @@ function gDaily(host){
     else{dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
       msg.innerHTML='Sing it on any syllable, in any octave — and hold it a moment.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn quiet" type="button" id="gSkip">Can’t sing right now — skip</button></span>';
       $('#gSkip').onclick=skipItem;run.lock=false;listenSing(it);
-      Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},30000);}}
+      Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},singMs);}}
   function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();
     if(ok)run.right++;
     $('.g-msg',host).innerHTML=ok?`<b style="color:var(--good)">Correct!</b> ${explain}`:`<b style="color:var(--miss)">Not quite.</b> ${explain}`;
     $('.g-score',host).textContent=`${run.right} right`;
-    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},ok?1000:1750);}
+    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},ok?(beginner?1300:1000):(beginner?2400:1750));}
   function skipItem(){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();run.skip++;
     $('.g-msg',host).textContent='Skipped — no harm done.';
     Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},700);}
@@ -7528,65 +7542,75 @@ function gRush(host){
 function gSink(host){
   const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',drop:7},D.set),N=nShared(S);
   const recKey=()=>`${S.scale}|${S.rng}|${S.drop}`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
+  const LINE_Y=258; /* px from the top of the tank: a bar is sung while it crosses this line (matches the .n-line CSS) */
   let run=null;
   function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
-      ${gSeg('drop',[[9,'Gentle · 9 s'],[7,'Steady · 7 s'],[5,'Brisk · 5 s'],[3.5,'Plunge · 3.5 s']],S.drop,'How fast it sinks')}
+      ${gSeg('drop',[[9,'Gentle · 9 s'],[7,'Steady · 7 s'],[5,'Brisk · 5 s'],[3.5,'Plunge · 3.5 s']],S.drop,'Cascade speed')}
       ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
-      <p class="muted">A bubble holding a note sinks toward the bottom of the tank. Sing the note you hear and hold it steady — the bar fills while you are on the pitch, in any octave. Fill the bar before the bubble lands to save the note. Three sunk notes end the game. Wear headphones if you can, so the microphone hears only you.</p>
+      <p class="muted">Note bars cascade down the tank. Each bar is labeled with its pitch and how long to sing it — its height <i>is</i> the time: the taller the bar, the longer the hold. When a bar reaches the dashed line, its pitch plays — sing it, in any octave, and keep singing while the bar crosses the line. Singing on pitch fills the bar; fill it completely before its top edge slips past the line to save the note. Three notes that slip past end the game, and the cascade speeds up the more you save. Wear headphones if you can, so the microphone hears only you.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">${micIcon} Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
     if(!await ensureMic())return;Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
-    run={pads,base,keyName,over:false,active:false,cur:0,lastI:-1,score:0,saved:0,sunk:0,lives:3,hold:0,dropMs:7000,t0:0};Game.run=run;
+    run={pads,base,keyName,over:false,dead:false,score:0,saved:0,sunk:0,lives:3,bars:[],lastI:-1,nextSpawn:performance.now()+1100};Game.run=run;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Score 0</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-lives">♥ ♥ ♥</span><span class="grow"></span><span class="pill g-st">Get ready…</span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
-      <div class="n-holdwrap"><span class="eyebrow">Hold the pitch to fill the bar</span><div class="n-holdbar"><i></i></div></div>
-      <div class="n-tank"><div class="n-bubble" style="top:2%">do</div></div>
+      <div class="n-tank cascade"><div class="n-line"><span>sing here</span></div></div>
       <div class="row" style="justify-content:center"><button class="btn" type="button" id="gReplay">↻ Hear the note again</button></div>
       <p class="muted g-msg" style="text-align:center"></p>`;
     $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
-    $('#gReplay').onclick=()=>{if(run&&run.active&&!run.over){actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.03,1.0,0.9);}};
+    $('#gReplay').onclick=()=>{if(!run||run.over)return;const bar=liveBar()||run.bars.find(b=>b.state==='fall');if(bar){actx();pianoHit(run.base+bar.s,Engine.ctx.currentTime+0.03,1.0,0.9);}};
+    pianoHit(base,Engine.ctx.currentTime+0.05,1.2,0.9);
     clearInterval(Game.timer);Game.timer=setInterval(tick,50);
-    listen();next();}
-  function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over||!run.active)return;
-    const p=(performance.now()-run.t0)/run.dropMs,b=$('.n-bubble',host);if(!b)return;
-    b.style.top=`${Math.min(88,p*88)}%`;
-    if(p>=1)sunk();}
-  function next(){if(!run||run.over)return;let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;run.cur=run.pads[i];run.hold=0;run.active=true;
-    run.dropMs=S.drop*1000*Math.max(0.55,1-run.saved*0.04);run.t0=performance.now();
-    const b=$('.n-bubble',host);if(b){b.className='n-bubble';b.style.top='2%';b.textContent=N.sylOf(run.cur);}
-    const bar=$('.n-holdbar i',host);if(bar)bar.style.width='0%';
-    $('.g-st',host).textContent='Sing it — and hold!';$('.g-msg',host).textContent='';
-    actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.15,1.0,0.9);}
-  function savedNote(){if(!run||!run.active)return;run.active=false;run.saved++;const left=Math.max(0,1-(performance.now()-run.t0)/run.dropMs),pts=100+Math.round(left*50);run.score+=pts;
-    const b=$('.n-bubble',host);if(b)b.classList.add('hot');$('.g-st',host).textContent=`Saved! +${pts}`;$('.g-clock',host).textContent=`Score ${run.score}`;
-    Learn.later(next,750);}
-  function sunk(){if(!run||!run.active)return;run.active=false;run.sunk++;run.lives--;
-    const b=$('.n-bubble',host);if(b)b.classList.add('sunk');$('.g-st',host).textContent=`Sunk — that was ${N.sylOf(run.cur)}`;
-    $('.g-lives',host).textContent=run.lives>0?Array(run.lives).fill('♥').join(' '):'—';
-    if(run.lives<=0)return Learn.later(finish,900);Learn.later(next,1100);}
+    listen();}
+  const speed=()=>LINE_Y/(S.drop*1000*Math.max(0.55,1-run.saved*0.04)); /* px per ms to the line; quickens as notes are saved */
+  const fmtNeed=n=>n%1?n.toFixed(1):String(n);
+  function spawn(now){let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;const s=run.pads[i],v=speed();
+    let need=[1.5,2,2.5][rint(3)];need=Math.round(Math.max(1.2,Math.min(need,240/(v*1000)))*2)/2;
+    const h=Math.max(26,Math.round(need*v*1000));
+    const el=document.createElement('div');el.className='n-cbar';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.setProperty('--c',N.COL[i%N.COL.length]);
+    el.innerHTML=`<i></i><span class="n-clab">${N.sylOf(s)} · sing ${fmtNeed(need)} s</span>`;
+    $('.n-tank',host).appendChild(el);
+    run.bars.push({s,pi:i,need,got:0,v,h,tSpawn:now,el,state:'fall',played:false,removeAt:0});
+    run.nextSpawn=now+h/v+1100;}
+  const liveBar=()=>run?run.bars.find(b=>b.state==='live'):null;
+  function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;const now=performance.now();
+    if(!run.dead&&now>=run.nextSpawn&&run.bars.filter(b=>b.state==='fall'||b.state==='live').length<3)spawn(now);
+    for(const bar of [...run.bars]){const y=-bar.h+(now-bar.tSpawn)*bar.v;bar.el.style.top=y+'px';
+      if(bar.state==='fall'&&y+bar.h>=LINE_Y&&y<LINE_Y){bar.state='live';bar.el.classList.add('live');bar.played=true;
+        actx();pianoHit(run.base+bar.s,Engine.ctx.currentTime+0.03,1.0,0.9);
+        $('.g-st',host).textContent=`Sing ${N.sylOf(bar.s)} — hold ${fmtNeed(bar.need)} s!`;}
+      else if((bar.state==='live'||bar.state==='fall')&&y>=LINE_Y)missBar(bar);
+      if((bar.removeAt&&now>=bar.removeAt)||y>345){bar.el.remove();run.bars.splice(run.bars.indexOf(bar),1);}}}
+  function missBar(bar){bar.state='sunk';bar.el.classList.remove('live');bar.el.classList.add('sunk');bar.removeAt=performance.now()+650;
+    run.sunk++;run.lives--;$('.g-lives',host).textContent=run.lives>0?Array(run.lives).fill('♥').join(' '):'—';
+    $('.g-st',host).textContent=`That was ${N.sylOf(bar.s)} — it slipped past`;
+    if(run.lives<=0){run.dead=true;Learn.later(finish,1000);}}
+  function savedBar(bar){bar.state='saved';bar.el.classList.remove('live');bar.el.classList.add('saved');bar.removeAt=performance.now()+500;
+    const pts=100+Math.round(bar.need*25);run.saved++;run.score+=pts;
+    $('.g-clock',host).textContent=`Score ${run.score}`;$('.g-st',host).textContent=`Saved! +${pts}`;}
   function listen(){
     let win=[],lastT=-9;
-    const draw=()=>{const i=$('.n-holdbar i',host);if(i&&run)i.style.width=`${Math.min(100,run.hold/0.9*100)}%`;};
-    const fn=L=>{if(!run||run.over||!run.active)return;const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
-      if(!L.pitched){run.hold=Math.max(0,run.hold-dt*0.4);draw();return;}
+    const fn=L=>{if(!run||run.over||run.dead)return;const bar=liveBar();const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
+      if(!bar)return;
+      const fill=()=>{const f=bar.el.querySelector('i');if(f)f.style.width=`${Math.min(100,bar.got/bar.need*100)}%`;};
+      if(!L.pitched){bar.got=Math.max(0,bar.got-dt*0.4);fill();return;}
       const m=L.cmidi!=null?L.cmidi:L.midi;win.push(m);if(win.length>10)win.shift();
-      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){run.hold=Math.max(0,run.hold-dt*0.4);draw();return;}
-      const med=w[w.length>>1],want=run.base+run.cur;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
+      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){bar.got=Math.max(0,bar.got-dt*0.4);fill();return;}
+      const med=w[w.length>>1],want=run.base+bar.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
       if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as Repeat After Mi */
-      const bub=$('.n-bubble',host);
-      if(Math.abs(d)<tol){run.hold+=dt;if(bub)bub.classList.add('hot');}
-      else{run.hold=Math.max(0,run.hold-dt*0.5);if(bub&&run.hold<0.45)bub.classList.remove('hot');}
-      draw();if(run.hold>=0.9)savedNote();};
+      if(Math.abs(d)<tol){bar.got+=dt;bar.el.classList.add('hot');}
+      else{bar.got=Math.max(0,bar.got-dt*0.5);if(bar.got<bar.need*0.5)bar.el.classList.remove('hot');}
+      fill();if(bar.got>=bar.need)savedBar(bar);};
     Engine.fastFn=fn;Learn.listen(fn);}
   function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
     const tot=run.saved+run.sunk,pct=tot?Math.round(run.saved/tot*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
     gLog(D,key,pct,run.score,nb||!old);
     $('.g-st',host).textContent='Game over';
-    $('.g-msg',host).innerHTML=`<b style="font-size:20px">Game over — ${run.score} points.</b><br>You saved ${run.saved} note${run.saved===1?'':'s'} and ${run.sunk} sank. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">${micIcon} Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
+    $('.g-msg',host).innerHTML=`<b style="font-size:20px">Game over — ${run.score} points.</b><br>You saved ${run.saved} note${run.saved===1?'':'s'} and ${run.sunk} slipped past. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">${micIcon} Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
     $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
   settings();
 }
