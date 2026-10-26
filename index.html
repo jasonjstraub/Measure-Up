@@ -392,6 +392,23 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .n-cbar.hot{border-color:var(--good)}
 .n-cbar.saved{border-color:var(--good);opacity:.3}
 .n-cbar.sunk{border-color:var(--miss);opacity:.4}
+.n-stage{position:relative;max-width:560px;margin:16px auto 0}
+.n-fall{position:relative;height:330px;overflow:hidden;border:2px solid var(--line);border-bottom:none;border-radius:18px 18px 0 0;background:color-mix(in srgb,var(--surface-2) 55%,var(--surface))}
+.n-lane{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed color-mix(in srgb,var(--ink) 13%,transparent)}
+.n-tile{position:absolute;transform:translateX(-50%);border-radius:11px;border:2.5px solid rgba(0,0,0,.18);z-index:2;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:opacity .45s}
+.n-tile i{position:absolute;left:0;bottom:0;width:100%;height:0;background:rgba(255,255,255,.45)}
+.n-tile .n-tlab{position:relative;z-index:1;font:800 16px var(--f-display);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.n-tile.live{box-shadow:0 0 0 3px color-mix(in srgb,var(--royal) 45%,transparent)}
+.n-tile.hot{border-color:var(--good)}
+.n-tile.saved{opacity:.3}
+.n-tile.sunk{opacity:.35;filter:grayscale(.6)}
+.n-keys{position:relative;height:86px;background:var(--surface);border:2px solid var(--line);border-top:3px solid var(--miss);border-radius:0 0 18px 18px;overflow:hidden}
+.n-wkey{position:absolute;top:0;height:100%;border-right:1.5px solid var(--line);background:var(--surface)}
+.n-wkey i{position:absolute;bottom:4px;left:0;right:0;text-align:center;font:700 10px var(--f-body);font-style:normal;color:var(--muted)}
+.n-bkey{position:absolute;top:0;height:56%;background:var(--ink);border-radius:0 0 5px 5px;z-index:2}
+.n-wkey.live{background:color-mix(in srgb,var(--royal) 38%,var(--surface))}
+.n-bkey.live{background:var(--royal)}
+.n-wkey.hot,.n-bkey.hot{background:var(--good)}
 .g-pad.bad{background:var(--miss);border-color:var(--miss)}.g-kb .kw.bad,.g-kb .kb.bad{background:var(--miss)}
 .g-pads{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px;margin:16px 0}.g-pad{aspect-ratio:1;border-radius:18px;background:color-mix(in srgb,var(--c) 18%,var(--surface));border:2px solid var(--c);display:grid;place-content:center;text-align:center;transition:transform .12s,background .12s}
 .g-pad b{font:800 24px var(--f-body);color:var(--ink)}.g-pad small{color:var(--muted)}.g-pad.on{background:var(--c);transform:scale(1.07)}.g-pad.on b,.g-pad.good b{color:#fff}.g-pad.good{background:var(--good);border-color:var(--good)}.ref-tab{width:100%;table-layout:fixed}.ref-tab td,.ref-tab th{text-align:left!important;vertical-align:middle}.ref-tab th:first-child{width:30%}.or-w svg.staff,.or-p svg.staff,.ph-st svg.staff,.hw-a svg.staff,.hw-b svg.staff,.bl-st svg.staff{width:100%;min-width:0;height:auto}.nq-fig .sp-card svg.staff{width:100%;min-width:0}.rs-row .rs-r,.rs-row .rs-n{width:90px;overflow:hidden}.rs-row svg.staff.nr-svg{width:90px;min-width:0;max-width:90px;height:auto;display:block}
@@ -7022,7 +7039,7 @@ const GAMES={
   racer:{title:'Rhythm Racer',kind:'Rhythm game',blurb:'Clap the rhythm in time. Score 85% or better to record your tempo, then push it faster.'},
   memory:{title:'Repeat After Mi',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back — or tap it, or play it on the piano. Each round adds a note. One miss ends the game.'},
   rush:{title:'Note Rush!',kind:'Pitch game',blurb:'Notes fly at you — tap the solfege you hear before the clock runs out. Streaks earn bonus points, but each wrong note costs a life, and four wrong notes end the run.'},
-  sink:{title:'Sing or Sink',kind:'Pitch game',vocal:true,blurb:'A note is sinking! Sing its pitch and hold it steady to save it before it hits the bottom. Three sunk notes end the game.'},
+  sink:{title:'Sing or Sink',kind:'Pitch game',vocal:true,blurb:'Solfege tiles cascade down their lanes toward the piano. Hear the key, read each tile, and sing it as it reaches the keys — fill the tile before it slips past. Three slips end the game.'},
   whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out singing a note and wearing a syllable. Whack one only when its syllable matches the note it sings!'}};
 const GICON={daily:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="7" width="24" height="22" rx="3"/><path d="M5 13h24M11 4v5M23 4v5"/><path d="M20 24.5V18l6-1.6V23"/><circle cx="17.4" cy="24.5" r="2.9"/><circle cx="23.4" cy="23" r="2.9"/></svg>',
   presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
@@ -7540,77 +7557,93 @@ function gRush(host){
 
 /* ------------------------- Sing or Sink ------------------------- */
 function gSink(host){
-  const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',drop:7},D.set),N=nShared(S);
-  const recKey=()=>`${S.scale}|${S.rng}|${S.drop}`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
-  const LINE_Y=258; /* px from the top of the tank: a bar is sung while it crosses this line (matches the .n-line CSS) */
+  const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',dur:60},D.set),N=nShared(S);
+  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|v2`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
+  const FIELD_H=330; /* px of falling field above the keyboard; a tile is sung while it crosses the bottom edge */
   let run=null;
   function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
-      ${gSeg('drop',[[9,'Gentle · 9 s'],[7,'Steady · 7 s'],[5,'Brisk · 5 s'],[3.5,'Plunge · 3.5 s']],S.drop,'Cascade speed')}
+      ${gSeg('dur',[[45,'45 seconds'],[60,'60 seconds'],[90,'90 seconds'],['inf','No time limit']],S.dur,'On the clock')}
       ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
-      <p class="muted">Note bars cascade down the tank. Each bar is labeled with its pitch and how long to sing it — its height <i>is</i> the time: the taller the bar, the longer the hold. When a bar reaches the dashed line, its pitch plays — sing it, in any octave, and keep singing while the bar crosses the line. Singing on pitch fills the bar; fill it completely before its top edge slips past the line to save the note. Three notes that slip past end the game, and the cascade speeds up the more you save. Wear headphones if you can, so the microphone hears only you.</p>
+      <p class="muted">Tiles marked with solfege cascade down their lanes toward the piano. The game opens by playing <b>do–mi–sol–mi–do–do</b> so you can settle into the key — after that, no pitches play: you read each tile and sing it. A short tile is a quick note; a long tile is a longer hold. Start singing as a tile reaches the keys and keep singing until it has crossed: singing on pitch fills the tile, and a full tile is saved. Three tiles that slip past end the game. The cascade starts slow and speeds up as the run goes on — with No time limit it keeps speeding up until the slips end it. Wear headphones if you can, so the microphone hears only you.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">${micIcon} Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
     if(!await ensureMic())return;Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
-    run={pads,base,keyName,over:false,dead:false,score:0,saved:0,sunk:0,lives:3,bars:[],lastI:-1,nextSpawn:performance.now()+1100};Game.run=run;
+    run={pads,base,keyName,over:false,dead:false,score:0,saved:0,sunk:0,lives:3,tiles:[],lastI:-1,t0:performance.now(),nextSpawn:performance.now()+3400,keyEls:{},laneX:{},tileW:10};Game.run=run;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
-    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Score 0</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-lives">♥ ♥ ♥</span><span class="grow"></span><span class="pill g-st">Get ready…</span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
-      <div class="n-tank cascade"><div class="n-line"><span>sing here</span></div></div>
-      <div class="row" style="justify-content:center"><button class="btn" type="button" id="gReplay">↻ Hear the note again</button></div>
-      <p class="muted g-msg" style="text-align:center"></p>`;
+    /* lanes + keyboard share the practice keyboard's layout math: each pitch gets the lane over its key */
+    const wr=trOf?trOf():0,isB=m=>[1,3,6,8,10].includes(mod(m+wr,12));
+    let lo=base+Math.min(...pads),hi=base+Math.max(...pads);if(isB(lo))lo--;if(isB(hi))hi++;
+    const keys=[];for(let m=lo;m<=hi;m++)keys.push(m);const whites=keys.filter(m=>!isB(m)),W=100/whites.length;
+    const center=m=>{const wi=whites.filter(x=>x<m).length;return isB(m)?wi*W:(wi+0.5)*W;};
+    pads.forEach((s,pi)=>{run.laneX[pi]=center(base+s);});
+    const ctrs=pads.map((s,pi)=>run.laneX[pi]).sort((a,b)=>a-b);
+    let minGap=100;for(let k=1;k<ctrs.length;k++)minGap=Math.min(minGap,ctrs[k]-ctrs[k-1]);
+    run.tileW=Math.max(4.5,Math.min(12,minGap*0.78));
+    const lanesHTML=pads.map((s,pi)=>`<div class="n-lane" style="left:${run.laneX[pi]}%"></div>`).join('');
+    const kbHTML=`<div class="n-keys">${keys.map(m=>{if(isB(m))return'';const wi=whites.indexOf(m);return `<div class="n-wkey" data-m="${m}" style="left:${wi*W}%;width:${W}%">${mod(m-base,12)===0?'<i>do</i>':''}</div>`;}).join('')}${keys.map(m=>{if(!isB(m))return'';const wi=whites.filter(x=>x<m).length;return `<div class="n-bkey" data-m="${m}" style="left:${wi*W-W*0.31}%;width:${W*0.62}%"></div>`;}).join('')}</div>`;
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur==='inf'?0:S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-lives">♥ ♥ ♥</span><span class="grow"></span><span class="pill g-st">Listen for do…</span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      <div class="n-stage"><div class="n-fall">${lanesHTML}</div>${kbHTML}</div>
+      <p class="muted g-msg" style="text-align:center">First, hear the key: do–mi–sol–mi–do–do. Then read the tiles and sing.</p>`;
+    $$('.n-wkey,.n-bkey',host).forEach(k=>{run.keyEls[+k.dataset.m]=k;});
     $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
-    $('#gReplay').onclick=()=>{if(!run||run.over)return;const bar=liveBar()||run.bars.find(b=>b.state==='fall');if(bar){actx();pianoHit(run.base+bar.s,Engine.ctx.currentTime+0.03,1.0,0.9);}};
-    pianoHit(base,Engine.ctx.currentTime+0.05,1.2,0.9);
+    /* the key-establishing intro — after it, silence: the tiles are read, not heard */
+    const third=S.scale==='minor'?3:4;let it=Engine.ctx.currentTime+0.15;
+    [0,third,7,third,0,0].forEach(s=>{pianoHit(base+s,it,0.5,0.9);it+=0.42;});
     clearInterval(Game.timer);Game.timer=setInterval(tick,50);
     listen();}
-  const speed=()=>LINE_Y/(S.drop*1000*Math.max(0.55,1-run.saved*0.04)); /* px per ms to the line; quickens as notes are saved */
-  const fmtNeed=n=>n%1?n.toFixed(1):String(n);
-  function spawn(now){let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;const s=run.pads[i],v=speed();
-    let need=[1.5,2,2.5][rint(3)];need=Math.round(Math.max(1.2,Math.min(need,240/(v*1000)))*2)/2;
-    const h=Math.max(26,Math.round(need*v*1000));
-    const el=document.createElement('div');el.className='n-cbar';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.setProperty('--c',N.COL[i%N.COL.length]);
-    el.innerHTML=`<i></i><span class="n-clab">${N.sylOf(s)} · sing ${fmtNeed(need)} s</span>`;
-    $('.n-tank',host).appendChild(el);
-    run.bars.push({s,pi:i,need,got:0,v,h,tSpawn:now,el,state:'fall',played:false,removeAt:0});
-    run.nextSpawn=now+h/v+1100;}
-  const liveBar=()=>run?run.bars.find(b=>b.state==='live'):null;
+  const elapsed=()=>(performance.now()-run.t0)/1000;
+  const travel=()=>{const el=elapsed();
+    if(S.dur==='inf')return Math.max(1.5,6.5-el*(4.9/160)); /* keeps quickening until the slips end it */
+    const k=Math.min(1,el/(S.dur*0.9));return 6.5-(6.5-2.6)*k;};
+  const gapT=()=>{const k=Math.min(1,(6.5-travel())/3.9);return 1.15-(1.15-0.55)*k;};
+  function spawn(now){let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;const s=run.pads[i];
+    const v=FIELD_H/travel(),need=[0.8,0.8,1.5,1.5,2.2][rint(5)],h=Math.round(need*v);
+    const el=document.createElement('div');el.className='n-tile';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.left=run.laneX[i]+'%';el.style.width=run.tileW+'%';el.style.background=N.COL[i%N.COL.length];
+    el.innerHTML=`<i></i><span class="n-tlab">${N.sylOf(s)}</span>`;
+    $('.n-fall',host).appendChild(el);
+    run.tiles.push({s,pi:i,need,got:0,v,h,tSpawn:now,el,state:'fall',removeAt:0});
+    run.nextSpawn=now+(need+gapT())*1000;}
+  const liveTile=()=>run?run.tiles.find(t=>t.state==='live'):null;
+  const keyLight=(tile,cls,on)=>{const k=run.keyEls[run.base+tile.s];if(k)k.classList.toggle(cls,on);};
   function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;const now=performance.now();
-    if(!run.dead&&now>=run.nextSpawn&&run.bars.filter(b=>b.state==='fall'||b.state==='live').length<3)spawn(now);
-    for(const bar of [...run.bars]){const y=-bar.h+(now-bar.tSpawn)*bar.v;bar.el.style.top=y+'px';
-      if(bar.state==='fall'&&y+bar.h>=LINE_Y&&y<LINE_Y){bar.state='live';bar.el.classList.add('live');bar.played=true;
-        actx();pianoHit(run.base+bar.s,Engine.ctx.currentTime+0.03,1.0,0.9);
-        $('.g-st',host).textContent=`Sing ${N.sylOf(bar.s)} — hold ${fmtNeed(bar.need)} s!`;}
-      else if((bar.state==='live'||bar.state==='fall')&&y>=LINE_Y)missBar(bar);
-      if((bar.removeAt&&now>=bar.removeAt)||y>345){bar.el.remove();run.bars.splice(run.bars.indexOf(bar),1);}}}
-  function missBar(bar){bar.state='sunk';bar.el.classList.remove('live');bar.el.classList.add('sunk');bar.removeAt=performance.now()+650;
+    const c=$('.g-clock',host);
+    if(c){if(S.dur==='inf')c.textContent=Math.floor(elapsed());else{const left=S.dur-elapsed();c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';if(left<=0)return finish();}}
+    if(!run.dead&&now>=run.nextSpawn&&run.tiles.filter(t=>t.state==='fall'||t.state==='live').length<4)spawn(now);
+    for(const tile of [...run.tiles]){const y=-tile.h+(now-tile.tSpawn)/1000*tile.v;tile.el.style.top=y+'px';
+      if(tile.state==='fall'&&y+tile.h>=FIELD_H&&y<FIELD_H){tile.state='live';tile.el.classList.add('live');keyLight(tile,'live',true);
+        $('.g-st',host).textContent=`Sing ${N.sylOf(tile.s)}!`;}
+      else if(!run.dead&&(tile.state==='live'||tile.state==='fall')&&y>=FIELD_H)missTile(tile);
+      if((tile.removeAt&&now>=tile.removeAt)||y>FIELD_H+95){keyLight(tile,'live',false);keyLight(tile,'hot',false);tile.el.remove();run.tiles.splice(run.tiles.indexOf(tile),1);}}}
+  function missTile(tile){tile.state='sunk';tile.el.classList.remove('live');tile.el.classList.add('sunk');tile.removeAt=performance.now()+650;keyLight(tile,'live',false);keyLight(tile,'hot',false);
     run.sunk++;run.lives--;$('.g-lives',host).textContent=run.lives>0?Array(run.lives).fill('♥').join(' '):'—';
-    $('.g-st',host).textContent=`That was ${N.sylOf(bar.s)} — it slipped past`;
+    $('.g-st',host).textContent=`That was ${N.sylOf(tile.s)} — it slipped past`;
     if(run.lives<=0){run.dead=true;Learn.later(finish,1000);}}
-  function savedBar(bar){bar.state='saved';bar.el.classList.remove('live');bar.el.classList.add('saved');bar.removeAt=performance.now()+500;
-    const pts=100+Math.round(bar.need*25);run.saved++;run.score+=pts;
-    $('.g-clock',host).textContent=`Score ${run.score}`;$('.g-st',host).textContent=`Saved! +${pts}`;}
+  function savedTile(tile){tile.state='saved';tile.el.classList.remove('live');tile.el.classList.add('saved');tile.removeAt=performance.now()+500;keyLight(tile,'live',false);keyLight(tile,'hot',false);
+    const pts=100+Math.round(tile.need*25);run.saved++;run.score+=pts;
+    $('.g-score',host).textContent=`Score ${run.score}`;$('.g-st',host).textContent=`Saved! +${pts}`;}
   function listen(){
     let win=[],lastT=-9;
-    const fn=L=>{if(!run||run.over||run.dead)return;const bar=liveBar();const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
-      if(!bar)return;
-      const fill=()=>{const f=bar.el.querySelector('i');if(f)f.style.width=`${Math.min(100,bar.got/bar.need*100)}%`;};
-      if(!L.pitched){bar.got=Math.max(0,bar.got-dt*0.4);fill();return;}
+    const fn=L=>{if(!run||run.over||run.dead)return;const tile=liveTile();const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
+      if(!tile)return;
+      const fill=()=>{const f=tile.el.querySelector('i');if(f)f.style.height=`${Math.min(100,tile.got/tile.need*100)}%`;};
+      if(!L.pitched){tile.got=Math.max(0,tile.got-dt*0.4);fill();return;}
       const m=L.cmidi!=null?L.cmidi:L.midi;win.push(m);if(win.length>10)win.shift();
-      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){bar.got=Math.max(0,bar.got-dt*0.4);fill();return;}
-      const med=w[w.length>>1],want=run.base+bar.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
+      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){tile.got=Math.max(0,tile.got-dt*0.4);fill();return;}
+      const med=w[w.length>>1],want=run.base+tile.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
       if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as Repeat After Mi */
-      if(Math.abs(d)<tol){bar.got+=dt;bar.el.classList.add('hot');}
-      else{bar.got=Math.max(0,bar.got-dt*0.5);if(bar.got<bar.need*0.5)bar.el.classList.remove('hot');}
-      fill();if(bar.got>=bar.need)savedBar(bar);};
+      if(Math.abs(d)<tol){tile.got+=dt;tile.el.classList.add('hot');keyLight(tile,'hot',true);}
+      else{tile.got=Math.max(0,tile.got-dt*0.5);if(tile.got<tile.need*0.5){tile.el.classList.remove('hot');keyLight(tile,'hot',false);}}
+      fill();if(tile.got>=tile.need)savedTile(tile);};
     Engine.fastFn=fn;Learn.listen(fn);}
   function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
     const tot=run.saved+run.sunk,pct=tot?Math.round(run.saved/tot*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
     gLog(D,key,pct,run.score,nb||!old);
-    $('.g-st',host).textContent='Game over';
-    $('.g-msg',host).innerHTML=`<b style="font-size:20px">Game over — ${run.score} points.</b><br>You saved ${run.saved} note${run.saved===1?'':'s'} and ${run.sunk} slipped past. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">${micIcon} Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
+    const st=$('.g-st',host);if(st)st.textContent='Game over';
+    $('.g-msg',host).innerHTML=`<b style="font-size:20px">${run.lives<=0?'Game over':'Time!'} — ${run.score} points.</b><br>You saved ${run.saved} tile${run.saved===1?'':'s'} and ${run.sunk} slipped past. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">${micIcon} Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
     $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
   settings();
 }
