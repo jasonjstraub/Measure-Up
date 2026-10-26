@@ -7014,7 +7014,7 @@ const GAMES={
   rush:{title:'Note Rush!',kind:'Pitch game',blurb:'Notes fly at you — tap the solfege you hear before the clock runs out. Streaks earn bonus points, but each wrong note costs a life, and four wrong notes end the run.'},
   echo:{title:'Repeat After Mi',kind:'Melody game',blurb:'Hear a melody, tap it back. Each round adds a note, and you get one extra listen per round. One wrong tap ends the game.'},
   sink:{title:'Sing or Sink',kind:'Pitch game',vocal:true,blurb:'A note is sinking! Sing its pitch and hold it steady to save it before it hits the bottom. Three sunk notes end the game.'},
-  whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out of their nests singing. Whack the one that is singing do — and leave the others alone!'}};
+  whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out singing a note and wearing a syllable. Whack one only when its syllable matches the note it sings!'}};
 const GICON={daily:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="7" width="24" height="22" rx="3"/><path d="M5 13h24M11 4v5M23 4v5"/><path d="M20 24.5V18l6-1.6V23"/><circle cx="17.4" cy="24.5" r="2.9"/><circle cx="23.4" cy="23" r="2.9"/></svg>',
   presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
   racer:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 25a12 12 0 1 1 24 0"/><path d="M17 25l6-9"/><circle cx="17" cy="25" r="2" fill="currentColor"/></svg>',
@@ -7627,23 +7627,23 @@ function gSink(host){
 /* ------------------------- Whack-a-Do ------------------------- */
 function gWhack(host){
   const D=gData('whack'),S=Object.assign({scale:'major',rng:'sol',key:'rand',dur:60},D.set),N=nShared(S);
-  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}`;
+  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|v2`;
   const BIRD=c=>`<svg viewBox="0 0 64 64" fill="none" stroke="#3b2f1e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 41c-5 1-9 4-11 9 5 1 10-1 14-4" fill="${c}"/><ellipse cx="31" cy="39" rx="17" ry="14" fill="${c}"/><circle cx="44" cy="27" r="9.5" fill="${c}"/><path d="M52 24l11-3-8 9" fill="#f59e0b"/><circle cx="46.5" cy="25" r="1.7" fill="#3b2f1e" stroke="none"/><path d="M21 27c1-6 6-11 13-12"/><path d="M26 52l-2 6M38 52l2 6"/></svg>`;
   let run=null;
   function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
       ${gSeg('dur',[[45,'45 seconds'],[60,'60 seconds'],[90,'90 seconds']],S.dur,'On the clock')}</div>
-      <p class="muted">Twelve nests, and every bird that pops out sings a note. Whack only the Do-Do — the one singing <b>do</b>. A Do-Do scores 100; whacking any other bird costs 50, and a Do-Do that gets away is gone for good. The birds get quicker as your score climbs.</p>
+      <p class="muted">Six nests in two columns. Every Do-Do pops out singing a note — and wearing a syllable badge. If the badge <b>matches</b> the note it sings, whack it: <b>+1 point</b>. If the badge doesn't match, leave it alone — whacking a mismatched bird costs <b>2 points</b>. A matching bird that gets away counts as missed. The birds get quicker as the game goes on.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
     Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
-    run={pads,base,keyName,over:false,score:0,got:0,appeared:0,missed:0,taps:0,right:0,t0:performance.now(),nextPop:performance.now()+700,birds:new Map()};Game.run=run;
+    run={pads,base,keyName,over:false,score:0,got:0,appeared:0,missed:0,taps:0,right:0,pops:0,t0:performance.now(),nextPop:performance.now()+700,birds:new Map()};Game.run=run;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
-    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-miss">Dos missed: 0</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
-      <div class="n-nests">${Array.from({length:12},(_,i)=>`<div class="n-nest"><button type="button" class="n-bird" data-n="${i}" aria-label="Nest ${i+1}"><span class="n-syl"></span>${BIRD('#cbd5e1')}</button></div>`).join('')}</div>
-      <p class="muted g-msg" style="text-align:center">Whack only the Do-Do singing <b>do</b>!</p>`;
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-miss">Matches missed: 0</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      <div class="n-nests">${Array.from({length:6},(_,i)=>`<div class="n-nest"><button type="button" class="n-bird" data-n="${i}" aria-label="Nest ${i+1}"><span class="n-syl"></span>${BIRD('#cbd5e1')}</button></div>`).join('')}</div>
+      <p class="muted g-msg" style="text-align:center">Whack a Do-Do only when its badge <b>matches</b> its note!</p>`;
     $$('.n-bird',host).forEach(b=>b.onclick=()=>tapBird(+b.dataset.n));
     $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
@@ -7653,30 +7653,33 @@ function gWhack(host){
     if(left<=0)return finish();
     run.birds.forEach((bd,n)=>{if(now>=bd.until)retire(n,bd,false);});
     if(now>=run.nextPop&&run.birds.size<3)pop(now);}
-  function pop(now){const free=[];for(let i=0;i<12;i++)if(!run.birds.has(i))free.push(i);if(!free.length)return;
-    const nest=pick(free),isDo=run.pads.length<2?true:Math.random()<0.36,pi=isDo?0:1+rint(run.pads.length-1),s=run.pads[pi];
+  function pop(now){const free=[];for(let i=0;i<6;i++)if(!run.birds.has(i))free.push(i);if(!free.length)return;
+    const nest=pick(free),pi=rint(run.pads.length),match=run.pads.length<2?true:Math.random()<0.45;
+    let li=pi;if(!match){do{li=rint(run.pads.length);}while(li===pi);}
+    const s=run.pads[pi];
     const el=$(`.n-bird[data-n="${nest}"]`,host);if(!el)return;
-    const bd={s,pi,isDo,until:now+Math.max(820,1180-run.score*0.3),el};run.birds.set(nest,bd);
-    el.innerHTML=`<span class="n-syl"></span>${BIRD(N.COL[pi%N.COL.length])}`;
+    const bd={s,pi,li,match,until:now+Math.max(820,1180-run.pops*6),el};run.birds.set(nest,bd);run.pops++;
+    el.innerHTML=`<span class="n-syl show">${N.sylOf(run.pads[li])}</span>${BIRD(N.COL[pi%N.COL.length])}`;
     el.classList.remove('good','bad','missdo');el.classList.add('up');
     actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.02,0.7,0.9);
-    if(isDo)run.appeared++;
-    run.nextPop=now+Math.max(680,1450-run.score*0.45)+rint(260);}
+    if(match)run.appeared++;
+    run.nextPop=now+Math.max(680,1450-run.pops*9)+rint(260);}
   function retire(n,bd,tapped){run.birds.delete(n);const el=bd.el,syl=el.querySelector('.n-syl');
-    if(!tapped&&bd.isDo){run.missed++;el.classList.add('missdo');if(syl){syl.textContent='do!';syl.classList.add('show');}const m=$('.g-miss',host);if(m)m.textContent=`Dos missed: ${run.missed}`;}
+    if(!tapped){if(bd.match){run.missed++;el.classList.add('missdo');const m=$('.g-miss',host);if(m)m.textContent=`Matches missed: ${run.missed}`;}
+      else if(syl)syl.textContent=N.sylOf(bd.s);}
     el.classList.remove('up');
     Learn.later(()=>{el.classList.remove('good','bad','missdo');if(syl)syl.classList.remove('show');},tapped?80:450);}
   function tapBird(n){if(!run||run.over)return;const bd=run.birds.get(n);if(!bd)return;run.taps++;
-    const syl=bd.el.querySelector('.n-syl');if(syl){syl.textContent=N.sylOf(bd.s);syl.classList.add('show');}
-    if(bd.isDo){run.got++;run.right++;run.score+=100;bd.el.classList.add('good');}
-    else{run.score=Math.max(0,run.score-50);bd.el.classList.add('bad');}
+    const syl=bd.el.querySelector('.n-syl');
+    if(bd.match){run.got++;run.right++;run.score+=1;bd.el.classList.add('good');}
+    else{run.score=Math.max(0,run.score-2);bd.el.classList.add('bad');if(syl)syl.textContent=N.sylOf(bd.s);}
     $('.g-score',host).textContent=`Score ${run.score}`;
     retire(n,bd,true);}
   function finish(){if(!run||run.over)return;run.over=true;clearInterval(Game.timer);
     const acc=run.taps?Math.round(run.right/run.taps*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
     gLog(D,key,acc,run.score,nb||!old);
     host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">Time! ${run.score} points</p>
-      <p>You whacked ${run.got} of ${run.appeared} Do-Dos${run.missed?` (${run.missed} got away)`:''}. Tap accuracy: ${acc}%. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
+      <p>You whacked ${run.got} of ${run.appeared} matching Do-Dos${run.missed?` (${run.missed} got away)`:''}. Tap accuracy: ${acc}%. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
       <div class="row"><button class="btn primary" type="button" id="gAgain">▶ Play again</button><button class="btn" type="button" id="gSet">Change settings</button></div></div></div>`;
     $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
   settings();
