@@ -370,7 +370,7 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .n-bird{position:absolute;left:50%;bottom:52px;width:64px;height:64px;margin-left:-32px;transform:translateY(58px) scale(.6);opacity:0;transition:transform .16s ease-out,opacity .12s;cursor:pointer;background:none;border:none;padding:0;z-index:2}
 .n-bird.up{transform:translateY(0) scale(1);opacity:1}
 .n-bird svg{width:100%;height:100%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
-.n-bird .n-syl{position:absolute;left:50%;top:-24px;transform:translateX(-50%);font:800 17px var(--f-display);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:1px 10px;opacity:0;transition:opacity .12s;white-space:nowrap}
+.n-bird .n-syl{position:absolute;left:50%;top:auto;bottom:-25px;transform:translateX(-50%);font:800 17px var(--f-display);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:1px 10px;opacity:0;transition:opacity .12s;white-space:nowrap}
 .n-bird .n-syl.show{opacity:1}
 .n-bird.good svg{filter:drop-shadow(0 0 7px var(--good))}
 .n-bird.bad svg{filter:drop-shadow(0 0 7px var(--miss))}
@@ -7634,7 +7634,7 @@ function gWhack(host){
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
       ${gSeg('dur',[[45,'45 seconds'],[60,'60 seconds'],[90,'90 seconds']],S.dur,'On the clock')}</div>
-      <p class="muted">Six nests in two columns. Every Do-Do pops out singing a note — and wearing a syllable badge. If the badge <b>matches</b> the note it sings, whack it: <b>+1 point</b>. If the badge doesn't match, leave it alone — whacking a mismatched bird costs <b>2 points</b>. A matching bird that gets away counts as missed. The birds get quicker as the game goes on.</p>
+      <p class="muted">Six nests in two columns. Every Do-Do pops out singing a note — and wearing a syllable badge. If the badge <b>matches</b> the note it sings, whack it: <b>+1 point</b>. If the badge doesn't match, leave it alone — whacking a mismatched bird costs <b>2 points</b>. A matching bird that gets away counts as missed. <b>Do plays as the game starts</b> so you can center your ear — and the Hear do button is there whenever you want it again. The birds get quicker as the game goes on.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
@@ -7647,6 +7647,7 @@ function gWhack(host){
     $$('.n-bird',host).forEach(b=>b.onclick=()=>tapBird(+b.dataset.n));
     $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    pianoHit(base,Engine.ctx.currentTime+0.05,1.2,0.9);
     clearInterval(Game.timer);Game.timer=setInterval(tick,90);}
   function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;const now=performance.now();
     const left=S.dur-(now-run.t0)/1000,c=$('.g-clock',host);if(c){c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';}
