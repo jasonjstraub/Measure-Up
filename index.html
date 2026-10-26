@@ -364,6 +364,25 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .g-bar{position:sticky;bottom:8px;z-index:6;display:grid;gap:10px;padding:12px 16px}.g-syls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .g-syl{min-width:64px;padding:12px 10px;font:700 18px var(--f-body);border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);cursor:pointer;color:var(--ink)}.g-syl:hover,.g-syl:focus-visible{border-color:var(--royal)}.g-syl:active{background:var(--royal);color:#fff}.g-syl.sm{min-width:48px;padding:8px 8px;font-size:15px}
 .g-big{font:800 26px var(--f-display);margin:0 0 6px}.g-res{display:grid;gap:4px}
+.n-nests{display:grid;grid-template-columns:repeat(2,minmax(120px,220px));justify-content:center;gap:14px 22px;margin:18px auto;max-width:520px}
+.n-nest{position:relative;height:104px;border-radius:0 0 60px 60px;background:radial-gradient(ellipse at 50% 0%,#8a6d3b 0 26%,#a5854e 27% 55%,#8a6d3b 100%);border:2px solid color-mix(in srgb,#8a6d3b 70%,#000);overflow:visible}
+.n-nest::before{content:'';position:absolute;left:50%;top:-7px;transform:translateX(-50%);width:64%;height:18px;border-radius:50%;background:#4a3a1e;box-shadow:inset 0 3px 6px #000}
+.n-bird{position:absolute;left:50%;bottom:52px;width:64px;height:64px;margin-left:-32px;transform:translateY(58px) scale(.6);opacity:0;transition:transform .16s ease-out,opacity .12s;cursor:pointer;background:none;border:none;padding:0;z-index:2}
+.n-bird.up{transform:translateY(0) scale(1);opacity:1}
+.n-bird svg{width:100%;height:100%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.n-bird .n-syl{position:absolute;left:50%;top:-24px;transform:translateX(-50%);font:800 17px var(--f-display);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:1px 10px;opacity:0;transition:opacity .12s;white-space:nowrap}
+.n-bird .n-syl.show{opacity:1}
+.n-bird.good svg{filter:drop-shadow(0 0 7px var(--good))}
+.n-bird.bad svg{filter:drop-shadow(0 0 7px var(--miss))}
+.n-bird.missdo svg{filter:drop-shadow(0 0 9px var(--miss))}
+.n-tank{position:relative;height:330px;max-width:520px;margin:16px auto;border:2px solid var(--line);border-top:none;border-radius:0 0 26px 26px;background:linear-gradient(to bottom,transparent 0 18%,color-mix(in srgb,var(--royal) 13%,var(--surface)) 18% 100%);overflow:hidden}
+.n-bubble{position:absolute;left:50%;width:92px;height:92px;margin-left:-46px;border-radius:50%;border:3px solid var(--royal);background:color-mix(in srgb,var(--royal) 14%,var(--surface));display:grid;place-content:center;text-align:center;font:800 19px var(--f-display);color:var(--ink);transition:none;z-index:2}
+.n-bubble.hot{border-color:var(--good);background:color-mix(in srgb,var(--good) 20%,var(--surface))}
+.n-bubble.sunk{border-color:var(--miss);background:color-mix(in srgb,var(--miss) 18%,var(--surface))}
+.n-holdwrap{max-width:520px;margin:0 auto;display:grid;gap:4px}
+.n-holdbar{height:12px;border-radius:999px;background:var(--surface-2);border:1.5px solid var(--line);overflow:hidden}
+.n-holdbar i{display:block;height:100%;width:0;background:var(--good);transition:width .08s linear}
+.g-pad.bad{background:var(--miss);border-color:var(--miss)}.g-kb .kw.bad,.g-kb .kb.bad{background:var(--miss)}
 .g-pads{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px;margin:16px 0}.g-pad{aspect-ratio:1;border-radius:18px;background:color-mix(in srgb,var(--c) 18%,var(--surface));border:2px solid var(--c);display:grid;place-content:center;text-align:center;transition:transform .12s,background .12s}
 .g-pad b{font:800 24px var(--f-body);color:var(--ink)}.g-pad small{color:var(--muted)}.g-pad.on{background:var(--c);transform:scale(1.07)}.g-pad.on b,.g-pad.good b{color:#fff}.g-pad.good{background:var(--good);border-color:var(--good)}.ref-tab{width:100%;table-layout:fixed}.ref-tab td,.ref-tab th{text-align:left!important;vertical-align:middle}.ref-tab th:first-child{width:30%}.or-w svg.staff,.or-p svg.staff,.ph-st svg.staff,.hw-a svg.staff,.hw-b svg.staff,.bl-st svg.staff{width:100%;min-width:0;height:auto}.nq-fig .sp-card svg.staff{width:100%;min-width:0}.rs-row .rs-r,.rs-row .rs-n{width:90px;overflow:hidden}.rs-row svg.staff.nr-svg{width:90px;min-width:0;max-width:90px;height:auto;display:block}
 @media (max-width:600px){.np-wrap{grid-template-columns:minmax(0,1fr)}}
@@ -440,6 +459,10 @@ svg.staff.mini{max-width:420px;width:100%}
 .stp{font:700 11px var(--f-mono);color:var(--muted)}
 .sing-item{display:grid;gap:10px;padding:14px 16px;border-radius:12px;background:var(--surface-2)}
 .steps button:disabled{opacity:.45;cursor:not-allowed}
+.anat-plate g[data-part]{cursor:pointer}
+.anat-plate g[data-part] path,.anat-plate g[data-part] ellipse{fill:rgba(47,111,178,0);stroke:rgba(47,111,178,0);stroke-width:3;vector-effect:non-scaling-stroke;transition:fill .15s ease,stroke .15s ease}
+.anat-plate g.sel path,.anat-plate g.sel ellipse{fill:rgba(47,111,178,.30);stroke:#2f6fb2}
+.anat-plate g.dim,.anat-sch g.dim{opacity:.38}
 </style>
 </head>
 <body>
@@ -2081,6 +2104,8 @@ function restoreScroll(v){const m=ScrollMem[v];if(!m){window.scrollTo(0,0);retur
     const b=Learn.lastId&&$(`#viewLearn [data-lesson="${Learn.lastId}"]`);if(b){const ol=b.closest('.lessons'),r=b.getBoundingClientRect(),o=ol.getBoundingClientRect();if(r.top<o.top||r.bottom>o.bottom)ol.scrollTop+=r.top-o.top-8;}}
   window.scrollTo(0,m.y);requestAnimationFrame(()=>window.scrollTo(0,m.y));}
 function showView(v){
+  /* Daily Do first: a signed-in student who has not finished today's Daily Do is routed to it before anything else. */
+  if(typeof dailyDue==='function'&&dailyDue()&&!(v==='game'&&typeof Game!=='undefined'&&Game.id==='daily')){if(typeof Game!=='undefined')Game.id='daily';v='game';}
   saveScroll();stopNarrate();saveNav(v);
   if(v!=='ex'&&Session.token)Session.cleanup();
   if(v!=='settings'&&Engine._mon){Engine.taps.delete(Engine._mon);Engine._mon=null;}
@@ -6982,18 +7007,28 @@ function gScore(host,o){/* o: {measures, clef|null (one-line rhythm), key:{l,sig
 
 /* ================= Practice Room games: Pitch Presto, Rhythm Racer, Melody Memory ================= */
 const GAMES={
+  daily:{title:'Daily Do',kind:'Daily workout',blurb:'Your daily dozen: 12 quick items — name the pitch, find one inside a group of four, say which of two is the note asked for, and sing the step. One a day unlocks the rest of the site; extras are always welcome.'},
   presto:{title:'Pitch Presto',kind:'Pitch game',blurb:'Label every note — solfege syllables for singers, note names for band — as fast as you can. Score 85% or better to record your time, then beat it.'},
   racer:{title:'Rhythm Racer',kind:'Rhythm game',blurb:'Clap the rhythm in time. Score 85% or better to record your tempo, then push it faster.'},
-  memory:{title:'Melody Memory',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back. Each round adds a note. One miss ends the game.'}};
-const GICON={presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
+  memory:{title:'Melody Memory',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back. Each round adds a note. One miss ends the game.'},
+  rush:{title:'Note Rush!',kind:'Pitch game',blurb:'Notes fly at you — tap the solfege you hear before the clock runs out. Streaks earn bonus points, but each wrong note costs a life, and four wrong notes end the run.'},
+  echo:{title:'Repeat After Mi',kind:'Melody game',blurb:'Hear a melody, tap it back. Each round adds a note, and you get one extra listen per round. One wrong tap ends the game.'},
+  sink:{title:'Sing or Sink',kind:'Pitch game',vocal:true,blurb:'A note is sinking! Sing its pitch and hold it steady to save it before it hits the bottom. Three sunk notes end the game.'},
+  whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out of their nests singing. Whack the one that is singing do — and leave the others alone!'}};
+const GICON={daily:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="7" width="24" height="22" rx="3"/><path d="M5 13h24M11 4v5M23 4v5"/><path d="M20 24.5V18l6-1.6V23"/><circle cx="17.4" cy="24.5" r="2.9"/><circle cx="23.4" cy="23" r="2.9"/></svg>',
+  presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
   racer:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 25a12 12 0 1 1 24 0"/><path d="M17 25l6-9"/><circle cx="17" cy="25" r="2" fill="currentColor"/></svg>',
-  memory:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="5" width="11" height="11" rx="3"/><rect x="18" y="5" width="11" height="11" rx="3" fill="currentColor"/><rect x="5" y="18" width="11" height="11" rx="3" fill="currentColor"/><rect x="18" y="18" width="11" height="11" rx="3"/></svg>'};
+  memory:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="5" width="11" height="11" rx="3"/><rect x="18" y="5" width="11" height="11" rx="3" fill="currentColor"/><rect x="5" y="18" width="11" height="11" rx="3" fill="currentColor"/><rect x="18" y="18" width="11" height="11" rx="3"/></svg>',
+  rush:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 24V7l11-2v13"/><circle cx="12" cy="24" r="3.4"/><circle cx="23" cy="18" r="3.4"/><path d="M3 9h6M5 15h6M3 21h4"/></svg>',
+  echo:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 14a9 9 0 0 1 15-4l3 3M26 20a9 9 0 0 1-15 4l-3-3"/><path d="M26 5v8h-8M8 29v-8h8"/></svg>',
+  sink:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M13 5v13"/><circle cx="10" cy="21" r="3.4"/><path d="M21 4l3.5 5L28 4M24.5 9v7"/><path d="M3 29c3-2 5-2 8 0s5 2 8 0 5-2 8 0 3 1 4 0"/></svg>',
+  whack:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="16" cy="18" r="8"/><path d="M23 14l7-2.5L26.5 17"/><circle cx="13.5" cy="16.5" r="1.3" fill="currentColor"/><path d="M9.5 11.5C11 8.5 14 7 17.5 7.5M5 28.5c5 2.5 19 2.5 24 0"/></svg>'};
 const gData=g=>{const me=Store.me;if(!me)return{};me.games=me.games||{};return me.games[g]=me.games[g]||{best:{},hist:[],set:{}};};
 const fmtT=s=>{const m=Math.floor(s/60),r=s-m*60;return`${m}:${r<10?'0':''}${r.toFixed(1)}`;};
 const gSeg=(name,opts,val,lab)=>`<div class="g-f"><span class="eyebrow">${lab}</span><div class="seg" role="group" aria-label="${lab}" style="flex-wrap:wrap">${opts.map(([v,l])=>`<button type="button" data-${name}="${v}" aria-pressed="${String(v)===String(val)}">${l}</button>`).join('')}</div></div>`;
 const gSel=(name,opts,val,lab)=>`<label class="g-f"><span class="eyebrow">${lab}</span><select data-sel="${name}">${opts.map(([v,l])=>`<option value="${v}" ${String(v)===String(val)?'selected':''}>${l}</option>`).join('')}</select></label>`;
 function gBind(host,set,redraw){
-  $$('[data-lv],[data-meas],[data-mode],[data-clef],[data-ts],[data-tsm],[data-tm],[data-met],[data-scale],[data-rng],[data-first],[data-lab],[data-inp],[data-wait],[data-lights],[data-snd],[data-ans],[data-len]',host).forEach(b=>{const k=Object.keys(b.dataset)[0];b.onclick=()=>{let v=b.dataset[k];if(!isNaN(+v)&&v!=='')v=+v;set[k]=v;redraw();};});
+  $$('[data-lv],[data-meas],[data-mode],[data-clef],[data-ts],[data-tsm],[data-tm],[data-met],[data-scale],[data-rng],[data-first],[data-lab],[data-inp],[data-wait],[data-lights],[data-snd],[data-ans],[data-len],[data-dur],[data-drop]',host).forEach(b=>{const k=Object.keys(b.dataset)[0];b.onclick=()=>{let v=b.dataset[k];if(!isNaN(+v)&&v!=='')v=+v;set[k]=v;redraw();};});
   $$('[data-sel]',host).forEach(s=>s.onchange=()=>{let v=s.value;if(!isNaN(+v)&&v!==''&&s.dataset.sel!=='key')v=+v;set[s.dataset.sel]=v;redraw();});}
 function openGame(id){Game.id=id;showView('game');}
 const Game={id:null,timer:null};
@@ -7001,7 +7036,7 @@ function renderGame(){
   const v=$('#viewGame'),id=Game.id,G=GAMES[id];clearInterval(Game.timer);
   v.innerHTML=`<div class="ex-head"><div class="titles"><button class="btn quiet" type="button" id="gBack">← Practice room</button><h2>${G.title}</h2><span class="pill royal">${G.kind}</span></div></div><div class="g-body"></div>`;
   $('#gBack').onclick=()=>showView('hub');
-  ({presto:gPresto,racer:gRacer,memory:gMemory})[id]($('.g-body',v));
+  ({daily:gDaily,presto:gPresto,racer:gRacer,memory:gMemory,rush:gRush,echo:gEcho,sink:gSink,whack:gWhack})[id]($('.g-body',v));
 }
 function gHistory(D,key,fmt,better){const h=D.hist.filter(x=>x.key===key).slice(-6).reverse();
   return h.length?`<p class="eyebrow" style="margin-top:14px">Your recent rounds at these settings</p><table class="maptab ref-tab"><tr><th>When</th><td><b>Score</b></td><td><b>Result</b></td></tr>${h.map(x=>`<tr><th>${x.when}</th><td>${x.pct==null?'—':x.pct+'%'}</td><td>${x.rec?fmt(x.val):'<span class="muted">not recorded (under 85%)</span>'}</td></tr>`).join('')}</table>`:'';}
@@ -7274,6 +7309,379 @@ function gMemory(host){
 }
 
 
+/* ================= Practice Room games II: Note Rush!, Repeat After Mi, Sing or Sink, Whack-a-Do =================
+   Same settings family as Melody Memory (scale / range / a key that fits the singer), and every game has a
+   Hear-do button — on its settings card and in the game — so the player can center on do before and during play. */
+function nShared(S){
+  const PADS={major:{mi:[0,2,4],sol:[0,2,4,5,7],full:[0,2,4,5,7,9,11,12]},minor:{mi:[0,2,3],sol:[0,2,3,5,7],full:[0,2,3,5,7,8,10,12]},chromatic:{mi:[0,1,2,3,4],sol:[0,1,2,3,4,5,6,7],full:[0,1,2,3,4,5,6,7,8,9,10,11,12]}};
+  const GZONE={S:[57,69,72],A:[53,65,67],T:[48,62,64],B:[43,57,60]},VNAME={S:'Sopranos',A:'Altos',T:'Tenors',B:'Basses'};
+  const gVoice=()=>GZONE[vMe().voice]?vMe().voice:'S';
+  const fitBase=pc=>{if(isInst())return 55+mod(pc-55,12);const z=GZONE[gVoice()],pd=PADS[S.scale][S.rng],top=S.rng==='full'?z[2]:z[1],sp=Math.max(...pd);
+    for(let m=top-sp;m>=z[0];m--)if(!mod(m-pc,12))return m;return null;};
+  const fitKeys=()=>G_MAJ_KEYS.slice(0,12).filter(k=>fitBase(parseKey(k).pc)!=null);
+  const COL=['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#4f46e5','#059669','#be123c','#2563eb'];
+  const sylOf=s=>S.scale==='chromatic'?G_CHR_UP[mod(s,12)]+(s>=12?'′':''):(S.scale==='minor'?{0:'do',2:'re',3:'me',5:'fa',7:'sol',8:'le',10:'te',12:'do′'}:{0:'do',2:'re',4:'mi',5:'fa',7:'sol',9:'la',11:'ti',12:'do′'})[s];
+  const resolve=()=>{const kn=S.key==='rand'||fitBase(parseKey(S.key).pc)==null?pick(fitKeys()):S.key;return{keyName:kn,base:fitBase(parseKey(kn).pc)};};
+  const hearDo=async()=>{actx();try{await REC.load(PIANO_ALL());}catch(e){}const r=resolve();pianoHit(r.base,Engine.ctx.currentTime+0.03,1.1,0.9);return r.keyName;};
+  return{PADS,VNAME,COL,sylOf,resolve,hearDo,
+    fixKey(){if(S.key!=='rand'&&fitBase(parseKey(S.key).pc)==null)S.key='rand';},
+    scaleSeg:()=>gSeg('scale',[['major','Major scale'],['minor','Minor scale'],['chromatic','Chromatic scale']],S.scale,'Notes from'),
+    rngSeg:()=>gSeg('rng',[['mi','do – mi'],['sol','do – sol'],['full','Full scale']],S.rng,'Range'),
+    keySel:()=>gSel('key',[['rand','Random key'],...fitKeys().map(k=>[k,k])],S.key,isInst()?'Key (do =)':`Key (do =) · keys that fit ${VNAME[gVoice()]}`),
+    doBtn:()=>`<button class="btn" type="button" id="gDo">🔊 Hear do</button>`,
+    wireDo(){const b=$('#gDo');if(b)b.onclick=async()=>{const kn=await hearDo();b.textContent=`🔊 Hear do (do = ${kn})`;};}};
+}
+function nKeyboard(base){
+  const wr=trOf?trOf():0,isB=m=>[1,3,6,8,10].includes(mod(m+wr,12));let lo=base,hi=base+12;if(isB(lo))lo--;if(isB(hi))hi++;
+  const keys=[];for(let m=lo;m<=hi;m++)keys.push(m);const whites=keys.filter(m=>!isB(m)),W=100/whites.length;
+  return `<div class="g-kb" role="group" aria-label="Piano keyboard">${keys.map(m=>{const s=m-base,nm=NOTE_NAME[mod(m+wr,12)];
+    if(!isB(m))return`<button type="button" class="kw" data-s="${s}" aria-label="${nm}" style="width:${W}%">${s===0||s===12?'<i>do</i>':''}<span>${nm}</span></button>`;
+    const wi=whites.filter(x=>x<m).length;return`<button type="button" class="kb" data-s="${s}" aria-label="${nm}" style="left:${wi*W-W*0.31}%;width:${W*0.62}%">${s===0||s===12?'<i>do</i>':''}</button>`;}).join('')}</div>`;}
+const nLit=(el,cls,ms)=>{if(!el)return;el.classList.add(cls);const k='_t'+cls;clearTimeout(el[k]);el[k]=setTimeout(()=>el.classList.remove(cls),ms);};
+
+/* ------------------------- Daily Do: the daily dozen, and the once-a-day gate ------------------------- */
+const dailyToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function dailyDue(){const me=Store.me;if(!me)return false;me.daily=me.daily||{done:'',log:[]};return me.daily.done!==dailyToday();}
+function gDaily(host){
+  const D=gData('daily'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile'},D.set),N=nShared(S),me=Store.me;
+  if(!me){host.innerHTML='<div class="card"><p>Sign in first — your Daily Do is saved under your name.</p></div>';return;}
+  me.daily=me.daily||{done:'',log:[]};
+  let run=null;
+  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();
+    const doneToday=me.daily.done===dailyToday(),last=me.daily.log[me.daily.log.length-1];
+    host.innerHTML=`<div class="card g-set"><div class="g-grid">
+      ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
+      ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (singing items)')}</div>
+      <p class="muted">Twelve items, about two minutes: 3 × name the pitch you hear, 3 × find one pitch inside a group of four, 3 × say which of two pitches is the one asked for, and 3 × ${isInst()?'play':'sing'} the step you are given. The session opens by playing do, so you can center first. ${doneToday?'Today’s Daily Do is done — this run is an extra.':'Finishing today’s Daily Do unlocks the rest of Measure Up! for the day.'}</p>
+      <div class="row"><button class="btn primary" type="button" id="gGo">▶ ${doneToday?'Do an extra Daily Do':'Start today’s Daily Do'}</button>${N.doBtn()}<span class="pill ${doneToday?'good':''}">${doneToday?`Today: done${last&&last.d===dailyToday()?` · ${last.pct}%`:''}`:'Today: not done yet'}</span></div></div>
+      ${me.daily.log.length?`<p class="eyebrow" style="margin-top:14px">Your recent Daily Dos</p><table class="maptab ref-tab"><tr><th>Day</th><td><b>Score</b></td></tr>${me.daily.log.slice(-6).reverse().map(x=>`<tr><th>${x.d===dailyToday()?'Today':x.d}</th><td>${x.right} of ${x.n} (${x.pct}%)${x.skip?` · ${x.skip} skipped`:''}</td></tr>`).join('')}</table>`:''}`;
+    gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
+  function buildItems(pads){
+    const deg=()=>pads[rint(pads.length)],P={pos:[],name:[],which:[],sing:[]};
+    for(let k=0;k<3;k++){const seq=[deg(),deg(),deg(),deg()],pos=rint(4);P.pos.push({type:'pos',seq,pos,ans:seq[pos]});}
+    for(let k=0;k<3;k++)P.name.push({type:'name',s:deg()});
+    for(let k=0;k<3;k++){const target=deg();let other=deg();if(pads.length>1&&other===target)other=deg();const first=Math.random()<0.5;P.which.push({type:'which',pair:first?[target,other]:[other,target],target,ansIdx:first?0:1});}
+    for(let k=0;k<3;k++)P.sing.push({type:'sing',s:deg()});
+    const out=[];for(let k=0;k<3;k++)out.push(P.pos[k],P.name[k],P.which[k],P.sing[k]);
+    return out;}
+  async function start(){
+    Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
+    run={pads,base,keyName,items:buildItems(pads),i:0,right:0,skip:0,over:false,lock:true,doneItem:false,noMic:false,replayed:false};Game.run=run;
+    actx();try{await REC.load(PIANO_ALL());}catch(e){}
+    if(!isInst())run.noMic=!(await ensureMic());
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Daily Do</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-prog">Item 1 of 12</span><span class="pill g-score">0 right</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button></div></div>
+      <div class="card g-stage" style="display:grid;gap:14px;justify-items:center;text-align:center;padding:22px 16px">
+        <p class="g-q" style="font:700 20px var(--f-display);margin:0">First, center on do…</p>
+        <div class="g-dots" style="display:flex;gap:10px;min-height:16px;align-items:center"></div>
+        <div class="g-ans" style="width:100%"></div>
+        <p class="muted g-msg" style="margin:0"></p>
+      </div>`;
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    actx();pianoHit(base,Engine.ctx.currentTime+0.1,1.1,0.9);
+    $('.g-msg',host).textContent='That was do — your home pitch for this session.';
+    Learn.later(()=>item(),1700);}
+  const ORD=['1st','2nd','3rd','4th'];
+  const dotRow=n=>Array.from({length:n},()=>'<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--line);display:inline-block"></span>').join('');
+  function playSeq(notes,done){actx();const c=Engine.ctx,gap=0.62;let t=c.currentTime+0.45;const ds=$$('.g-dots span',host);
+    notes.forEach((s,j)=>{const at=t;pianoHit(run.base+s,at,gap*0.92,0.9);
+      if(ds[j])Learn.later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';Learn.later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},330);},(at-c.currentTime)*1000);
+      t+=gap;});
+    Learn.later(done,(t-c.currentTime+0.3)*1000);}
+  const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(run.base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`;
+  function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.4,0.7);fn(s);});}
+  function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.replayed||run.doneItem)return;run.replayed=true;$('#gRe').disabled=true;fn();};}
+  function item(){if(!run||run.over)return;const it=run.items[run.i];run.lock=true;run.doneItem=false;run.replayed=false;
+    $('.g-prog',host).textContent=`Item ${run.i+1} of 12`;$('.g-score',host).textContent=`${run.right} right`;
+    const q=$('.g-q',host),dots=$('.g-dots',host),ans=$('.g-ans',host),msg=$('.g-msg',host);msg.textContent='';ans.innerHTML='';
+    if(it.type==='pos'){q.textContent='Listen to the four pitches…';dots.innerHTML=dotRow(4);
+      playSeq(it.seq,()=>{q.innerHTML=`What was the <b>${ORD[it.pos]}</b> pitch?`;ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.ans,12)===0,`The ${ORD[it.pos]} pitch was ${N.sylOf(it.ans)}.`));replayBtn(()=>playSeq(it.seq,()=>{}));run.lock=false;});}
+    else if(it.type==='name'){q.textContent='Listen…';dots.innerHTML=dotRow(1);
+      playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(()=>playSeq([it.s],()=>{}));run.lock=false;});}
+    else if(it.type==='which'){q.textContent='Listen to the two pitches…';dots.innerHTML=dotRow(2);
+      playSeq(it.pair,()=>{q.innerHTML=`Which one was <b>${N.sylOf(it.target)}</b>?`;ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
+        $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;resolve(+b.dataset.w===it.ansIdx,`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
+        replayBtn(()=>playSeq(it.pair,()=>{}));run.lock=false;});}
+    else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base)}</div>`;
+      $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.5,0.8);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
+    else if(run.noMic){dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
+      msg.innerHTML='No microphone is available, so this one is skipped — it won’t count against you.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" type="button" id="gSkip">Skip this item</button></span>';
+      $('#gSkip').onclick=skipItem;run.lock=false;}
+    else{dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
+      msg.innerHTML='Sing it on any syllable, in any octave — and hold it a moment.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn quiet" type="button" id="gSkip">Can’t sing right now — skip</button></span>';
+      $('#gSkip').onclick=skipItem;run.lock=false;listenSing(it);
+      Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},30000);}}
+  function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();
+    if(ok)run.right++;
+    $('.g-msg',host).innerHTML=ok?`<b style="color:var(--good)">Correct!</b> ${explain}`:`<b style="color:var(--miss)">Not quite.</b> ${explain}`;
+    $('.g-score',host).textContent=`${run.right} right`;
+    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},ok?1000:1750);}
+  function skipItem(){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();run.skip++;
+    $('.g-msg',host).textContent='Skipped — no harm done.';
+    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},700);}
+  function listenSing(it){
+    let win=[],need=false,acc=null,lastP=-9,onset=-9;
+    const fn=L=>{if(!run||run.over||run.doneItem)return;const t=L.t;
+      if(!L.pitched){if(t-lastP>0.06){need=false;win=[];onset=-9;}return;}
+      if(t-lastP>0.15)onset=t;lastP=t;const m=L.cmidi!=null?L.cmidi:L.midi;
+      if(need){if(acc!=null&&Math.abs(pcDiff(m,acc))<0.8)return;need=false;win=[];onset=t;}
+      if(onset>=0&&t-onset<0.12)return; /* attack grace, same as Melody Memory */
+      win.push(m);if(win.length>FR(16))win.shift();if(win.length<FR(12))return;
+      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0)return;
+      const recent=win.slice(-6).sort((a,b)=>a-b),med=recent[recent.length>>1];
+      if(Math.abs(m-med)>0.6)return;
+      const want=run.base+it.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
+      if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as the other singing games */
+      acc=med;need=true;win=[];onset=t;
+      const heard=G_CHR_UP[mod(Math.round(med)-run.base,12)];
+      resolve(Math.abs(d)<tol,Math.abs(d)<tol?`You sang ${N.sylOf(it.s)}.`:`You sang ${heard} — the step was ${N.sylOf(it.s)}.`);};
+    Engine.fastFn=fn;Learn.listen(fn);}
+  function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
+    const n=run.items.length,pct=Math.round(run.right/n*100),today=dailyToday(),wasDue=me.daily.done!==today;
+    me.daily.log.push({d:today,ts:Date.now(),right:run.right,n,skip:run.skip,pct});me.daily.log=me.daily.log.slice(-90);
+    if(wasDue)me.daily.done=today;Store.save();
+    host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">Daily Do complete: ${run.right} of ${n}${run.skip?` (${run.skip} skipped)`:''}</p>
+      <p>${pct>=85?'Strong ears today.':pct>=60?'A solid warm-up. The items that got away are the ones to listen for tomorrow.':'Done — and done is what counts. It gets easier fast when it is every day.'} ${wasDue?'Today’s Daily Do is stamped, and the rest of Measure Up! is open.':'Extra session logged — nice initiative.'}</p>
+      <div class="row"><button class="btn primary" type="button" id="gMore">↻ Do another Daily Do</button><button class="btn" type="button" id="gHub">Go to the Practice Room</button><button class="btn" type="button" id="gSet">Daily Do settings</button></div></div></div>`;
+    $('#gMore').onclick=start;$('#gHub').onclick=()=>showView('hub');$('#gSet').onclick=settings;}
+  settings();
+}
+
+/* ------------------------- Note Rush! ------------------------- */
+function gRush(host){
+  const D=gData('rush'),S=Object.assign({scale:'major',rng:'sol',key:'rand',inp:'syl',dur:60},D.set),N=nShared(S);
+  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|${S.inp}`;
+  let run=null;
+  /* lives shown as note values: 4 = whole note, 3 = dotted half, 2 = half, 1 = quarter, 0 = a whole rest */
+  const lifeNote=n=>n<=0?`<svg viewBox="0 0 30 28" width="30" height="28" role="img" aria-label="No lives left"><line x1="5" y1="9" x2="25" y2="9" stroke="var(--ink)" stroke-width="1.8"/><rect x="10" y="9" width="10" height="5.5" fill="var(--ink)"/></svg>`
+    :`<svg viewBox="0 0 30 28" width="30" height="28" role="img" aria-label="${n} ${n===1?'life':'lives'} left"><ellipse cx="12" cy="22" rx="6.2" ry="4.5" transform="rotate(-20 12 22)" fill="${n===1?'var(--ink)':'none'}" stroke="var(--ink)" stroke-width="1.8"/>${n<4?`<line x1="17.8" y1="21" x2="17.8" y2="4" stroke="var(--ink)" stroke-width="1.8"/>`:''}${n===3?`<circle cx="24.5" cy="22" r="2" fill="var(--ink)"/>`:''}</svg>`;
+  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
+    host.innerHTML=`<div class="card g-set"><div class="g-grid">
+      ${gSeg('inp',[['syl','Tap the solfege'],['piano','Digital piano']],S.inp,'How you answer')}
+      ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
+      ${gSeg('dur',[[30,'30 seconds'],[60,'60 seconds'],[90,'90 seconds']],S.dur,'On the clock')}</div>
+      <p class="muted">A note plays — answer with its ${S.inp==='piano'?'key':'solfege'} as fast as you can. A right answer scores 10, and once your streak reaches 5 every right answer scores 15. A wrong answer shows you the right note, breaks the streak, and costs a life. You have four lives, shown as a note up top: a whole note is 4, a dotted half is 3, a half note is 2, a quarter note is 1 — and losing the last one ends the game on the spot. On the piano, any octave counts.</p>
+      <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
+    gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
+  async function start(){
+    Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
+    run={pads,base,keyName,over:false,cur:0,lastI:-1,lock:true,score:0,right:0,total:0,streak:0,bestStreak:0,lives:4,t0:performance.now()};Game.run=run;
+    actx();try{await REC.load(PIANO_ALL());}catch(e){}
+    const clickPads=S.inp==='syl';
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-streak">Streak 0</span><span class="pill g-lives" title="Lives left"></span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`}
+      <p class="muted g-msg" style="text-align:center">Listen, then tap the note you heard…</p>`;
+    $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    $('.g-lives',host).innerHTML=lifeNote(4);
+    if(clickPads)$$('.g-pad',host).forEach(p=>p.onclick=()=>answer(pads[+p.dataset.i],p));
+    if(S.inp==='piano')$$('.g-kb button',host).forEach(b=>b.onclick=()=>answer(+b.dataset.s,b));
+    clearInterval(Game.timer);Game.timer=setInterval(()=>{if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;
+      const left=S.dur-(performance.now()-run.t0)/1000,c=$('.g-clock',host);if(c){c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';}
+      if(left<=0)finish();},100);
+    next();}
+  const padEl=i=>S.inp==='piano'?$(`.g-kb button[data-s="${run.pads[i]}"]`,host):$(`.g-pad[data-i="${i}"]`,host);
+  function next(){if(!run||run.over)return;let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;run.cur=run.pads[i];run.lock=false;
+    actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.05,0.9,0.9);}
+  function answer(s,el){if(!run||run.over||run.lock)return;run.lock=true;run.total++;
+    const ok=mod(s-run.cur,12)===0;
+    if(ok){run.right++;run.streak++;run.bestStreak=Math.max(run.bestStreak,run.streak);const pts=run.streak>=5?15:10;run.score+=pts;nLit(el,'good',300);
+      $('.g-msg',host).textContent=run.streak>=5?`+${pts} — streak of ${run.streak}!`:`+${pts}`;}
+    else{run.streak=0;run.lives--;nLit(el,'bad',350);const w=padEl(run.pads.indexOf(run.cur));if(w)nLit(w,'want',600);
+      const lv=$('.g-lives',host);if(lv)lv.innerHTML=lifeNote(run.lives);
+      $('.g-msg',host).textContent=run.lives>0?`That was ${N.sylOf(run.cur)} — life lost. ${run.lives} left.`:`That was ${N.sylOf(run.cur)} — and that was your last life.`;}
+    $('.g-score',host).textContent=`Score ${run.score}`;$('.g-streak',host).textContent=`Streak ${run.streak}`;
+    if(ok)Learn.later(next,240);else if(run.lives>0)Learn.later(next,620);else Learn.later(finish,850);}
+  function finish(){if(!run||run.over)return;run.over=true;clearInterval(Game.timer);
+    const acc=run.total?Math.round(run.right/run.total*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
+    gLog(D,key,acc,run.score,nb||!old);
+    host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">${run.lives<=0?'Out of lives!':'Time!'} ${run.score} points</p>
+      <p>${run.right} of ${run.total} notes right (${acc}%). Best streak: ${run.bestStreak}. ${run.lives<=0?'The fourth wrong note ended the run early.':`You finished with ${run.lives} of your 4 lives left.`} ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
+      <div class="row"><button class="btn primary" type="button" id="gAgain">▶ Play again</button><button class="btn" type="button" id="gSet">Change settings</button></div></div></div>`;
+    $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
+  settings();
+}
+
+/* ------------------------- Repeat After Mi ------------------------- */
+function gEcho(host){
+  const D=gData('echo'),S=Object.assign({scale:'major',rng:'sol',key:'rand',first:'do',wait:20,lights:1},D.set),N=nShared(S);
+  const recKey=()=>`${S.scale}|${S.rng}|${S.first}`;
+  let run=null;
+  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
+    host.innerHTML=`<div class="card g-set"><div class="g-grid">
+      ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
+      ${gSeg('first',[['do','Always do'],['any','Any note']],S.first,'First note')}
+      ${gSeg('wait',[[10,'10 s'],[20,'20 s'],[30,'30 s'],[0,'No limit']],S.wait,'Time to answer each note')}
+      ${gSeg('lights',[[1,'On'],[0,'Off (ears only)']],S.lights,'Light up while it plays')}</div>
+      <p class="muted">Listen to the melody, then tap it back on the solfege pads in order. Stuck? You get one extra listen each round — the Hear-it-once-more button — and that is all. Each round adds one note. One wrong tap ends the game.</p>
+      <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Longest melody: ${best} notes`:'No record yet'}</span></div></div>${gHistory(D,key,v=>v+' notes')}`;
+    gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
+  async function start(){
+    Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
+    run={pads,base,keyName,seq:[],over:false,turn:false,k:0,done:0,deadline:0,again:true};Game.run=run;
+    actx();try{await REC.load(PIANO_ALL());}catch(e){}
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Round 1</span><span class="pill royal">do = ${keyName} · ${S.scale} · ${S.rng==='full'?'full scale':'do – '+S.rng}</span><span class="grow"></span><span class="pill g-st">Listen…</span><span class="pill g-cd" hidden></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      <div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>
+      <div class="row" style="justify-content:center"><button class="btn" type="button" id="gHear2" disabled>↻ Hear it once more</button></div>
+      <p class="muted g-msg" style="text-align:center"></p>`;
+    $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);if(run)run.over=true;settings();};
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    $('#gHear2').onclick=()=>{if(!run.turn||run.over||!run.again)return;run.again=false;$('#gHear2').disabled=true;playSeq();};
+    $$('.g-pad',host).forEach(p=>p.onclick=()=>tap(pads[+p.dataset.i],p));
+    clearInterval(Game.timer);Game.timer=setInterval(()=>{if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over||!run.turn||!S.wait)return;
+      const left=run.deadline-performance.now(),cd=$('.g-cd',host);if(cd){cd.hidden=false;cd.textContent=`${Math.max(0,Math.ceil(left/1000))} s`;cd.classList.toggle('warn',left<5000);}
+      if(left<=0)fail(`Time ran out. The next note was ${N.sylOf(run.pads[run.seq[run.k]])}.`);},200);
+    run.seq=[S.first==='do'?0:rint(pads.length)];run.seq.push(nextI(),nextI());round();}
+  const nextI=()=>{const n=run.pads.length,a=run.seq[run.seq.length-1],b=run.seq[run.seq.length-2];let i=rint(n);if(i===a)i=rint(n);if(i===a&&i===b)while(i===a)i=rint(n);return i;};
+  const padEl=i=>$(`.g-pad[data-i="${i}"]`,host);
+  const unlit=()=>$$('.g-pad',host).forEach(e=>e.classList.remove('on','good'));
+  function playSeq(){
+    run.turn=false;unlit();$('.g-st',host).textContent='Listen…';$('.g-st',host).classList.remove('good');const cd=$('.g-cd',host);if(cd)cd.hidden=true;
+    actx();const c=Engine.ctx,gap=Math.max(0.5,0.75-run.seq.length*0.012);let t=c.currentTime+0.5;
+    run.seq.forEach(i=>{const at=t;pianoHit(run.base+run.pads[i],at,gap*0.9,0.85);if(S.lights)Learn.later(()=>nLit(padEl(i),'on',gap*900),(at-c.currentTime)*1000);t+=gap;});
+    Learn.later(()=>{if(run.over)return;run.turn=true;run.deadline=performance.now()+S.wait*1000;$('.g-st',host).textContent='Your turn!';$('.g-st',host).classList.add('good');const h=$('#gHear2');if(h)h.disabled=!run.again;},(t-c.currentTime+0.25)*1000);}
+  function round(){run.k=0;run.again=true;$('.g-clock',host).textContent=`Round ${run.seq.length-2}`;$('.g-msg',host).textContent='';playSeq();}
+  function tap(s,el){
+    actx();try{pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.5,0.8);}catch(e){}
+    if(!run.turn||run.over){nLit(el,'on',250);return;}
+    const want=run.pads[run.seq[run.k]];
+    if(mod(s-want,12)!==0)return fail(`That was ${N.sylOf(s)}. The note was ${N.sylOf(want)}.`);
+    nLit(el,'good',400);run.k++;run.deadline=performance.now()+S.wait*1000;
+    if(run.k>=run.seq.length){run.turn=false;run.done++;$('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Correct!';const cd=$('.g-cd',host);if(cd)cd.hidden=true;const h=$('#gHear2');if(h)h.disabled=true;
+      run.seq.push(nextI());Learn.later(()=>{if(!run.over)round();},1000);}}
+  function fail(msg){if(!run||run.over)return;run.over=true;run.turn=false;const cd=$('.g-cd',host);if(cd)cd.hidden=true;
+    const full=run.done?run.seq.length-1:0,key=recKey(),old=D.best[key]||0,nb=full>old;if(nb)D.best[key]=full;Store.save();gLog(D,key,null,full,full>0);
+    $('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Game over';
+    const want=run.pads[run.seq[run.k]];if(want!=null){const el=padEl(run.pads.indexOf(want));if(el)nLit(el,'want',2500);}
+    $('.g-msg',host).innerHTML=`${msg}<br><b style="font-size:20px">Longest melody echoed: ${full} note${full===1?'':'s'}.</b> ${nb&&full?'<b>New record!</b>':old?`Your record: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">▶ Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
+    $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
+  settings();
+}
+
+/* ------------------------- Sing or Sink ------------------------- */
+function gSink(host){
+  const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',drop:7},D.set),N=nShared(S);
+  const recKey=()=>`${S.scale}|${S.rng}|${S.drop}`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
+  let run=null;
+  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
+    host.innerHTML=`<div class="card g-set"><div class="g-grid">
+      ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
+      ${gSeg('drop',[[9,'Gentle · 9 s'],[7,'Steady · 7 s'],[5,'Brisk · 5 s'],[3.5,'Plunge · 3.5 s']],S.drop,'How fast it sinks')}
+      ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
+      <p class="muted">A bubble holding a note sinks toward the bottom of the tank. Sing the note you hear and hold it steady — the bar fills while you are on the pitch, in any octave. Fill the bar before the bubble lands to save the note. Three sunk notes end the game. Wear headphones if you can, so the microphone hears only you.</p>
+      <div class="row"><button class="btn primary" type="button" id="gGo">${micIcon} Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
+    gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
+  async function start(){
+    if(!await ensureMic())return;Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
+    run={pads,base,keyName,over:false,active:false,cur:0,lastI:-1,score:0,saved:0,sunk:0,lives:3,hold:0,dropMs:7000,t0:0};Game.run=run;
+    actx();try{await REC.load(PIANO_ALL());}catch(e){}
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Score 0</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-lives">♥ ♥ ♥</span><span class="grow"></span><span class="pill g-st">Get ready…</span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      <div class="n-holdwrap"><span class="eyebrow">Hold the pitch to fill the bar</span><div class="n-holdbar"><i></i></div></div>
+      <div class="n-tank"><div class="n-bubble" style="top:2%">do</div></div>
+      <div class="row" style="justify-content:center"><button class="btn" type="button" id="gReplay">↻ Hear the note again</button></div>
+      <p class="muted g-msg" style="text-align:center"></p>`;
+    $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);if(run)run.over=true;settings();};
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    $('#gReplay').onclick=()=>{if(run&&run.active&&!run.over){actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.03,1.0,0.9);}};
+    clearInterval(Game.timer);Game.timer=setInterval(tick,50);
+    listen();next();}
+  function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over||!run.active)return;
+    const p=(performance.now()-run.t0)/run.dropMs,b=$('.n-bubble',host);if(!b)return;
+    b.style.top=`${Math.min(88,p*88)}%`;
+    if(p>=1)sunk();}
+  function next(){if(!run||run.over)return;let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;run.cur=run.pads[i];run.hold=0;run.active=true;
+    run.dropMs=S.drop*1000*Math.max(0.55,1-run.saved*0.04);run.t0=performance.now();
+    const b=$('.n-bubble',host);if(b){b.className='n-bubble';b.style.top='2%';b.textContent=N.sylOf(run.cur);}
+    const bar=$('.n-holdbar i',host);if(bar)bar.style.width='0%';
+    $('.g-st',host).textContent='Sing it — and hold!';$('.g-msg',host).textContent='';
+    actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.15,1.0,0.9);}
+  function savedNote(){if(!run||!run.active)return;run.active=false;run.saved++;const left=Math.max(0,1-(performance.now()-run.t0)/run.dropMs),pts=100+Math.round(left*50);run.score+=pts;
+    const b=$('.n-bubble',host);if(b)b.classList.add('hot');$('.g-st',host).textContent=`Saved! +${pts}`;$('.g-clock',host).textContent=`Score ${run.score}`;
+    Learn.later(next,750);}
+  function sunk(){if(!run||!run.active)return;run.active=false;run.sunk++;run.lives--;
+    const b=$('.n-bubble',host);if(b)b.classList.add('sunk');$('.g-st',host).textContent=`Sunk — that was ${N.sylOf(run.cur)}`;
+    $('.g-lives',host).textContent=run.lives>0?Array(run.lives).fill('♥').join(' '):'—';
+    if(run.lives<=0)return Learn.later(finish,900);Learn.later(next,1100);}
+  function listen(){
+    let win=[],lastT=-9;
+    const draw=()=>{const i=$('.n-holdbar i',host);if(i&&run)i.style.width=`${Math.min(100,run.hold/0.9*100)}%`;};
+    const fn=L=>{if(!run||run.over||!run.active)return;const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
+      if(!L.pitched){run.hold=Math.max(0,run.hold-dt*0.4);draw();return;}
+      const m=L.cmidi!=null?L.cmidi:L.midi;win.push(m);if(win.length>10)win.shift();
+      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){run.hold=Math.max(0,run.hold-dt*0.4);draw();return;}
+      const med=w[w.length>>1],want=run.base+run.cur;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
+      if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as Melody Memory */
+      const bub=$('.n-bubble',host);
+      if(Math.abs(d)<tol){run.hold+=dt;if(bub)bub.classList.add('hot');}
+      else{run.hold=Math.max(0,run.hold-dt*0.5);if(bub&&run.hold<0.45)bub.classList.remove('hot');}
+      draw();if(run.hold>=0.9)savedNote();};
+    Engine.fastFn=fn;Learn.listen(fn);}
+  function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
+    const tot=run.saved+run.sunk,pct=tot?Math.round(run.saved/tot*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
+    gLog(D,key,pct,run.score,nb||!old);
+    $('.g-st',host).textContent='Game over';
+    $('.g-msg',host).innerHTML=`<b style="font-size:20px">Game over — ${run.score} points.</b><br>You saved ${run.saved} note${run.saved===1?'':'s'} and ${run.sunk} sank. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}<br><span class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" type="button" id="gAgain">${micIcon} Play again</button><button class="btn" type="button" id="gSet">Change settings</button></span>`;
+    $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
+  settings();
+}
+
+/* ------------------------- Whack-a-Do ------------------------- */
+function gWhack(host){
+  const D=gData('whack'),S=Object.assign({scale:'major',rng:'sol',key:'rand',dur:60},D.set),N=nShared(S);
+  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}`;
+  const BIRD=c=>`<svg viewBox="0 0 64 64" fill="none" stroke="#3b2f1e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 41c-5 1-9 4-11 9 5 1 10-1 14-4" fill="${c}"/><ellipse cx="31" cy="39" rx="17" ry="14" fill="${c}"/><circle cx="44" cy="27" r="9.5" fill="${c}"/><path d="M52 24l11-3-8 9" fill="#f59e0b"/><circle cx="46.5" cy="25" r="1.7" fill="#3b2f1e" stroke="none"/><path d="M21 27c1-6 6-11 13-12"/><path d="M26 52l-2 6M38 52l2 6"/></svg>`;
+  let run=null;
+  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();const key=recKey(),best=D.best[key];
+    host.innerHTML=`<div class="card g-set"><div class="g-grid">
+      ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
+      ${gSeg('dur',[[45,'45 seconds'],[60,'60 seconds'],[90,'90 seconds']],S.dur,'On the clock')}</div>
+      <p class="muted">Twelve nests, and every bird that pops out sings a note. Whack only the Do-Do — the one singing <b>do</b>. A Do-Do scores 100; whacking any other bird costs 50, and a Do-Do that gets away is gone for good. The birds get quicker as your score climbs.</p>
+      <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
+    gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
+  async function start(){
+    Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
+    run={pads,base,keyName,over:false,score:0,got:0,appeared:0,missed:0,taps:0,right:0,t0:performance.now(),nextPop:performance.now()+700,birds:new Map()};Game.run=run;
+    actx();try{await REC.load(PIANO_ALL());}catch(e){}
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-miss">Dos missed: 0</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+      <div class="n-nests">${Array.from({length:12},(_,i)=>`<div class="n-nest"><button type="button" class="n-bird" data-n="${i}" aria-label="Nest ${i+1}"><span class="n-syl"></span>${BIRD('#cbd5e1')}</button></div>`).join('')}</div>
+      <p class="muted g-msg" style="text-align:center">Whack only the Do-Do singing <b>do</b>!</p>`;
+    $$('.n-bird',host).forEach(b=>b.onclick=()=>tapBird(+b.dataset.n));
+    $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
+    clearInterval(Game.timer);Game.timer=setInterval(tick,90);}
+  function tick(){if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;const now=performance.now();
+    const left=S.dur-(now-run.t0)/1000,c=$('.g-clock',host);if(c){c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';}
+    if(left<=0)return finish();
+    run.birds.forEach((bd,n)=>{if(now>=bd.until)retire(n,bd,false);});
+    if(now>=run.nextPop&&run.birds.size<3)pop(now);}
+  function pop(now){const free=[];for(let i=0;i<12;i++)if(!run.birds.has(i))free.push(i);if(!free.length)return;
+    const nest=pick(free),isDo=run.pads.length<2?true:Math.random()<0.36,pi=isDo?0:1+rint(run.pads.length-1),s=run.pads[pi];
+    const el=$(`.n-bird[data-n="${nest}"]`,host);if(!el)return;
+    const bd={s,pi,isDo,until:now+Math.max(820,1180-run.score*0.3),el};run.birds.set(nest,bd);
+    el.innerHTML=`<span class="n-syl"></span>${BIRD(N.COL[pi%N.COL.length])}`;
+    el.classList.remove('good','bad','missdo');el.classList.add('up');
+    actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.02,0.7,0.9);
+    if(isDo)run.appeared++;
+    run.nextPop=now+Math.max(680,1450-run.score*0.45)+rint(260);}
+  function retire(n,bd,tapped){run.birds.delete(n);const el=bd.el,syl=el.querySelector('.n-syl');
+    if(!tapped&&bd.isDo){run.missed++;el.classList.add('missdo');if(syl){syl.textContent='do!';syl.classList.add('show');}const m=$('.g-miss',host);if(m)m.textContent=`Dos missed: ${run.missed}`;}
+    el.classList.remove('up');
+    Learn.later(()=>{el.classList.remove('good','bad','missdo');if(syl)syl.classList.remove('show');},tapped?80:450);}
+  function tapBird(n){if(!run||run.over)return;const bd=run.birds.get(n);if(!bd)return;run.taps++;
+    const syl=bd.el.querySelector('.n-syl');if(syl){syl.textContent=N.sylOf(bd.s);syl.classList.add('show');}
+    if(bd.isDo){run.got++;run.right++;run.score+=100;bd.el.classList.add('good');}
+    else{run.score=Math.max(0,run.score-50);bd.el.classList.add('bad');}
+    $('.g-score',host).textContent=`Score ${run.score}`;
+    retire(n,bd,true);}
+  function finish(){if(!run||run.over)return;run.over=true;clearInterval(Game.timer);
+    const acc=run.taps?Math.round(run.right/run.taps*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
+    gLog(D,key,acc,run.score,nb||!old);
+    host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">Time! ${run.score} points</p>
+      <p>You whacked ${run.got} of ${run.appeared} Do-Dos${run.missed?` (${run.missed} got away)`:''}. Tap accuracy: ${acc}%. ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
+      <div class="row"><button class="btn primary" type="button" id="gAgain">▶ Play again</button><button class="btn" type="button" id="gSet">Change settings</button></div></div></div>`;
+    $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
+  settings();
+}
+
 /* register map: siren in, break zones out, saved like range check-ins */
 function wRegMap(host,o={}){
   host.innerHTML=`<div class="canvas-wrap"><canvas class="rm-cv" aria-label="Your pitch over time, with break zones shaded"></canvas></div>
@@ -7394,7 +7802,7 @@ function wEarQuiz(host,o,p){
 }
 
 
-/* ---------- anatomy: original schematic diagrams; tap a part to learn it ---------- */
+/* ---------- anatomy: tap a part to learn it — real plates (public domain / CC) with fitted tap regions; original schematic diagrams kept as fallback ---------- */
 const ANAT_P_TRACHEA=['Windpipe (trachea)','The tube carrying air from your throat to your lungs, held open by C-shaped rings of cartilage. Its top end becomes your voice box.','Feel it: touch the front of your neck — those firm ridges are its rings.'];
 const ANAT_P_ARY=['Arytenoid cartilages','Two small, pyramid-shaped cartilages sitting on top of the cricoid ring. They are the movers: the vocal folds attach to them, and as they swivel and slide, the folds open, close and stretch.','They are too deep to feel — but every note you start or stop, they did the moving.'];
 const ANAT={
@@ -7420,29 +7828,48 @@ const ANAT={
   palate:['Soft palate','A muscular curtain at the back of the roof of your mouth. Raised, it seals the nose off so sound leaves by the mouth; lowered, it opens the nose passage for m, n and ng. The hard palate in front of it is bone — you met it in Finding Your Sound.','Yawn: that stretch at the back is your soft palate lifting.'],
   pharynx:['Throat (pharynx)','The muscular tube behind your mouth and nose, running down to the voice box — the first resonating space your sound meets, changing shape with every vowel.','Swallow: that squeeze traveling down is this tube working.'],
   larynx:['Voice box (larynx)','Your sound source, at the top of the windpipe where the throat ends. Inside it are the vocal folds — other diagrams in this lesson zoom right in.','It is the bump you can feel at the front of your throat.']}}};
+const ANAT_PLATES={"breath": {"img": "img/anat-breath.jpg", "w": 860, "h": 916, "maxW": 430, "br": 13, "order": ["lungs", "diaphragm", "trachea"], "draw": [["lungs", "<path d=\"M292,405 L345,430 L360,520 L352,650 L322,745 L238,752 L198,700 L188,560 L205,470 L250,420 Z\"/><path d=\"M512,405 L462,430 L448,520 L452,650 L478,745 L575,752 L612,700 L622,560 L605,470 L560,420 Z\"/>"], ["trachea", "<path d=\"M390,398 L440,398 L442,470 L436,552 L394,552 L388,470 Z\"/>"], ["diaphragm", "<path d=\"M255,685 L430,675 L575,690 L625,745 L640,830 L590,895 L520,850 L480,775 L430,850 L360,895 L235,885 L190,810 L195,735 Z\"/>"]], "badges": {"lungs": [300, 520], "diaphragm": [420, 762], "trachea": [414, 428]}, "credit": "Respiratory system diagram by Mariana Ruiz Villarreal (LadyofHats), public domain, via Wikimedia Commons. Labels removed."}, "larynx": {"img": "img/anat-larynx.jpg", "w": 348, "h": 600, "maxW": 340, "br": 8, "order": ["thyroid", "cricoid", "trachea"], "draw": [["thyroid", "<path d=\"M150,100 L215,105 L262,140 L285,210 L275,320 L240,395 L215,430 L190,408 L160,415 L120,412 L88,430 L66,395 L38,320 L22,215 L35,145 L80,112 Z\"/>"], ["cricoid", "<path d=\"M66,440 L120,425 L185,425 L238,440 L245,478 L230,505 L180,512 L118,512 L80,500 L60,472 Z\"/>"], ["trachea", "<path d=\"M80,508 L228,508 L230,600 L78,600 Z\"/>"]], "badges": {"thyroid": [110, 290], "cricoid": [262, 478], "trachea": [152, 560]}, "credit": "Plate from Gray's Anatomy (1918), public domain, via Wikimedia Commons.", "masks": [[24, 246, 152, 306], [22, 444, 164, 512], [48, 532, 152, 598]]}, "folds": {"img": "img/anat-folds.jpg", "w": 639, "h": 474, "maxW": 460, "br": 10, "order": ["folds", "falsefolds", "glottis", "arytenoids"], "draw": [["glottis", "<path d=\"M312,78 L352,138 L360,238 L332,324 L300,324 L282,238 L288,138 Z\"/>"], ["falsefolds", "<path d=\"M252,108 L270,128 L242,212 L206,270 L176,250 L204,178 L228,124 Z\"/><path d=\"M386,108 L368,128 L396,212 L432,270 L462,250 L434,178 L410,124 Z\"/>"], ["folds", "<path d=\"M300,56 L330,62 L300,175 L256,294 L222,286 L260,166 L290,74 Z\"/><path d=\"M338,62 L368,56 L378,74 L408,166 L446,286 L412,294 L368,175 Z\"/>"], ["arytenoids", "<ellipse cx=\"234\" cy=\"284\" rx=\"27\" ry=\"21\"/><ellipse cx=\"424\" cy=\"280\" rx=\"27\" ry=\"21\"/>"]], "badges": {"folds": [268, 140], "falsefolds": [188, 208], "glottis": [319, 215], "arytenoids": [466, 298]}, "credit": "Laryngoscope photo by melvil, CC BY-SA 4.0, via Wikimedia Commons."}, "tract": {"img": "img/anat-tract.jpg", "w": 852, "h": 1400, "maxW": 400, "br": 14, "order": ["nasal", "oral", "tongue", "palate", "pharynx", "larynx", "epiglottis"], "draw": [["pharynx", "<path d=\"M105,470 L182,470 L186,1012 L114,1012 Z\"/>"], ["nasal", "<path d=\"M470,300 L560,268 L642,300 L652,382 L612,470 L500,472 L464,390 Z\"/>"], ["oral", "<path d=\"M340,555 L530,540 L580,590 L555,675 L440,700 L350,665 L330,605 Z\"/>"], ["palate", "<path d=\"M312,502 L332,540 L262,602 L236,622 L206,618 L202,584 L254,544 L286,514 Z\"/>"], ["tongue", "<path d=\"M330,698 L472,688 L546,760 L522,902 L430,976 L348,942 L314,830 Z\"/>"], ["epiglottis", "<path d=\"M196,758 L236,752 L250,800 L240,856 L206,862 L188,810 Z\"/>"], ["larynx", "<path d=\"M256,1008 L346,1002 L368,1094 L354,1190 L332,1262 L268,1262 L250,1180 L242,1090 Z\"/>"]], "badges": {"nasal": [612, 318], "oral": [430, 610], "tongue": [452, 872], "palate": [240, 560], "pharynx": [143, 700], "larynx": [348, 1150], "epiglottis": [200, 808]}, "credit": "Figure from OpenStax Anatomy and Physiology, CC BY 3.0, via Wikimedia Commons. Cropped to the head and neck."}};
+const ANAT_TEXT={};Object.keys(ANAT).forEach(v=>Object.assign(ANAT_TEXT,ANAT[v].parts));
 function wAnatomy(host,o={},p){
-  const wrap=inner=>`<svg viewBox="0 0 320 210" role="img" aria-label="Anatomy diagram" style="width:100%;max-width:440px;display:block;margin:0 auto">${inner}</svg>`;
+  const plateOK={};
+  const usePlate=v=>!!(ANAT_PLATES[v]&&plateOK[v]!==false);
+  const scOrder=v=>usePlate(v)?ANAT_PLATES[v].order:ANAT[v].order;
+  const scText=(v,k)=>usePlate(v)?ANAT_TEXT[k]:ANAT[v].parts[k];
+  const sceneHTML=(v,quiz)=>{
+    if(usePlate(v)){const P=ANAT_PLATES[v];
+      const badge=k=>{const b=P.badges[k],n=P.order.indexOf(k)+1;return `<circle cx="${b[0]}" cy="${b[1]}" r="${P.br}" fill="#fff" stroke="#333" stroke-width="${Math.max(1.2,P.br/6)}"/><text x="${b[0]}" y="${b[1]}" font-size="${Math.round(P.br*1.2)}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#222">${n}</text>`;};
+      const regs=P.draw.map(dw=>`<g data-part="${dw[0]}">${dw[1]}${badge(dw[0])}</g>`).join('');
+      const masks=quiz&&P.masks?P.masks.map(m=>`<rect x="${m[0]}" y="${m[1]}" width="${m[2]-m[0]}" height="${m[3]-m[1]}" rx="5" fill="#f6f1e6" pointer-events="none"/>`).join(''):'';
+      return `<div class="anat-plate" style="position:relative;width:100%;max-width:${P.maxW}px;margin:0 auto"><img class="anat-img" data-v="${v}" src="${P.img}" alt="Anatomy image" style="width:100%;display:block;border-radius:10px;border:1px solid #cfc8b8"><svg viewBox="0 0 ${P.w} ${P.h}" style="position:absolute;left:0;top:0;width:100%;height:100%" role="img" aria-label="Anatomy image">${masks}${regs}</svg></div><p class="muted" style="font-size:11px;text-align:center;margin-top:4px">${P.credit}</p>`;}
+    return `<svg class="anat-sch" viewBox="0 0 320 210" role="img" aria-label="Anatomy diagram" style="width:100%;max-width:440px;display:block;margin:0 auto">${ANAT[v].svg}</svg>`;};
+  const bindFallback=rerender=>{const img=host.querySelector('img.anat-img');if(!img)return;const v=img.dataset.v;const fail=()=>{if(plateOK[v]===false)return;plateOK[v]=false;rerender();};img.onerror=fail;if(img.complete&&img.naturalWidth===0)fail();};
   if(o.quiz){
-    const SEQ=o.set==='ms'?[['breath','lungs'],['breath','diaphragm'],['larynx','thyroid'],['folds','folds'],['tract','tongue'],['tract','nasal']]:[['breath','diaphragm'],['larynx','thyroid'],['folds','folds'],['tract','palate'],['breath','lungs'],['tract','pharynx'],['larynx','epiglottis'],['folds','glottis']];
+    const SEQ=o.set==='ms'?[['breath','lungs'],['breath','diaphragm'],['larynx','thyroid'],['folds','folds'],['tract','tongue'],['tract','nasal']]:[['breath','diaphragm'],['larynx','thyroid'],['folds','folds'],['tract','palate'],['breath','lungs'],['tract','pharynx'],['tract','epiglottis'],['folds','glottis']];
     let i=0,right=0,lock=false;
-    const ask=()=>{lock=false;const view=SEQ[i][0],part=SEQ[i][1],sc=ANAT[view];
-      host.innerHTML=`<p style="font-weight:600">Part ${i+1} of ${SEQ.length}: tap the <b>${sc.parts[part][0]}</b>.</p>${wrap(sc.svg)}<p class="an-m" style="margin-top:8px"></p>`;
+    const ask=()=>{lock=false;let view=SEQ[i][0];const part=SEQ[i][1];
+      if(!usePlate(view)&&!ANAT[view].parts[part])view='larynx';
+      host.innerHTML=`<p style="font-weight:600">Part ${i+1} of ${SEQ.length}: tap the <b>${scText(view,part)[0]}</b>.</p>${sceneHTML(view,true)}<p class="an-m" style="margin-top:8px"></p>`;
+      bindFallback(ask);
       $$('[data-part]',host).forEach(g=>{g.style.cursor='pointer';g.onclick=()=>{if(lock)return;lock=true;
         const ok=g.dataset.part===part;if(ok)right++;
-        $$('[data-part]',host).forEach(x=>{x.style.opacity=x.dataset.part===part?'1':'0.38';});
-        $('.an-m',host).innerHTML=ok?'<b>Right.</b>':`That was the <b>${sc.parts[g.dataset.part][0]}</b> — the ${sc.parts[part][0].toLowerCase()} is number ${sc.order.indexOf(part)+1} on this diagram.`;
-        Learn.later(()=>{i++;if(i<SEQ.length)ask();else{host.innerHTML=`<p><b>You found ${right} of ${SEQ.length}.</b> ${right>=7?'You know your instrument.':right>=5?'Good — wander through the diagrams once more and the rest will stick.':'Worth another look at the diagrams — the names stick once the pictures do.'}</p>`;if(right>=Math.ceil(SEQ.length*0.75)&&p)p('pass');}},1700);};});};
+        $$('[data-part]',host).forEach(x=>{x.classList.toggle('sel',x.dataset.part===part);x.classList.toggle('dim',x.dataset.part!==part);});
+        $('.an-m',host).innerHTML=ok?'<b>Right.</b>':`That was the <b>${scText(view,g.dataset.part)[0]}</b> — the ${scText(view,part)[0].toLowerCase()} is number ${scOrder(view).indexOf(part)+1} on this picture.`;
+        Learn.later(()=>{i++;if(i<SEQ.length)ask();else{host.innerHTML=`<p><b>You found ${right} of ${SEQ.length}.</b> ${right>=7?'You know your instrument.':right>=5?'Good — wander through the pictures once more and the rest will stick.':'Worth another look at the pictures — the names stick once the pictures do.'}</p>`;if(right>=Math.ceil(SEQ.length*0.75)&&p)p('pass');}},1700);};});};
     ask();return;
   }
-  const sc=ANAT[o.view||'breath'];
-  host.innerHTML=`${wrap(sc.svg)}
-  <div class="row" style="margin-top:8px">${sc.order.map((k,ix)=>`<button class="btn" type="button" data-chip="${k}" aria-pressed="false">${ix+1} · ${sc.parts[k][0]}</button>`).join('')}</div>
-  <div class="an-panel" style="margin-top:10px"><p class="muted">Tap a numbered part on the diagram — or its name below — to learn what it does.</p></div>`;
-  const show=k=>{const P=sc.parts[k];$('.an-panel',host).innerHTML=`<p><b>${P[0]}</b></p><p>${P[1]}</p><p class="muted">${P[2]}</p>`;
-    $$('[data-part]',host).forEach(g=>{g.style.opacity=g.dataset.part===k?'1':'0.38';g.style.cursor='pointer';});
-    $$('[data-chip]',host).forEach(c=>c.setAttribute('aria-pressed',c.dataset.chip===k?'true':'false'));};
-  $$('[data-part]',host).forEach(g=>g.onclick=()=>show(g.dataset.part));
-  $$('[data-chip]',host).forEach(c=>c.onclick=()=>show(c.dataset.chip));
+  const view=o.view||'breath';
+  const renderExplore=()=>{
+    const order=scOrder(view);
+    host.innerHTML=`${sceneHTML(view,false)}
+    <div class="row" style="margin-top:8px">${order.map((k,ix)=>`<button class="btn" type="button" data-chip="${k}" aria-pressed="false">${ix+1} · ${scText(view,k)[0]}</button>`).join('')}</div>
+    <div class="an-panel" style="margin-top:10px"><p class="muted">Tap a numbered part on the picture — or its name below — to learn what it does.</p></div>`;
+    bindFallback(renderExplore);
+    const show=k=>{const P=scText(view,k);$('.an-panel',host).innerHTML=`<p><b>${P[0]}</b></p><p>${P[1]}</p><p class="muted">${P[2]}</p>`;
+      $$('[data-part]',host).forEach(g=>{g.classList.toggle('sel',g.dataset.part===k);g.classList.toggle('dim',g.dataset.part!==k);g.style.cursor='pointer';});
+      $$('[data-chip]',host).forEach(c=>c.setAttribute('aria-pressed',c.dataset.chip===k?'true':'false'));};
+    $$('[data-part]',host).forEach(g=>g.onclick=()=>show(g.dataset.part));
+    $$('[data-chip]',host).forEach(c=>c.onclick=()=>show(c.dataset.chip));};
+  renderExplore();
 }
 
 const WIDGETS={checklist:wChecklist,breath:wBreath,glide:wGlide,rangeFind:wRangeFind,ring:wRing,spec:wSpec,anatomy:wAnatomy,regmap:wRegMap,train:wTrain,earquiz:wEarQuiz,warmup:wWarmup,paceTimer:wPaceTimer,vocalLog:wVocalLog,circleCanon:wCircleCanon,ornament:wOrnament,barlines:wBarlines,phrase:wPhrase,hairWords:wHairWords,dynTable:wDynTable,abbrTable:wAbbrTable,signQuiz:wSignQuiz,chordIntro:wChordIntro,chordCompare:wChordCompare,chordBuild:wChordBuild,chordName:wChordName,meterEar:wMeterEar,tsFind:wTsFind,noteParts:wNoteParts,beams:wBeams,rests:wRests,dotPlace:wDotPlace,ties:wTies,tsPlace:wTsPlace,accentMeter:wAccentMeter,oddMeter:wOddMeter,tripIntro:wTripIntro,nquiz:wNQuiz,halfFind:wHalfFind,hwCompare:wHwCompare,chromRule:wChromRule,chromErr:wChromErr,accPartial:wAccPartial,octMel:wOctMel,ens:wEns,ensCheck:(h,o,p)=>wEns(h,{...o,mode:'check'},p),octFind:wOctFind,octPlace:wOctPlace,octLeap:wOctLeap,melHarm:wMelHarm,melHarmQuiz:wMelHarmQuiz,octave:wOctave,octQuiz:wOctQuiz,ottava:wOttava,sndProps:wSndProps,overtones:wOvertones,propEar:wPropEar,propVoice:wPropVoice,highLow:wHighLow,fNote:wFNote,fPlay:wFPlay,fQuiz:wFQuiz,fChart:wFChart,scaleAll:wScaleAll,meter:wMeter,meterQuiz:wMeterQuiz,pickup:wPickup,pickupQuiz:wPickupQuiz,roadmap:wRoadmap,roadQuiz:wRoadQuiz,cClefs:wCClefs,fourClefs:wFourClefs,artic:wArtic,articQuiz:wArticQuiz,exWords:wExWords,tempo:wTempo,tempoChange:wTempoChange,tempoQuiz:wTempoQuiz,ivBuild:wIvBuild,ivInvert:wIvInvert,ivDrill:wIvDrill,accExplore:wAccExplore,accMeasure:wAccMeasure,accQuiz:wAccQuiz,keySig:wKeySig,circle:wCircle,ksOrder:wKsOrder,staffNum:wStaffNum,staffQuiz:(h,o,p)=>wStaffNum(h,{...o,check:true},p),clefs:wClefs,grand:wGrand,grandQuiz:(h,o,p)=>wGrand(h,{...o,quiz:true},p),mnemonic:wMnemonic,staffSets:wStaffSets,scaleStaff:wScaleStaff,clap:wClap,transpose:wTranspose,sing:wSing,chrom:wChrom,chromDrill:wChromDrill,scale:wScale,intervals:wIntervals,ear:wEar,ladder:wLadder,patterns:wPatterns,piano:wPiano,combo:wCombo,modeStaff:wModeStaff,modeCompare:wModeCompare,keyScale:wKeyScale,findDoKeys:wFindDoKeys,staff:wStaff,drill:wDrill,findDo:wFindDo,values:wValues,count:wCount,builder:wBuilder,dyn:wDyn,range:wRange,quiz:wQuiz};
@@ -8392,17 +8819,17 @@ const TRACK_TITLE={dynamics:'Expressive Markings',instrument:'My Instrument',voi
   ]},
   {id:'yv8',fam:'anat',skill:'solfege',track:'voice',noPractice:true,level:1,title:'Inside Your Voice',steps:[
     {h:'The Breath Engine',body:'<p>Follow one breath through your body. Air comes in through your nose and mouth, down the <b>windpipe</b> and into your <b>lungs</b> — pulled there by the <b>diaphragm</b>, a dome of muscle underneath them, with help from the muscles between your <b>ribs</b>.</p><p>Tap each numbered part to learn its job — and what it feels like from the inside.</p>',w:['anatomy',{view:'breath'}]},
-    {h:'The Voice Box',body:'<p>At the top of the windpipe sits your <b>voice box</b> (the <b>larynx</b>): a short tube of cartilages that guards the airway and houses the vocal folds. The big shield in front is the part you can feel. Two tiny cartilages at the back do the fine moving, and a leaf-shaped flap on top keeps your lunch out of your lungs.</p><p>This is a simplified front view. Tap the parts.</p>',w:['anatomy',{view:'larynx'}]},
+    {h:'The Voice Box',body:'<p>At the top of the windpipe sits your <b>voice box</b> (the <b>larynx</b>): a short tube of cartilages that guards the airway and houses the vocal folds. The big shield in front is the part you can feel. Two tiny cartilages at the back do the fine moving, and a leaf-shaped flap on top keeps your lunch out of your lungs.</p><p>This is the front view, from a classic anatomy plate. Tap the parts.</p>',w:['anatomy',{view:'larynx'}]},
     {h:'The Vocal Folds',body:'<p>Now zoom all the way in. This is the view a voice doctor sees, <b>looking down</b> at your vocal folds from above: the front of your throat, where the epiglottis sits, is at the <b>top</b> of the picture, and your back is at the bottom.</p><p>One naming note: singers often say “vocal cords”, but the correct name is <b>vocal folds</b> — they are not cords or strings at all, but folds of layered tissue, vibrating more like a brass player’s lips than a violin string.</p>',w:['anatomy',{view:'folds'}]},
-    {h:'The Resonating Spaces',body:'<p>Above the voice box, the buzz travels through your <b>throat</b>, <b>mouth</b> and <b>nose</b> — the resonating spaces you met in “Your Voice Is a Stack”, now with their names. This diagram is a side view, facing left.</p><p>Tap the parts. The filter has moving pieces, and you control most of them.</p>',w:['anatomy',{view:'tract'}]},
-    {h:'Name That Part',body:'<p>Time to prove the map lives in your head, not just on the screen: eight parts, drawn from all four diagrams. Tap the part named at the top.</p>',w:['anatomy',{quiz:true}]},
+    {h:'The Resonating Spaces',body:'<p>Above the voice box, the buzz travels through your <b>throat</b>, <b>mouth</b> and <b>nose</b> — the resonating spaces you met in “Your Voice Is a Stack”, now with their names. This is a side view of the head and neck.</p><p>Tap the parts. The filter has moving pieces, and you control most of them.</p>',w:['anatomy',{view:'tract'}]},
+    {h:'Name That Part',body:'<p>Time to prove the map lives in your head, not just on the screen: eight parts, drawn from all four pictures. Tap the part named at the top.</p>',w:['anatomy',{quiz:true}]},
     Q('The vocal folds make sound by…',['being plucked like guitar strings','vibrating as air passes between them','rubbing against the false folds','trapping air inside the lungs'],1,'Air from the lungs pushes the folds apart and their springiness snaps them back — hundreds of times a second. That vibration is the buzz the rest of the instrument shapes.'),
   ]},
   {id:'yv8m',fam:'anat',aud:'ms',skill:'solfege',track:'voice',noPractice:true,level:1,title:'Inside Your Voice',steps:[
     {h:'The Breath Engine',body:'<p>Follow one breath. Air comes in, down the <b>windpipe</b>, into your <b>lungs</b>. The muscle doing the work is the <b>diaphragm</b>, a dome under your lungs. Tap each numbered part to see its job.</p>',w:['anatomy',{view:'breath'}]},
     {h:'The Voice Box',body:'<p>At the top of the windpipe is your <b>voice box</b>. It is made of cartilage — the same bendy material as the tip of your nose. The big shield in front is the bump you can feel in your throat. Tap the parts.</p>',w:['anatomy',{view:'larynx'}]},
     {h:'The Vocal Folds',body:'<p>This picture looks <b>down</b> at your vocal folds from above, the way a voice doctor sees them. The front of your throat is at the <b>top</b> of the picture; your back is at the bottom.</p><p>They are called <b>folds</b>, not cords — folds of soft tissue, not strings.</p>',w:['anatomy',{view:'folds'}]},
-    {h:'The Resonating Spaces',body:'<p>Above the voice box are the spaces that shape the sound: your <b>throat</b>, <b>mouth</b> and <b>nose</b>. This picture is a side view, facing left. Tap the parts.</p>',w:['anatomy',{view:'tract'}]},
+    {h:'The Resonating Spaces',body:'<p>Above the voice box are the spaces that shape the sound: your <b>throat</b>, <b>mouth</b> and <b>nose</b>. This picture is a side view of the head and neck. Tap the parts.</p>',w:['anatomy',{view:'tract'}]},
     {h:'Name That Part',body:'<p>Six parts, from all four pictures. Tap the one named at the top.</p>',w:['anatomy',{quiz:true,set:'ms'}]},
     Q('The vocal folds are…',['strings, like on a guitar','folds of tissue that vibrate as air passes between them','two small bones in the throat','part of the lungs'],1,'The folds are soft, layered <b>tissue</b>. Air pushes them apart and their springiness snaps them back, hundreds of times a second — that is the buzz your throat, mouth and nose then shape.'),
   ]},
