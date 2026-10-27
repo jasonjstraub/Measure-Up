@@ -362,6 +362,7 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .g-kb .kw.on,.g-kb .kb.on{background:#93c5fd}.g-kb .kw.good,.g-kb .kb.good{background:var(--good)}.g-kb .want{outline:4px dashed var(--miss);outline-offset:-4px}
 .sol-pun{display:inline-block;padding:0 .22em;margin:0 .04em 0 .02em;border-radius:.28em;background:var(--royal);color:#fff;font-family:var(--f-body);font-weight:800;font-size:.86em;line-height:1.18;letter-spacing:.02em;vertical-align:.06em;box-shadow:0 2px 0 rgba(0,0,0,.18)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.g-timebar{height:6px;border-radius:3px;background:var(--surface-2);margin-top:10px;overflow:hidden}.g-timebar i{display:block;height:100%;width:100%;background:var(--royal);border-radius:3px}
 .g-h{margin:6px 0 12px;font-size:22px}.g-games{margin-bottom:26px}.g-card{border-color:var(--royal)}
 .g-set{display:grid;gap:14px}.g-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 22px}.g-f{display:grid;gap:6px;align-content:start}.g-f select{max-width:260px}
 .g-hud{position:sticky;top:8px;z-index:6;margin-bottom:12px;padding:12px 16px}.g-clock{font:800 28px var(--f-mono);min-width:120px}
@@ -6999,7 +7000,7 @@ function gRhythmMeasure(k,lv,first,last){
   return out;}
 function gRhythm(seq,lv){return seq.map((k,i)=>({ts:k,notes:gRhythmMeasure(k,lv,i===0,i===seq.length-1)}));}
 
-/* ---------- melody (scale degrees) for Pitch Presto ---------- */
+/* ---------- melody (scale degrees) for Time Trial! (formerly Pitch Presto) ---------- */
 const G_SCALE={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10]};
 const G_SYL={major:['do','re','mi','fa','sol','la','ti'],minor:['do','re','me','fa','sol','le','te']};
 const G_CHR_UP=['do','di','re','ri','mi','fa','fi','sol','si','la','li','ti'],G_CHR_DN=['do','ra','re','me','mi','fa','se','sol','le','la','te','ti'];
@@ -7101,21 +7102,21 @@ function gScore(host,o){/* o: {measures, clef|null (one-line rhythm), key:{l,sig
   return{svg,notes,gs,sys,sysH,top0,xAtBeat,H,W};
 }
 
-/* ================= Practice Room games: Pitch Presto, Rhythm Racer, Repeat After Mi ================= */
+/* ================= Practice Room games: Time Trial! (formerly Pitch Presto), Rhythm Racer, Repeat After Mi ================= */
 const GAMES={
-  daily:{title:'Daily Do',kind:'Daily workout',blurb:'Your daily dozen: 12 quick items — name the pitch, find one inside a group of four, say which of two is the note asked for, and sing the step. One a day unlocks the rest of the site; extras are always welcome.'},
-  presto:{title:'Pitch Presto',kind:'Pitch game',blurb:'Label every note — solfege syllables for singers, note names for band — as fast as you can. Singers can sing the notes instead of tapping. Score 85% or better to record your time, then beat it.'},
-  racer:{title:'Rhythm Racer',kind:'Rhythm game',blurb:'Clap the rhythm in time. Score 85% or better to record your tempo, then push it faster.'},
-  memory:{title:'Repeat After Mi',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back — or tap it, or play it on the piano. Each round adds a note. One miss ends the game.'},
-  rush:{title:'Note Rush!',kind:'Pitch game',blurb:'Notes fly at you — tap the solfege you hear before the clock runs out. Streaks earn bonus points, but each wrong note costs a life, and four wrong notes end the run.'},
-  sink:{title:'Hold the Line!',titleHtml:'Hold the <span class="sol-pun" aria-hidden="true">LI</span><span aria-hidden="true">ne!</span><span class="sr-only">Line!</span>',kind:'Pitch game',vocal:true,blurb:'Solfege tiles cascade down their lanes toward the piano. Hear the key, read each tile, and sing it as it reaches the keys — fill the tile before it slips past. Three slips end the game.'},
-  whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out singing a note and wearing a syllable. Whack one only when its syllable matches the note it sings!'}};
+  daily:{title:'Daily DO',titleHtml:'<span aria-hidden="true">Daily </span><span class="sol-pun" aria-hidden="true">DO</span><span class="sr-only">Daily Do</span>',kind:'Daily workout',blurb:'Your daily dozen: 12 quick items — name the pitch, find one inside a group of four, say which of two is the note asked for, and sing the step. One a day unlocks the rest of the site; extras are always welcome.'},
+  presto:{title:'Time Trial!',titleHtml:'<span class="sol-pun" aria-hidden="true">TI</span><span class="sol-pun" aria-hidden="true">ME</span><span aria-hidden="true"> Trial!</span><span class="sr-only">Time Trial!</span>',kind:'Pitch game',blurb:'Label every note — solfege syllables for singers, note names for band — as fast as you can. Singers can sing the notes instead of tapping. Score 85% or better to record your time, then beat it.'},
+  racer:{title:'Rhythm Racer!',titleHtml:'<span aria-hidden="true">Rhythm </span><span class="sol-pun" aria-hidden="true">RA</span><span aria-hidden="true">cer!</span><span class="sr-only">Rhythm Racer!</span>',kind:'Rhythm game',blurb:'Clap the rhythm in time. Score 85% or better to record your tempo, then push it faster.'},
+  memory:{title:'Repeat After Mi',titleHtml:'<span aria-hidden="true">Repeat After </span><span class="sol-pun" aria-hidden="true">MI</span><span class="sr-only">Repeat After Mi</span>',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back — or tap it, or play it on the piano. Each round adds a note. One miss ends the game.'},
+  rush:{title:'AcceleranDO!',titleHtml:'<span aria-hidden="true">Acceleran</span><span class="sol-pun" aria-hidden="true">DO</span><span aria-hidden="true">!</span><span class="sr-only">Accelerando!</span>',kind:'Pitch game',blurb:'Notes fly at you, and they come faster and faster. Tap the solfege you hear before each note’s time runs out. Streaks earn bonus points; a wrong or too-slow answer costs a life, and losing all four ends the run.'},
+  sink:{title:'GlissanDO!',titleHtml:'<span aria-hidden="true">Glissan</span><span class="sol-pun" aria-hidden="true">DO</span><span aria-hidden="true">!</span><span class="sr-only">Glissando!</span>',kind:'Pitch game',vocal:true,blurb:'Solfege tiles cascade down their lanes toward the piano. Hear the key, read each tile, and sing it as it reaches the keys — fill the tile before it slips past. Three slips end the game.'},
+  whack:{title:'Whack-a-DO',titleHtml:'<span aria-hidden="true">Whack-a-</span><span class="sol-pun" aria-hidden="true">DO</span><span class="sr-only">Whack-a-Do</span>',kind:'Pitch game',blurb:'Do-Dos pop out singing a note and wearing a syllable. Whack one only when its syllable matches the note it sings!'}};
 const GICON={daily:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="7" width="24" height="22" rx="3"/><path d="M5 13h24M11 4v5M23 4v5"/><path d="M20 24.5V18l6-1.6V23"/><circle cx="17.4" cy="24.5" r="2.9"/><circle cx="23.4" cy="23" r="2.9"/></svg>',
   presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
   racer:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 25a12 12 0 1 1 24 0"/><path d="M17 25l6-9"/><circle cx="17" cy="25" r="2" fill="currentColor"/></svg>',
   memory:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="5" width="11" height="11" rx="3"/><rect x="18" y="5" width="11" height="11" rx="3" fill="currentColor"/><rect x="5" y="18" width="11" height="11" rx="3" fill="currentColor"/><rect x="18" y="18" width="11" height="11" rx="3"/></svg>',
-  rush:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 24V7l11-2v13"/><circle cx="12" cy="24" r="3.4"/><circle cx="23" cy="18" r="3.4"/><path d="M3 9h6M5 15h6M3 21h4"/></svg>',
-  sink:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M13 5v13"/><circle cx="10" cy="21" r="3.4"/><path d="M21 4l3.5 5L28 4M24.5 9v7"/><path d="M3 29c3-2 5-2 8 0s5 2 8 0 5-2 8 0 3 1 4 0"/></svg>',
+  rush:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="6.5" cy="19" rx="2.9" ry="2.3" transform="rotate(-20 6.5 19)" fill="currentColor" stroke="none"/><ellipse cx="15.5" cy="19" rx="2.9" ry="2.3" transform="rotate(-20 15.5 19)" fill="currentColor" stroke="none"/><ellipse cx="22" cy="19" rx="2.9" ry="2.3" transform="rotate(-20 22 19)" fill="currentColor" stroke="none"/><ellipse cx="27" cy="19" rx="2.9" ry="2.3" transform="rotate(-20 27 19)" fill="currentColor" stroke="none"/><path d="M9.0 18.3V7.5M18.0 18.3V7.5M24.5 18.3V7.5M29.5 18.3V7.5" stroke-width="1.8"/><path d="M4 27.5h25M25.5 24.5l3.5 3-3.5 3"/></svg>',
+  sink:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.00,4.50 L4.29,5.05 L4.58,5.57 L4.88,6.04 L5.17,6.43 L5.46,6.73 L5.75,6.92 L6.04,7.00 L6.33,6.98 L6.62,6.86 L6.92,6.67 L7.21,6.42 L7.50,6.14 L7.79,5.86 L8.08,5.61 L8.38,5.42 L8.67,5.30 L8.96,5.28 L9.25,5.36 L9.54,5.55 L9.83,5.85 L10.12,6.24 L10.42,6.71 L10.71,7.23 L11.00,7.78 L11.29,8.33 L11.58,8.85 L11.88,9.32 L12.17,9.71 L12.46,10.01 L12.75,10.20 L13.04,10.28 L13.33,10.26 L13.62,10.14 L13.92,9.95 L14.21,9.70 L14.50,9.42 L14.79,9.14 L15.08,8.89 L15.38,8.70 L15.67,8.58 L15.96,8.56 L16.25,8.64 L16.54,8.83 L16.83,9.13 L17.12,9.52 L17.42,9.99 L17.71,10.51 L18.00,11.06 L18.29,11.61 L18.58,12.13 L18.88,12.60 L19.17,12.99 L19.46,13.29 L19.75,13.48 L20.04,13.56 L20.33,13.54 L20.62,13.42 L20.92,13.23 L21.21,12.98 L21.50,12.70"/><rect x="20" y="13.5" width="7.5" height="9" rx="1.8" fill="currentColor"/><path d="M3 26.5h28v4.5H3zM10 26.5v4.5M17 26.5v4.5M24 26.5v4.5"/></svg>',
   whack:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="16" cy="18" r="8"/><path d="M23 14l7-2.5L26.5 17"/><circle cx="13.5" cy="16.5" r="1.3" fill="currentColor"/><path d="M9.5 11.5C11 8.5 14 7 17.5 7.5M5 28.5c5 2.5 19 2.5 24 0"/></svg>'};
 const gData=g=>{const me=Store.me;if(!me)return{};me.games=me.games||{};return me.games[g]=me.games[g]||{best:{},hist:[],set:{}};};
 const fmtT=s=>{const m=Math.floor(s/60),r=s-m*60;return`${m}:${r<10?'0':''}${r.toFixed(1)}`;};
@@ -7136,7 +7137,7 @@ function gHistory(D,key,fmt,better){const h=D.hist.filter(x=>x.key===key).slice(
   return h.length?`<p class="eyebrow" style="margin-top:14px">Your recent rounds at these settings</p><table class="maptab ref-tab"><tr><th>When</th><td><b>Score</b></td><td><b>Result</b></td></tr>${h.map(x=>`<tr><th>${x.when}</th><td>${x.pct==null?'—':x.pct+'%'}</td><td>${x.rec?fmt(x.val):'<span class="muted">not recorded (under 85%)</span>'}</td></tr>`).join('')}</table>`:'';}
 function gLog(D,key,pct,val,rec){D.hist.push({key,pct,val,rec,when:new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})});D.hist=D.hist.slice(-120);Store.save();}
 
-/* ------------------------- Pitch Presto ------------------------- */
+/* ------------------------- Time Trial! (id 'presto', formerly Pitch Presto; records keep the old id) ------------------------- */
 function gPresto(host){
   const D=gData('presto'),S=Object.assign({lv:1,meas:4,mode:'major',lab:'do',clef:voiceClef()==='bass'?'bass':'treble',key:'rand',ts:'4/4',tsm:'fixed',snd:1,inp:'tap',ans:'sol'},D.set);
   let run=null;
@@ -7428,7 +7429,7 @@ function gMemory(host){
 }
 
 
-/* ================= Practice Room games II: Note Rush!, Repeat After Mi, Hold the Line! (formerly Sing or Sink), Whack-a-Do =================
+/* ================= Practice Room games II: AcceleranDO! (formerly Note Rush!), Repeat After Mi, GlissanDO! (formerly Sing or Sink), Whack-a-Do =================
    Same settings family as Repeat After Mi (scale / range / a key that fits the singer), and every game has a
    Hear-do button — on its settings card and in the game — so the player can center on do before and during play. */
 function nShared(S){
@@ -7569,10 +7570,10 @@ function gDaily(host){
   settings();
 }
 
-/* ------------------------- Note Rush! ------------------------- */
+/* ------------------------- AcceleranDO! (id 'rush', formerly Note Rush!; records keep the old id) ------------------------- */
 function gRush(host){
   const D=gData('rush'),S=Object.assign({scale:'major',rng:'sol',key:'rand',inp:'syl',dur:60},D.set),N=nShared(S);
-  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|${S.inp}`;
+  const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|${S.inp}|accel`; /* new key: the accelerating game is harder than the old steady one */
   let run=null;
   /* lives shown as note values: 4 = whole note, 3 = dotted half, 2 = half, 1 = quarter, 0 = a whole rest */
   const lifeNote=n=>n<=0?`<svg viewBox="0 0 30 28" width="30" height="28" role="img" aria-label="No lives left"><line x1="5" y1="9" x2="25" y2="9" stroke="var(--ink)" stroke-width="1.8"/><rect x="10" y="9" width="10" height="5.5" fill="var(--ink)"/></svg>`
@@ -7582,7 +7583,7 @@ function gRush(host){
       ${gSeg('inp',[['syl','Tap the solfege'],['piano','Digital piano']],S.inp,'How you answer')}
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
       ${gSeg('dur',[[30,'30 seconds'],[60,'60 seconds'],[90,'90 seconds']],S.dur,'On the clock')}</div>
-      <p class="muted">A note plays — answer with its ${S.inp==='piano'?'key':'solfege'} as fast as you can. A right answer scores 10, and once your streak reaches 5 every right answer scores 15. A wrong answer shows you the right note, breaks the streak, and costs a life. You have four lives, shown as a note up top: a whole note is 4, a dotted half is 3, a half note is 2, a quarter note is 1 — and losing the last one ends the game on the spot. On the piano, any octave counts.</p>
+      <p class="muted">A note plays — answer with its ${S.inp==='piano'?'key':'solfege'} as fast as you can. A right answer scores 10, and once your streak reaches 5 every right answer scores 15. <b>Accelerando:</b> each note gives you less time than the last, from about 4 seconds at the start down to about 1½ at the end, and the tempo marking up top climbs from Andante to Presto. A wrong answer, or no answer before a note’s time runs out, shows you the right note, breaks the streak, and costs a life. You have four lives, shown as a note up top: a whole note is 4, a dotted half is 3, a half note is 2, a quarter note is 1 — and losing the last one ends the game on the spot. On the piano, any octave counts.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">▶ Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
@@ -7590,7 +7591,7 @@ function gRush(host){
     run={pads,base,keyName,over:false,cur:0,lastI:-1,lock:true,score:0,right:0,total:0,streak:0,bestStreak:0,lives:4,t0:performance.now()};Game.run=run;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     const clickPads=S.inp==='syl';
-    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-streak">Streak 0</span><span class="pill g-lives" title="Lives left"></span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
+    host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-streak">Streak 0</span><span class="pill g-lives" title="Lives left"></span><span class="pill g-tempo" title="How fast the notes are coming">Andante</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div><div class="g-timebar" aria-hidden="true"><i></i></div></div>
       ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`}
       <p class="muted g-msg" style="text-align:center">Listen, then tap the note you heard…</p>`;
     $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
@@ -7600,31 +7601,42 @@ function gRush(host){
     if(S.inp==='piano')$$('.g-kb button',host).forEach(b=>b.onclick=()=>answer(+b.dataset.s,b));
     clearInterval(Game.timer);Game.timer=setInterval(()=>{if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;
       const left=S.dur-(performance.now()-run.t0)/1000,c=$('.g-clock',host);if(c){c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';}
-      if(left<=0)finish();},100);
+      if(left<=0){finish();return;}
+      if(!run.lock&&run.deadline&&performance.now()>run.deadline)timeUp();},100);
     next();}
+  /* accelerando: how far through the run (0 → 1), the answer window for the next note, and its tempo word */
+  const prog=()=>Math.min(1,(performance.now()-run.t0)/1000/S.dur);
+  const windowSec=()=>4-2.6*prog();
+  const tempoWord=()=>{const p=prog();return p<0.25?'Andante':p<0.5?'Moderato':p<0.75?'Allegro':'Presto';};
+  function timeUp(){if(!run||run.over||run.lock)return;const w=padEl(run.pads.indexOf(run.cur));answer(null,null,w);}
   const padEl=i=>S.inp==='piano'?$(`.g-kb button[data-s="${run.pads[i]}"]`,host):$(`.g-pad[data-i="${i}"]`,host);
   function next(){if(!run||run.over)return;let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;run.cur=run.pads[i];run.lock=false;
-    actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.05,0.9,0.9);}
-  function answer(s,el){if(!run||run.over||run.lock)return;run.lock=true;run.total++;
-    const ok=mod(s-run.cur,12)===0;
+    const win=windowSec();run.deadline=performance.now()+50+win*1000;
+    const tp=$('.g-tempo',host);if(tp)tp.textContent=tempoWord();
+    const bar=$('.g-timebar i',host);if(bar){bar.style.transition='none';bar.style.width='100%';void bar.offsetWidth;bar.style.transition=`width ${win}s linear`;bar.style.width='0%';}
+    actx();pianoHit(run.base+run.cur,Engine.ctx.currentTime+0.05,0.9-0.35*prog(),0.9);}
+  function answer(s,el,slowEl){if(!run||run.over||run.lock)return;run.lock=true;run.total++;
+    const bar=$('.g-timebar i',host);if(bar){const w=getComputedStyle(bar).width;bar.style.transition='none';bar.style.width=w;}
+    const slow=s==null,ok=!slow&&mod(s-run.cur,12)===0;
     if(ok){run.right++;run.streak++;run.bestStreak=Math.max(run.bestStreak,run.streak);const pts=run.streak>=5?15:10;run.score+=pts;nLit(el,'good',300);
       $('.g-msg',host).textContent=run.streak>=5?`+${pts} — streak of ${run.streak}!`:`+${pts}`;}
-    else{run.streak=0;run.lives--;nLit(el,'bad',350);const w=padEl(run.pads.indexOf(run.cur));if(w)nLit(w,'want',600);
+    else{run.streak=0;run.lives--;if(el)nLit(el,'bad',350);const w=slowEl||padEl(run.pads.indexOf(run.cur));if(w)nLit(w,'want',600);
       const lv=$('.g-lives',host);if(lv)lv.innerHTML=lifeNote(run.lives);
-      $('.g-msg',host).textContent=run.lives>0?`That was ${N.sylOf(run.cur)} — life lost. ${run.lives} left.`:`That was ${N.sylOf(run.cur)} — and that was your last life.`;}
+      const why=slow?`Too slow! That was ${N.sylOf(run.cur)}`:`That was ${N.sylOf(run.cur)}`;
+      $('.g-msg',host).textContent=run.lives>0?`${why} — life lost. ${run.lives} left.`:`${why} — and that was your last life.`;}
     $('.g-score',host).textContent=`Score ${run.score}`;$('.g-streak',host).textContent=`Streak ${run.streak}`;
-    if(ok)Learn.later(next,240);else if(run.lives>0)Learn.later(next,620);else Learn.later(finish,850);}
+    if(ok)Learn.later(next,240-140*prog());else if(run.lives>0)Learn.later(next,620);else Learn.later(finish,850);}
   function finish(){if(!run||run.over)return;run.over=true;clearInterval(Game.timer);
     const acc=run.total?Math.round(run.right/run.total*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
     gLog(D,key,acc,run.score,nb||!old);
-    host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">${run.lives<=0?'Out of lives!':'Time!'} ${run.score} points</p>
-      <p>${run.right} of ${run.total} notes right (${acc}%). Best streak: ${run.bestStreak}. ${run.lives<=0?'The fourth wrong note ended the run early.':`You finished with ${run.lives} of your 4 lives left.`} ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
+    host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">${run.lives<=0?'Out of lives!':'Time!'} ${run.score} points</p><p class="muted">You reached <b>${tempoWord()}</b>.</p>
+      <p>${run.right} of ${run.total} notes right (${acc}%). Best streak: ${run.bestStreak}. ${run.lives<=0?'The fourth miss (wrong or too slow) ended the run early.':`You finished with ${run.lives} of your 4 lives left.`} ${nb?'<b>New best score!</b>':old?`Your best at these settings: ${old}.`:''}</p>
       <div class="row"><button class="btn primary" type="button" id="gAgain">▶ Play again</button><button class="btn" type="button" id="gSet">Change settings</button></div></div></div>`;
     $('#gAgain').onclick=start;$('#gSet').onclick=settings;}
   settings();
 }
 
-/* ------------------------- Hold the Line! (id 'sink', formerly Sing or Sink; records keep the old id) ------------------------- */
+/* ------------------------- GlissanDO! (id 'sink', formerly Sing or Sink; records keep the old id) ------------------------- */
 function gSink(host){
   const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',dur:60},D.set),N=nShared(S);
   const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|v2`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
