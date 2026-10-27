@@ -360,6 +360,8 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .np-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;margin-top:10px}.np-txt{font-size:16px;display:grid;gap:8px}
 .rs-tab{display:grid;gap:8px}.rs-row{display:grid;grid-template-columns:90px minmax(0,1fr) 90px;align-items:center;gap:12px;padding:6px 12px}.rs-row small{display:block}.g-pad.tap{}.g-pads.tap .g-pad{cursor:pointer;font:inherit}.g-pads.tap .g-pad:active{transform:scale(.95)}.g-pad.want{outline:4px dashed var(--miss);outline-offset:3px}.g-cd.warn{background:color-mix(in srgb,var(--miss) 18%,var(--surface));color:var(--miss)}.g-kbwrap{margin:18px auto;max-width:640px}.g-kb{position:relative;display:flex;height:170px;user-select:none;touch-action:manipulation}.g-kb .kw{height:100%;border:1px solid #94a3b8;background:#fff;border-radius:0 0 8px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;padding:0 0 8px;font:700 13px var(--f-body);color:#334155;cursor:pointer;transition:background .1s}.g-kb .kw i{font-style:normal;font-weight:800;color:var(--royal);font-size:12px}.g-kb .kb{position:absolute;top:0;height:60%;background:#1e293b;border:1px solid #0f172a;border-radius:0 0 5px 5px;z-index:2;cursor:pointer;padding:0;transition:background .1s}.g-kb .kb i{position:absolute;bottom:6px;left:0;right:0;text-align:center;font:800 11px var(--f-body);font-style:normal;color:#fff;pointer-events:none}
 .g-kb .kw.on,.g-kb .kb.on{background:#93c5fd}.g-kb .kw.good,.g-kb .kb.good{background:var(--good)}.g-kb .want{outline:4px dashed var(--miss);outline-offset:-4px}
+.sol-pun{display:inline-block;padding:0 .22em;margin:0 .04em 0 .02em;border-radius:.28em;background:var(--royal);color:#fff;font-family:var(--f-body);font-weight:800;font-size:.86em;line-height:1.18;letter-spacing:.02em;vertical-align:.06em;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .g-h{margin:6px 0 12px;font-size:22px}.g-games{margin-bottom:26px}.g-card{border-color:var(--royal)}
 .g-set{display:grid;gap:14px}.g-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 22px}.g-f{display:grid;gap:6px;align-content:start}.g-f select{max-width:260px}
 .g-hud{position:sticky;top:8px;z-index:6;margin-bottom:12px;padding:12px 16px}.g-clock{font:800 28px var(--f-mono);min-width:120px}
@@ -2256,7 +2258,7 @@ function renderHub(){
 function renderGames(){
   const me=Store.me;whoChip();const v=$('#viewGames');
   if(!me){v.innerHTML=`<div class="card"><h2>Sign In to Play</h2><p class="muted" style="margin-top:8px">Game records are saved under your name in this browser.</p><div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="gmIn">Go to sign in</button></div></div>`;$('#gmIn').onclick=()=>showView('hub');return;}
-  v.innerHTML=`<div class="hub-top"><div><p class="eyebrow">Gateway Music · Games</p><h1>Games</h1><p class="lede">Quick, playful rounds that build the same skills as the Practice room. Beat your own records.</p></div><div></div></div><div class="mods g-games">${Object.entries(GAMES).filter(([k,g])=>!(g.vocal&&isInst())).map(([k,g])=>{const D=gData(k),n=Object.keys(D.best||{}).length;return`<button class="mod g-card" type="button" data-game="${k}"><span class="mod-ic">${GICON[k]}</span><span class="mod-t">${g.title}</span><span class="mod-d">${g.blurb}</span><span class="mod-meta"><span class="lf">${g.kind}</span><span class="pill ${n?'good':''}">${n?n+' record'+(n>1?'s':''):'Play'}</span></span></button>`;}).join('')}</div>`;
+  v.innerHTML=`<div class="hub-top"><div><p class="eyebrow">Gateway Music · Games</p><h1>Games</h1><p class="lede">Quick, playful rounds that build the same skills as the Practice room. Beat your own records.</p></div><div></div></div><div class="mods g-games">${Object.entries(GAMES).filter(([k,g])=>!(g.vocal&&isInst())).map(([k,g])=>{const D=gData(k),n=Object.keys(D.best||{}).length;return`<button class="mod g-card" type="button" data-game="${k}"><span class="mod-ic">${GICON[k]}</span><span class="mod-t">${g.titleHtml||g.title}</span><span class="mod-d">${g.blurb}</span><span class="mod-meta"><span class="lf">${g.kind}</span><span class="pill ${n?'good':''}">${n?n+' record'+(n>1?'s':''):'Play'}</span></span></button>`;}).join('')}</div>`;
   $$('[data-game]',v).forEach(b=>b.onclick=()=>openGame(b.dataset.game));
 }
 function instSelect(id,sel){const fams={};Object.entries(INSTR).forEach(([k,i])=>(fams[i.fam]=fams[i.fam]||[]).push([k,i]));
@@ -7106,7 +7108,7 @@ const GAMES={
   racer:{title:'Rhythm Racer',kind:'Rhythm game',blurb:'Clap the rhythm in time. Score 85% or better to record your tempo, then push it faster.'},
   memory:{title:'Repeat After Mi',kind:'Melody game',blurb:'Like Simon: hear a melody, sing it back — or tap it, or play it on the piano. Each round adds a note. One miss ends the game.'},
   rush:{title:'Note Rush!',kind:'Pitch game',blurb:'Notes fly at you — tap the solfege you hear before the clock runs out. Streaks earn bonus points, but each wrong note costs a life, and four wrong notes end the run.'},
-  sink:{title:'Sing or Sink',kind:'Pitch game',vocal:true,blurb:'Solfege tiles cascade down their lanes toward the piano. Hear the key, read each tile, and sing it as it reaches the keys — fill the tile before it slips past. Three slips end the game.'},
+  sink:{title:'Hold the Line!',titleHtml:'Hold the <span class="sol-pun" aria-hidden="true">LI</span><span aria-hidden="true">ne!</span><span class="sr-only">Line!</span>',kind:'Pitch game',vocal:true,blurb:'Solfege tiles cascade down their lanes toward the piano. Hear the key, read each tile, and sing it as it reaches the keys — fill the tile before it slips past. Three slips end the game.'},
   whack:{title:'Whack-a-Do',kind:'Pitch game',blurb:'Do-Dos pop out singing a note and wearing a syllable. Whack one only when its syllable matches the note it sings!'}};
 const GICON={daily:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="7" width="24" height="22" rx="3"/><path d="M5 13h24M11 4v5M23 4v5"/><path d="M20 24.5V18l6-1.6V23"/><circle cx="17.4" cy="24.5" r="2.9"/><circle cx="23.4" cy="23" r="2.9"/></svg>',
   presto:'<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="17" cy="18" r="11"/><path d="M17 18V11M17 18l5 3M14 4h6"/></svg>',
@@ -7126,7 +7128,7 @@ function openGame(id){Game.id=id;showView('game');}
 const Game={id:null,timer:null};
 function renderGame(){
   const v=$('#viewGame'),id=Game.id,G=GAMES[id];clearInterval(Game.timer);
-  v.innerHTML=`<div class="ex-head"><div class="titles"><button class="btn quiet" type="button" id="gBack">← Games</button><h2>${G.title}</h2><span class="pill royal">${G.kind}</span></div></div><div class="g-body"></div>`;
+  v.innerHTML=`<div class="ex-head"><div class="titles"><button class="btn quiet" type="button" id="gBack">← Games</button><h2>${G.titleHtml||G.title}</h2><span class="pill royal">${G.kind}</span></div></div><div class="g-body"></div>`;
   $('#gBack').onclick=()=>showView('games');
   ({daily:gDaily,presto:gPresto,racer:gRacer,memory:gMemory,rush:gRush,sink:gSink,whack:gWhack})[id]($('.g-body',v));
 }
@@ -7426,7 +7428,7 @@ function gMemory(host){
 }
 
 
-/* ================= Practice Room games II: Note Rush!, Repeat After Mi, Sing or Sink, Whack-a-Do =================
+/* ================= Practice Room games II: Note Rush!, Repeat After Mi, Hold the Line! (formerly Sing or Sink), Whack-a-Do =================
    Same settings family as Repeat After Mi (scale / range / a key that fits the singer), and every game has a
    Hear-do button — on its settings card and in the game — so the player can center on do before and during play. */
 function nShared(S){
@@ -7622,7 +7624,7 @@ function gRush(host){
   settings();
 }
 
-/* ------------------------- Sing or Sink ------------------------- */
+/* ------------------------- Hold the Line! (id 'sink', formerly Sing or Sink; records keep the old id) ------------------------- */
 function gSink(host){
   const D=gData('sink'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',dur:60},D.set),N=nShared(S);
   const recKey=()=>`${S.scale}|${S.rng}|${S.dur}|v2`+(S.len&&S.len!=='profile'?'|len'+S.len:'');
