@@ -7566,7 +7566,7 @@ function gSink(host){
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
       ${gSeg('dur',[[45,'45 seconds'],[60,'60 seconds'],[90,'90 seconds'],['inf','No time limit']],S.dur,'On the clock')}
       ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (this game only)')}</div>
-      <p class="muted">Tiles marked with solfege cascade down their lanes toward the piano. The game opens by playing <b>do–mi–sol–mi–do–do</b> so you can settle into the key — after that, no pitches play: you read each tile and sing it. A short tile is a quick note; a long tile is a longer hold. Start singing as a tile reaches the keys and keep singing until it has crossed: singing on pitch fills the tile, and a full tile is saved. Three tiles that slip past end the game. The cascade starts slow and speeds up as the run goes on — with No time limit it keeps speeding up until the slips end it. Wear headphones if you can, so the microphone hears only you.</p>
+      <p class="muted">Tiles marked with solfege cascade down their lanes toward the piano. The game opens by playing <b>do–mi–sol–mi–do–do</b> so you can settle into the key — after that, no pitches play: you read each tile and sing it. A short tile is a quick note; a long tile is a longer hold. Start singing just before a tile reaches the keys and keep singing until it has crossed: singing on pitch fills the tile, and a full tile is saved. Three tiles that slip past end the game. The cascade starts slow and speeds up as the run goes on — with No time limit it keeps speeding up until the slips end it. Wear headphones if you can, so the microphone hears only you.</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">${micIcon} Start</button>${N.doBtn()}<span class="pill ${best?'good':''}">${best?`Best score: ${best}`:'No score yet'}</span></div></div>${gHistory(D,key,v=>v+' pts')}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
   async function start(){
@@ -7605,7 +7605,7 @@ function gSink(host){
     const el=document.createElement('div');el.className='n-tile';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.left=run.laneX[i]+'%';el.style.width=run.tileW+'%';el.style.background=N.COL[i%N.COL.length];
     el.innerHTML=`<i></i><span class="n-tlab">${N.sylOf(s)}</span>`;
     $('.n-fall',host).appendChild(el);
-    run.tiles.push({s,pi:i,need,got:0,v,h,tSpawn:now,el,state:'fall',removeAt:0});
+    run.tiles.push({s,pi:i,need,req:need*0.6,got:0,v,h,tSpawn:now,el,state:'fall',removeAt:0,judged:0,prompted:false});
     run.nextSpawn=now+(need+gapT())*1000;}
   const liveTile=()=>run?run.tiles.find(t=>t.state==='live'):null;
   const keyLight=(tile,cls,on)=>{const k=run.keyEls[run.base+tile.s];if(k)k.classList.toggle(cls,on);};
@@ -7614,6 +7614,7 @@ function gSink(host){
     if(c){if(S.dur==='inf')c.textContent=Math.floor(elapsed());else{const left=S.dur-elapsed();c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';if(left<=0)return finish();}}
     if(!run.dead&&now>=run.nextSpawn&&run.tiles.filter(t=>t.state==='fall'||t.state==='live').length<4)spawn(now);
     for(const tile of [...run.tiles]){const y=-tile.h+(now-tile.tSpawn)/1000*tile.v;tile.el.style.top=y+'px';
+      if(tile.state==='fall'&&!tile.prompted&&y+tile.h>=FIELD_H-tile.v*0.35){tile.prompted=true;$('.g-st',host).textContent=`Sing ${N.sylOf(tile.s)}!`;}
       if(tile.state==='fall'&&y+tile.h>=FIELD_H&&y<FIELD_H){tile.state='live';tile.el.classList.add('live');keyLight(tile,'live',true);
         $('.g-st',host).textContent=`Sing ${N.sylOf(tile.s)}!`;}
       else if(!run.dead&&(tile.state==='live'||tile.state==='fall')&&y>=FIELD_H)missTile(tile);
@@ -7626,18 +7627,34 @@ function gSink(host){
     const pts=100+Math.round(tile.need*25);run.saved++;run.score+=pts;
     $('.g-score',host).textContent=`Score ${run.score}`;$('.g-st',host).textContent=`Saved! +${pts}`;}
   function listen(){
-    let win=[],lastT=-9;
-    const fn=L=>{if(!run||run.over||run.dead)return;const tile=liveTile();const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
+    let win=[],lastT=-9,lastPitched=-9,cur=null;
+    /* the judged tile: the one crossing the keys, plus a 0.35s lead-in above the line, so a singer
+       who starts the note as it arrives is credited from the first instant of the crossing */
+    const judged=()=>{if(!run)return null;let best=null;const now=performance.now();
+      for(const tile of run.tiles){if(tile.state!=='fall'&&tile.state!=='live')continue;
+        const y=-tile.h+(now-tile.tSpawn)/1000*tile.v;
+        if(tile.state==='live'||y+tile.h>=FIELD_H-tile.v*0.35){if(!best||tile.tSpawn<best.tSpawn)best=tile;}}
+      return best;};
+    const setHot=(tile,on)=>{if(!tile)return;tile.el.classList.toggle('hot',on);keyLight(tile,'hot',on);};
+    const fn=L=>{if(!run||run.over||run.dead)return;const t=L.t,dt=lastT>0?Math.min(0.1,Math.max(0,t-lastT)):0;lastT=t;
+      /* the pitch window tracks the singing at ALL times, not just while a tile is live — so every tile
+         is judged against the note being sung now, never against a stale window from the previous tile */
+      if(L.pitched){if(t-lastPitched>0.4)win=[];lastPitched=t;const m=L.cmidi!=null?L.cmidi:L.midi;win.push(m);if(win.length>8)win.shift();}
+      const tile=judged();
+      if(tile!==cur){if(cur)setHot(cur,false);cur=tile;if(tile)tile.judged=0;}
       if(!tile)return;
-      const fill=()=>{const f=tile.el.querySelector('i');if(f)f.style.height=`${Math.min(100,tile.got/tile.need*100)}%`;};
-      if(!L.pitched){tile.got=Math.max(0,tile.got-dt*0.4);fill();return;}
-      const m=L.cmidi!=null?L.cmidi:L.midi;win.push(m);if(win.length>10)win.shift();
-      const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0){tile.got=Math.max(0,tile.got-dt*0.4);fill();return;}
-      const med=w[w.length>>1],want=run.base+tile.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
+      tile.judged+=dt;
+      const fill=()=>{const f=tile.el.querySelector('i');if(f)f.style.height=`${Math.min(100,tile.got/tile.req*100)}%`;};
+      const decay=r=>{if(tile.judged>0.15)tile.got=Math.max(0,tile.got-dt*r);}; /* 0.15s attack grace per tile: the scoop into the note is never punished */
+      if(!L.pitched){decay(0.25);setHot(tile,false);fill();return;}
+      if(win.length<4)return; /* still gathering the settled pitch: neutral, no gain and no loss */
+      const w=[...win].sort((a,b)=>a-b);
+      if(w[w.length-1]-w[0]>2.0){fill();return;} /* a slide or a tracker glitch: neutral, not a miss */
+      const med=w[w.length>>1],want=run.base+tile.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(80,TOL().close+20))/100;
       if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as Repeat After Mi */
-      if(Math.abs(d)<tol){tile.got+=dt;tile.el.classList.add('hot');keyLight(tile,'hot',true);}
-      else{tile.got=Math.max(0,tile.got-dt*0.5);if(tile.got<tile.need*0.5){tile.el.classList.remove('hot');keyLight(tile,'hot',false);}}
-      fill();if(tile.got>=tile.need)savedTile(tile);};
+      if(Math.abs(d)<tol){tile.got+=dt;setHot(tile,true);}
+      else{decay(0.3);setHot(tile,false);}
+      fill();if(tile.got>=tile.req)savedTile(tile);};
     Engine.fastFn=fn;Learn.listen(fn);}
   function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
     const tot=run.saved+run.sunk,pct=tot?Math.round(run.saved/tot*100):0,key=recKey(),old=D.best[key]||0,nb=run.score>old;if(nb)D.best[key]=run.score;Store.save();
