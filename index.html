@@ -204,13 +204,16 @@ svg.staff{display:block;height:auto;min-width:280px}
 .staff g.nt.miss .ink{fill:var(--miss)} .staff g.nt.miss .stk{stroke:var(--miss)}
 .staff .caret{fill:var(--royal)}
 .staff .ph{stroke:var(--royal);stroke-width:2.5}
-.staff .hit-good{fill:var(--good)}.staff .hit-ok{fill:var(--close)}.staff .hit-miss{fill:var(--miss)}.staff .hit-extra{fill:var(--muted)}.pron{color:var(--muted);font-size:.92em;white-space:nowrap}.pron b{color:var(--ink2);font-weight:700;letter-spacing:.01em}.pron-h{display:inline-block;margin-left:10px;font:600 14px var(--f-body);color:var(--muted);letter-spacing:.02em;vertical-align:middle}.pron-h::before{content:'say it: ';font-weight:500}.pron-s{display:block;font:500 12px var(--f-body);color:var(--muted);font-style:normal;letter-spacing:.02em;margin-top:2px}.staff .hit-faint{fill:var(--muted);opacity:.35}.staff .hit-sound{fill:var(--royal);opacity:.32}.staff .hit-good-t{fill:var(--good);font:700 11px var(--f-body)}.staff .hit-miss-t{fill:var(--miss);font:700 11px var(--f-body)}
+.staff .hit-good{fill:var(--good)}.staff .hit-ok{fill:var(--close)}.staff .hit-miss{fill:var(--miss)}.staff .hit-extra{fill:var(--miss)}.staff .hit-faint{fill:var(--muted);opacity:.4}.pron{color:var(--muted);font-size:.92em;white-space:nowrap}.pron b{color:var(--ink2);font-weight:700;letter-spacing:.01em}.pron-h{display:inline-block;margin-left:10px;font:600 14px var(--f-body);color:var(--muted);letter-spacing:.02em;vertical-align:middle}.pron-h::before{content:'say it: ';font-weight:500}.pron-s{display:block;font:500 12px var(--f-body);color:var(--muted);font-style:normal;letter-spacing:.02em;margin-top:2px}.staff .hit-faint{fill:var(--muted);opacity:.35}.staff .hit-sound{fill:var(--royal);opacity:.32}.staff .hit-good-t{fill:var(--good);font:700 11px var(--f-body)}.staff .hit-miss-t{fill:var(--miss);font:700 11px var(--f-body)}
 .res.good{fill:var(--good)}.res.close{fill:var(--close)}.res.miss{fill:var(--miss)}
 .toggle{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer}
 .toggle input{width:18px;height:18px;accent-color:var(--royal)}
 .beats{display:flex;gap:10px;align-items:center}
 .beats i{width:18px;height:18px;border-radius:50%;background:var(--surface-2);border:2px solid var(--line);transition:background .05s}
 .beats i.on{background:var(--royal);border-color:var(--royal)}
+.nudge-track{position:relative;height:34px;max-width:420px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);margin-top:8px;overflow:hidden}
+.nudge-track i{position:absolute;top:9px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--ink2)}
+.nudge-track b{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--royal);visibility:hidden}
 .beats i.down.on{box-shadow:0 0 0 4px var(--royal-tint)}
 .countbig{font:800 44px/1 var(--f-display);color:var(--royal);min-width:60px;text-align:center}
 .verdict{display:flex;gap:18px;align-items:center;padding:16px 18px;border-radius:12px;border:1.5px solid}
@@ -837,6 +840,10 @@ class OnsetDetector{
              consonant — and only a fresh rise out of that dip can fire the next attack. */
           const thr=Math.max(this.noiseDb+10,-58),hold=this.hold||0.09;
           if(this.peakDb==null||db>this.peakDb)this.peakDb=db;
+          /* a much louder sound jumping out of a quieter one is a new attack even inside the hold: the syllable after
+             a noisy breath, or the vowel after a soft T. (The grader merges a T and its own vowel into one attack.) */
+          const rec=this.rec||(this.rec=[]);rec.push(db);if(rec.length>12)rec.shift();
+          if((!this.armed||t-this.last<hold)&&t-this.last>=0.04&&db>thr&&db-Math.min(...rec)>=12){out.push({t,db});this.last=t;this.hist=[];this.armed=false;this.peakDb=db;this.rec=[db];return;}
           if(t-this.last<hold){this.hist=[];}
           else if(!this.armed){
             /* waiting for the sound to fall away: let the remembered peak sag slowly toward the
@@ -857,11 +864,10 @@ function regress(xs,ys){const n=xs.length;if(n<3)return{slope:0,r:0,icpt:ys[0]||
 /* ---------- scoring ---------- */
 function rubric(p){if(p>=90)return{n:5,l:'Exemplary'};if(p>=80)return{n:4,l:'Proficient'};if(p>=70)return{n:3,l:'Proficient'};if(p>=55)return{n:2,l:'Developing'};return{n:1,l:'Basic'};}
 function scoreRhythm(expected,detected,beatSec){
-  const good=Math.min(0.11,0.22*beatSec);
   const used=new Set();
   const res=expected.map((e,i)=>{
     const gp=i>0?e-expected[i-1]:9,gn=i<expected.length-1?expected[i+1]-e:9;
-    const win=Math.min(0.24,0.5*Math.min(gp,gn,beatSec*1.2));
+    const win=Math.min(0.24,0.5*Math.min(gp,gn,beatSec*1.2)),good=Math.min(0.11,0.22*beatSec,0.85*win);
     let best=-1,bd=1e9;
     detected.forEach((d,j)=>{if(used.has(j))return;const dd=Math.abs(d-e);if(dd<=win&&dd<bd){bd=dd;best=j;}});
     if(best<0)return{t:e,hit:null,err:null,grade:'miss'};
@@ -883,9 +889,14 @@ function rhyBind(host,onChange){$$('[data-rhy]',host).forEach(b=>b.onclick=()=>{
 function rhyTip(){return RHY.mode==='voice'?'Say or sing the rhythm syllables: Tah for a quarter, Tah-ah for a half, Tah-ah-ah for a dotted half, Tah-ah-ah-ah for a whole, Ti-Ti for eighths, Ti-Ka-Ti-Ka for sixteenths. <b>Hold each long note for its full value</b> and stay silent on rests.'
   :RHY.mode==='inst'?'Play each note on one comfortable pitch. Tongue each attack clearly, <b>hold long notes for their full value</b>, and stop for the rests.':'';}
 /* start listening for this rhythm; returns the sound-level log for duration grading */
-function rhyListen(fn,minIoi){const d=Engine.det,voice=RHY.voice;if(d){d.voice=voice;d.env=[];d.hist=[];d.last=-9;d.armed=true;d.peakDb=null;d.hold=clamp(0.6*(minIoi||0.2),0.05,0.3);}Engine.onsetFn=fn;return{voice,env:()=>(d&&d.env)||[]};}
+function rhyListen(fn,minIoi){const d=Engine.det,voice=RHY.voice;if(d){d.voice=voice;d.rec=[];d.env=[];d.vlog=voice?[]:null;d.vrange=RHY.mode==='inst'?pitchRange():[70,700];d.hist=[];d.last=-9;d.armed=true;d.peakDb=null;d.hold=clamp(0.6*(minIoi||0.2),0.05,0.3);}Engine.onsetFn=fn;return{voice,env:()=>(d&&d.env)||[],vlog:()=>(d&&d.vlog)||[]};}
 const rhyMinIoi=a=>{let m=9;for(let i=1;i<a.length;i++)if(a[i]-a[i-1]>1e-3)m=Math.min(m,a[i]-a[i-1]);return m;};
-function rhyQuiet(){const d=Engine.det;if(d){d.voice=false;d.env=null;d.hist=[];d.armed=true;d.peakDb=null;}}
+/* the voicing log, shifted by the same latency as the attacks */
+const rhyVlog=(LS,lat)=>LS?LS.vlog().map((x,k)=>k%2?x:x-lat):null;
+/* live “attacks heard” count in voice mode: a re-sung vowel inside a held note, or the T and vowel of one syllable, count once */
+function rhyLiveCount(ev,beat,voice,minIoi){let last=-9;const held=ev.filter(e=>!e.rest&&e.end-e.t>=1.4*beat),w=Math.min(0.24,0.5*beat);
+  return t=>{if(!voice)return true;if(held.some(n=>t>n.t+w&&t<n.end-w))return false;if(t-last<Math.max(0.09,0.6*minIoi))return false;last=t;return true;};}
+function rhyQuiet(){const d=Engine.det;if(d){d.voice=false;d.env=null;d.vlog=null;d.hist=[];d.armed=true;d.peakDb=null;}}
 /* rhythm tokens → events in beats */
 const RT_EV={q:[[0,1]],h:[[0,2]],dh:[[0,3]],w:[[0,4]],qr:[[0,1,1]],hr:[[0,2,1]],ee:[[0,.5],[.5,.5]],ssss:[[0,.25],[.25,.25],[.5,.25],[.75,.25]],ess:[[0,.5],[.5,.25],[.75,.25]],sse:[[0,.25],[.25,.25],[.5,.5]],
   re:[[0,.5,1],[.5,.5]],dqe:[[0,1.5],[1.5,.5]],eqe:[[0,.5],[.5,1],[1.5,.5]],trip:[[0,1/3],[1/3,1/3],[2/3,1/3]],qtrip:[[0,2/3],[2/3,2/3],[4/3,2/3]]};
@@ -895,8 +906,23 @@ function rhyEvents(R){const ev=[];R.bars.forEach((b,m)=>b.forEach(k=>(RT_EV[k.t]
    swelling or wavering are forgiven before extras are counted. Voice mode adds: held notes
    (≥1.5 beats) must sound ≥70% of their length; rests (≥1 beat) must be ≥70% silent;
    extra attacks inside a held note (re-sung "ah"s) are not counted against you. */
-function scoreRhythmV(ev,detected,env,beatSec,voice){
+/* Where a spoken syllable lands in time. People line up the VOWEL of “Tah” with the beat (its perceptual
+   center), but the detector fires on the T, which can come 30–80 ms earlier. Move each voice attack to the
+   start of its vowel: the first moment the level comes within 10 dB of the syllable's peak and stays there
+   (a T or K burst is too short to pass, the breathy part after it too quiet). */
+function rhyPcenter(t,env){
+  let lo=0,hi=(env.length>>1)-1;while(lo<hi){const m=(lo+hi)>>1;if(env[2*m]<t)lo=m+1;else hi=m;}
+  let pk=-200;for(let i=lo;i<(env.length>>1)&&env[2*i]<=t+0.15;i++)pk=Math.max(pk,env[2*i+1]);if(pk<=-200)return t;
+  for(let i=lo;i<(env.length>>1)&&env[2*i]<=t+0.12;i++){if(env[2*i+1]<pk-10)continue;let ok=true;for(let k=1;k<=3&&i+k<(env.length>>1);k++)if(env[2*(i+k)+1]<pk-12){ok=false;break;}if(ok)return Math.max(t,env[2*i]-0.012);}
+  return t;}
+/* vlog: flat [t,voiced(0|1),…] from the pitch tracker, latency-corrected like env. Breath noise is not voiced; syllables are. */
+function scoreRhythmV(ev,detected,env,beatSec,voice,vlog){
   const notes=ev.filter(e=>!e.rest),win=Math.min(0.24,0.5*beatSec);
+  if(voice&&env.length&&detected.length){
+    /* move each attack to its vowel, then merge the T and the vowel of one syllable if both fired (in place, so callers draw the same times) */
+    const ref=detected.map(t=>rhyPcenter(t,env)).sort((a,b)=>a-b),out=[];ref.forEach(t=>{if(!out.length||t-out[out.length-1]>0.045)out.push(t);});
+    detected.splice(0,detected.length,...out);}
+  const vfrac=(a,b)=>{if(!vlog||!vlog.length)return null;let n=0,on=0;for(let i=0;i<vlog.length;i+=2){const t=vlog[i];if(t<a)continue;if(t>b)break;n++;if(vlog[i+1])on++;}return n?on/n:null;};
   let det=detected;
   if(voice)det=detected.filter(t=>!notes.some(n=>n.end-n.t>=1.4*beatSec&&t>n.t+win&&t<n.end-win));
   const r=scoreRhythm(notes.map(n=>n.t),det,beatSec);
@@ -909,6 +935,7 @@ function scoreRhythmV(ev,detected,env,beatSec,voice){
   const ex0=r.extras.length;const hits=r.res.filter(q=>q.hit!=null).map(q=>q.hit),near=Math.max(0.22,0.4*beatSec);
   r.extras=r.extras.filter(t=>{const f=frac(t-0.09,t-0.02);if(f!=null&&f>=0.5)return false;           /* inside a sound already going */
     const g=frac(t,t+0.12);if(voice&&g!=null&&g<0.6)return false;                                               /* a breath or click, not a syllable */
+    const vf=voice?vfrac(t-0.01,t+0.17):null;if(vf!=null&&vf<0.25)return false;                                   /* no vowel (no pitch): a breath, not a syllable */
     if(hits.some(h=>t>h-0.12&&t<h+near))return false;                                                   /* the same syllable (consonant, then vowel) */
     return true;});r.ignoredSwell=ex0-r.extras.length;
   let pts=r.res.reduce((a,q)=>a+(q.grade==='good'?1:q.grade==='ok'?0.5:0),0),items=notes.length;
@@ -916,7 +943,8 @@ function scoreRhythmV(ev,detected,env,beatSec,voice){
     const f=frac(n.t+0.1,n.end-Math.max(0.1,0.12*len));q.held=f;if(f!=null&&f<0.7){q.short=true;r.short++;pts-=(q.grade==='good'?0.75:0.25);q.grade='ok';}});
   /* rests: merge neighbours, check those a beat or longer */
   const rs=[];if(voice)ev.forEach(e=>{if(!e.rest)return;const l=rs[rs.length-1];if(l&&Math.abs(l.end-e.t)<0.01)l.end=e.end;else rs.push({t:e.t,end:e.end});});
-  rs.forEach(x=>{if(x.end-x.t<0.95*beatSec)return;const f=frac(x.t+0.15,x.end-0.08);x.ok=f==null||f<=0.3;x.sound=f;r.rests.push(x);items++;if(x.ok)pts++;else r.restBad++;});
+  /* the breath before the next note and the T of that note belong to the end of a rest: only a voiced sound in the body of the rest counts */
+  rs.forEach(x=>{if(x.end-x.t<0.95*beatSec)return;const a=x.t+0.15,b=x.end-0.12,f=frac(a,b),vf=vfrac(a,b);x.ok=f==null||f<=0.3||(vf!=null&&vf<=0.2);x.sound=f;r.rests.push(x);items++;if(x.ok)pts++;else r.restBad++;});
   pts-=0.5*r.extras.length;r.score=clamp(pts/Math.max(1,items),0,1);r.ignored=detected.length-det.length;return r;}
 /* sounding spans from the level log, for drawing */
 function rhySpans(env,thr,a,b){const out=[];let s=null,last=null;for(let i=0;i<env.length;i+=2){const t=env[i];if(t<a||t>b)continue;const on=env[i+1]>thr;if(on&&s==null)s=t;if(!on&&s!=null){if(t-s>0.03)out.push([s,t]);s=null;}last=t;}if(s!=null&&last-s>0.03)out.push([s,last]);return out;}
@@ -1144,6 +1172,14 @@ const ENERGY_WORKLET=`class GmlEnergy extends AudioWorkletProcessor{
     if(this.out.length>=8){this.port.postMessage(new Float64Array(this.out));this.out=[];}}return true;}
 }
 registerProcessor('gml-energy',GmlEnergy);`;
+/* The moment the student is HEARING, on the audio clock, for drawing moving lines and count-off lights.
+   ctx.currentTime runs ahead of the speakers by the output latency, and a frame drawn now reaches the screen
+   about two frames later. Line the picture up with the sound, plus the student's own nudge from Settings. */
+function audNow(c){let t=c.currentTime;
+  try{const ts=c.getOutputTimestamp&&c.getOutputTimestamp();
+    if(ts&&ts.contextTime>0&&ts.performanceTime>0){const e=ts.contextTime+(performance.now()-ts.performanceTime)/1000;if(e<=t+0.01&&e>t-0.5)t=e;else t-=(c.outputLatency||0);}
+    else t-=(c.outputLatency||0);}catch(e){}
+  const me=Store.me;return t+0.03+(((me&&me.phNudge)||0)/1000);}
 const Engine={
   ctx:null,stream:null,on:false,buf:null,noiseDb:-70,busyUntil:0,frameFn:null,onsetFn:null,noiseSampler:null,outNode:null,mfDb:null,
   live:{t:0,db:-100,sdb:-100,hz:0,midi:null,pitched:false,voiced:false},
@@ -1220,6 +1256,11 @@ const Engine={
       let p=null;
       if(db>this.noiseDb+S[0]&&db>S[1]){const fr=pitchRange(),sr=this.ctx.sampleRate;let pb=this.buf;if(this.fastFn&&this.frameFn===this.fastFn){const need=Math.min(pb.length,(fr[0]<200?2048:1024)+Math.ceil(sr/fr[0])+4);pb=pb.subarray(pb.length-need);}p=detectPitch(pb,sr,fr[0],fr[1]);if(p&&(p.hz<fr[0]*0.95||p.hz>fr[1]*1.05))p=null;}
       L.hz=p?p.hz:0;L.midi=p?hzToMidi(p.hz):null;L.pitched=!!p;this.trackCenter(L,p);if(p){if(L.smidi==null||Math.abs(L.midi-L.smidi)>1.5)L.smidi=L.midi;else L.smidi+=(L.midi-L.smidi)*(1-Math.exp(-Math.min(0.1,L.t-(L.pt||L.t))/0.16));L.pt=L.t;}else L.smidi=null;L.voiced=!!p||db>this.noiseDb+S[0]+6;
+      /* rhythm in voice / instrument mode: log whether each moment is pitched (a syllable) or not (a breath) */
+      const dv=this.det;if(dv&&dv.vlog){const vr=dv.vrange||[70,700],pr=pitchRange(),sr=this.ctx.sampleRate;
+        const reuse=pr[0]<=vr[0]&&pr[1]>=vr[1]&&!(this.fastFn&&this.frameFn===this.fastFn);
+        const v=reuse?!!p:(db>this.noiseDb+S[0]&&db>S[1]&&!!detectPitch(this.buf.subarray(this.buf.length-2048),sr,vr[0],vr[1]));
+        dv.vlog.push(L.t-(reuse?2048:1024)/sr,v?1:0);}
       if(this.noiseSampler)this.noiseSampler(db);
       const pct=clamp((db+70)/60,0,1)*100;
       $('#micLvl').style.width=pct+'%';const hb=$('#hubMeter');if(hb)hb.style.width=pct+'%';
@@ -1685,7 +1726,7 @@ Modules.rhythm={
   id:'rhythm',title:'Rhythm',blurb:'Clap a rhythm in time after a count-off. The app hears each clap and checks its timing.',listens:'Claps · timing in ms',
   learn:`<p><b>Counting.</b> Say beats as numbers (1 2 3 4). Eighth notes split the beat: 1 & 2 &. Sixteenths split it again: 1 e & a.</p>
   <p><b>Clap only on the start of each note.</b> Hold your hands apart for longer notes and stay silent on rests.</p>
-  <p><b>How it is graded.</b> On time means within about a tenth of a second. Close earns half credit. Extra claps cost half a note each. If every clap seems late, run the timing check in Settings.</p>`,
+  <p><b>How it is graded.</b> On time means within about a tenth of a second (less for fast notes that sit close together). Close earns half credit. Extra claps cost half a note each. If every clap seems late, run the timing check in Settings.</p><p><b>Rhythmic solfege.</b> The app times each syllable by its vowel, the way a listener hears it, so the T or K before it does not make you early. Breaths, and re-sung vowels inside a held note, never count as extra notes.</p>`,
   tempos:{1:72,2:84,3:92,4:100},
   make(level,voice,focus){return{R:genRhythm(level,focus),level};},
   mount(item,ui){
@@ -1726,9 +1767,9 @@ Modules.rhythm={
     function animate(s,onEnd){
       const lights=$$('#beats i'),cb=$('#countBig'),st=$('#st');
       const step=()=>{
-        if(!ui.token.alive)return;const now=s.c.currentTime;
+        if(!ui.token.alive)return;const now=audNow(s.c);
         if(now<s.T){const i=Math.floor((now-s.t0)/s.beat);lights.forEach((l,j)=>l.classList.toggle('on',j===i&&now>=s.t0));cb.textContent=now>=s.t0?String(i+1):'';st.textContent='Count-off…';view.ph.setAttribute('visibility','hidden');}
-        else if(now<s.end){const b=(now-s.T)/s.beat;const i=Math.floor(b)%R.meter;lights.forEach((l,j)=>l.classList.toggle('on',j===i&&(b%1)<0.35));cb.textContent='';st.textContent=RHY.mode==='voice'?'Go! (Tah, Ti-Ti…)':RHY.mode==='inst'||isInst()?'Play!':'Clap!';st.classList.add('live');const x=view.xOf(b)-6;view.ph.setAttribute('x1',x);view.ph.setAttribute('x2',x);view.ph.setAttribute('visibility','visible');}
+        else if(now<s.end){const b=(now-s.T)/s.beat;const i=Math.floor(b)%R.meter;lights.forEach((l,j)=>l.classList.toggle('on',j===i&&(b%1)<0.35));cb.textContent='';st.textContent=RHY.mode==='voice'?'Go! (Tah, Ti-Ti…)':RHY.mode==='inst'||isInst()?'Play!':'Clap!';st.classList.add('live');const x=view.xOf(b);view.ph.setAttribute('x1',x);view.ph.setAttribute('x2',x);view.ph.setAttribute('visibility','visible');}
         else{lights.forEach(l=>l.classList.remove('on'));view.ph.setAttribute('visibility','hidden');st.classList.remove('live');if(now>s.end+0.35){onEnd();return;}}
         raf=requestAnimationFrame(step);
       };raf=requestAnimationFrame(step);ui.onCleanup(()=>cancelAnimationFrame(raf));
@@ -1740,18 +1781,19 @@ Modules.rhythm={
       const s=schedule(false);const claps=[];let n=0;$('#clapN').textContent='0';
       const lat=Engine.latency();
       RHY.last={lat,ev:rhyEvents(R).map(e=>({t:s.T+e.b*s.beat,end:s.T+(e.b+e.d)*s.beat,rest:e.rest}))};
-      const LS=rhyListen(o=>{const t=o.t-lat;if(t>=s.T-0.45*s.beat&&t<=s.end+0.4*s.beat){claps.push(t);n++;$('#clapN').textContent=n;}},rhyMinIoi(R.onsets)*s.beat);
+      const counts=rhyLiveCount(RHY.last.ev,s.beat,RHY.voice,rhyMinIoi(R.onsets)*s.beat);
+      const LS=rhyListen(o=>{const t=o.t-lat;if(t>=s.T-0.45*s.beat&&t<=s.end+0.4*s.beat){claps.push(t);if(counts(t)){n++;$('#clapN').textContent=n;}}},rhyMinIoi(R.onsets)*s.beat);
       setActions(ui.actions,[{label:'■ Stop',on:()=>{rhyQuiet();ui.stopListening();Modules.rhythm.mount(item,ui);}}]);
       animate(s,()=>{
         Engine.onsetFn=null;const env=LS.env().map((v,i)=>i%2?v:v-lat);rhyQuiet();
-        const ev=rhyEvents(R).map(e=>({t:s.T+e.b*s.beat,end:s.T+(e.b+e.d)*s.beat,rest:e.rest}));const sc=scoreRhythmV(ev,claps,env,s.beat,LS.voice);
-        const view2={res:sc.res.map((r,i)=>({...r,beat:R.onsets[i],grade:r.short?'ok':r.grade})),hits:claps.map(t=>{const r=sc.res.find(x=>x.hit===t);return{b:(t-s.T)/s.beat,cls:r?(r.grade==='good'?'hit-good':'hit-ok'):LS.voice?'hit-faint':'hit-extra'};}),
+        const ev=rhyEvents(R).map(e=>({t:s.T+e.b*s.beat,end:s.T+(e.b+e.d)*s.beat,rest:e.rest}));const sc=scoreRhythmV(ev,claps,env,s.beat,LS.voice,rhyVlog(LS,lat));
+        const view2={res:sc.res.map((r,i)=>({...r,beat:R.onsets[i],grade:r.short?'ok':r.grade})),hits:claps.map(t=>{const r=sc.res.find(x=>x.hit===t);return{b:(t-s.T)/s.beat,cls:r?(r.grade==='good'?'hit-good':'hit-ok'):sc.extras.includes(t)?'hit-extra':'hit-faint'};}),
           spans:LS.voice?rhySpans(env,sc.thr,s.T-0.3,s.end+0.3).map(([a,b])=>[(a-s.T)/s.beat,(b-s.T)/s.beat]):null,rests:sc.rests.map(r=>({b0:(r.t-s.T)/s.beat,b1:(r.end-s.T)/s.beat,ok:r.ok}))};
         lastScore=view2;overlay(view2);
         const ontime=sc.res.filter(r=>r.grade==='good').length,ok=sc.res.filter(r=>r.grade==='ok').length,miss=sc.res.filter(r=>r.grade==='miss').length;
         const errs=sc.res.filter(r=>r.err!=null).map(r=>r.err*1000);const avg=mean(errs);
         let sum=`${ontime} of ${sc.res.length} notes on time`+(ok?`, ${ok} close`:'')+(miss?`, ${miss} missed`:'')+'.';
-        if(errs.length>=2&&Math.abs(avg)>=35)sum+=` On average you clapped ${Math.round(Math.abs(avg))} ms ${avg<0?'early (rushing)':'late (dragging)'}.`;
+        if(errs.length>=2&&Math.abs(avg)>=35)sum+=` On average you ${LS.voice?'came in':'clapped'} ${Math.round(Math.abs(avg))} ms ${avg<0?'early (rushing)':'late (dragging)'}.`;
         if(sc.extras.length)sum+=` ${sc.extras.length} extra ${LS.voice?'attack':'clap'}${sc.extras.length>1?'s':''} (check the rests and held notes).`;
         sum+=rhySummary(sc);
         if(!claps.length)sum=LS.voice?'Nothing was heard. Use a clear consonant on each syllable (T, K) and move closer to the microphone.':'No claps were heard. Clap louder or move closer to the microphone.';
@@ -2301,7 +2343,11 @@ function renderSettings(){
       <p><span class="pill ${lat?'good':'close'}" id="latPill">${lat?`Checked: ${Math.round(me.latency*1000)} ms`:'Not checked yet'}</span></p>
       <div class="beats" id="calBeats">${'<i></i>'.repeat(8)}</div>
       <div class="row"><button class="btn primary" type="button" id="calGo">Start timing check</button>${lat?'<button class="btn quiet" type="button" id="calClear">Reset</button>':''}</div>
-      <label class="toggle"><input type="checkbox" id="sMet" ${me.metOn?'checked':''}> Keep the metronome clicking while I clap (headphones only)</label></div>
+      <label class="toggle"><input type="checkbox" id="sMet" ${me.metOn?'checked':''}> Keep the metronome clicking while I clap (headphones only)</label>
+      <h4 style="margin-top:16px">Moving Line</h4>
+      <p class="muted" style="font-size:14px">On rhythm exercises a blue line moves across the music. Press <b>Watch it</b>: the line should cross each mark exactly as you hear the click. If it looks late, slide toward <b>Earlier</b>; if it looks early, toward <b>Later</b>.</p>
+      <div class="nudge-track" id="nudgeTrack" aria-hidden="true"><i style="left:12.5%"></i><i style="left:37.5%"></i><i style="left:62.5%"></i><i style="left:87.5%"></i><b></b></div>
+      <div class="row" style="align-items:center;gap:10px;margin-top:8px"><span class="muted">Earlier</span><input type="range" id="sNudge" min="-80" max="80" step="10" value="${me.phNudge||0}" aria-label="Moving line timing" style="flex:1;max-width:260px"><span class="muted">Later</span><span class="pill" id="sNudgeV">${(me.phNudge||0)?((me.phNudge>0?'+':'')+me.phNudge+' ms'):'On the beat'}</span><button class="btn" type="button" id="nudgeGo">Watch it</button></div></div>
     <div class="card"><h3>In-Tune Range</h3>
       <div class="seg" role="group" aria-label="In-tune range">${Object.entries(TOL_LEVELS).map(([k,t])=>`<button type="button" data-tol="${k}" aria-pressed="${(me.tol||'standard')===k}">${t.label} ±${t.good}¢</button>`).join('')}</div>
       <p class="muted" id="tolDesc" style="font-size:14px;margin-top:10px">${TOL().desc}</p>
@@ -2328,6 +2374,11 @@ function renderSettings(){
   const si=$('#sInst');if(si)si.onchange=e=>{me.inst=e.target.value;Store.save();whoChip();Engine.mfDb=null;renderSettings();toast('Instrument updated.');};
   $$('[data-path]',v).forEach(b=>b.onclick=()=>{const pv=b.dataset.path;if(me.path===pv)return;me.path=pv;normStudent(me);Store.save();Engine.mfDb=null;whoChip();renderSettings();toast(pv==='both'?'Both paths on. Switch between them in the Practice room.':pv==='inst'?'Instrumental path on.':'Vocal path on.');});
   $('#sMet').onchange=e=>{me.metOn=e.target.checked;Store.save();};
+  const nr=$('#sNudge');nr.oninput=()=>{me.phNudge=+nr.value;Store.save();$('#sNudgeV').textContent=me.phNudge?((me.phNudge>0?'+':'')+me.phNudge+' ms'):'On the beat';};
+  $('#nudgeGo').onclick=()=>{const c=Engine.ensureCtx(),beat=60/80,T=c.currentTime+0.4,bar=$('#nudgeTrack b'),gb=$('#nudgeGo');gb.disabled=true;
+    for(let i=0;i<8;i++)Engine.click(T+(i+0.5)*beat,i%4===0);
+    const tick=()=>{if(!bar.isConnected)return;const b=(audNow(c)-T)/beat;if(b>8.2){bar.style.visibility='hidden';gb.disabled=false;return;}
+      bar.style.visibility=b<0?'hidden':'visible';bar.style.left=(((Math.max(0,b)%4)/4)*100)+'%';requestAnimationFrame(tick);};requestAnimationFrame(tick);};
   const sm=$('#sMic');if(sm)sm.onclick=async()=>{if(await ensureMic())renderSettings();};
   const sn=$('#sNoise');if(sn)sn.onclick=async()=>{toast('Stay quiet for a second…');await Engine.measureNoise();renderSettings();};
   bindMicPanel(v);
@@ -2431,7 +2482,7 @@ async function calibrateLatency(){
   if(!await ensureMic())return;const me=Store.me;const btn=$('#calGo');btn.disabled=true;btn.textContent='Clap with each click…';
   const c=Engine.ctx,beat=60/80,t0=c.currentTime+1.2,clicks=[];for(let i=0;i<8;i++){clicks.push(t0+i*beat);Engine.click(t0+i*beat,i===0);}
   rhyQuiet();const ons=[];Engine.onsetFn=o=>ons.push(o.t);const lights=$$('#calBeats i');
-  const tick=()=>{const now=c.currentTime;lights.forEach((l,i)=>l.classList.toggle('on',now>=clicks[i]&&now<clicks[i]+0.25));if(now<t0+8*beat+0.6){requestAnimationFrame(tick);return;}
+  const tick=()=>{const now=audNow(c);lights.forEach((l,i)=>l.classList.toggle('on',now>=clicks[i]&&now<clicks[i]+0.25));if(now<t0+8*beat+0.6){requestAnimationFrame(tick);return;}
     Engine.onsetFn=null;const offs=[];clicks.forEach(ct=>{let best=null;ons.forEach(o=>{const d=o-ct;if(d>-0.15&&d<0.45&&(best===null||Math.abs(d)<Math.abs(best)))best=d;});if(best!==null)offs.push(best);});
     if(offs.length>=5){me.latency=clamp(median(offs),0,0.4);Store.save();toast(`Timing checked: ${Math.round(me.latency*1000)} ms.`);}else toast('Not enough claps were heard. Clap louder, right with each click, and try again.',5000);
     if($('#calGo'))renderSettings();};
@@ -3453,8 +3504,8 @@ function wCount(host,o){
     Learn.cleanup();cancelAnimationFrame(raf);actx();const c=Engine.ctx,beat=60/tempo,t0=c.currentTime+0.3,T=t0+R.meter*beat,end=T+R.meter*R.measures*beat;
     for(let i=0;i<R.meter;i++)Engine.click(t0+i*beat,i===0);for(let i=0;i<R.meter*R.measures;i++)Engine.click(T+i*beat,i%R.meter===0);R.onsets.forEach(b=>Engine.wood(T+b*beat));
     const cnts=$$('.cnt',view.svg);
-    const step=()=>{const now=c.currentTime;if(now>end+0.3||!view.svg.isConnected){view.ph.setAttribute('visibility','hidden');cnts.forEach(x=>x.classList.remove('on'));return;}
-      if(now>=T){const b=(now-T)/beat;const x=view.xOf(b)-6;view.ph.setAttribute('x1',x);view.ph.setAttribute('x2',x);view.ph.setAttribute('visibility','visible');let k=-1;R.onsets.forEach((o2,j)=>{if(o2<=b+0.02)k=j;});cnts.forEach((x2,j)=>x2.classList.toggle('on',j===k));}
+    const step=()=>{const now=audNow(c);if(now>end+0.3||!view.svg.isConnected){view.ph.setAttribute('visibility','hidden');cnts.forEach(x=>x.classList.remove('on'));return;}
+      if(now>=T){const b=(now-T)/beat;const x=view.xOf(b);view.ph.setAttribute('x1',x);view.ph.setAttribute('x2',x);view.ph.setAttribute('visibility','visible');let k=-1;R.onsets.forEach((o2,j)=>{if(o2<=b+0.02)k=j;});cnts.forEach((x2,j)=>x2.classList.toggle('on',j===k));}
       raf=requestAnimationFrame(step);};raf=requestAnimationFrame(step);
   };
 }
@@ -3701,17 +3752,17 @@ function wClap(host,o,onPass){
   rhyBind(host,()=>{const tp=$('.w-rtip',host);tp.hidden=!RHY.voice;tp.innerHTML=rhyTip();});
   pats.forEach((p,i)=>{views[i]={R:rhythmOf([p])};views[i].v=drawRhythm($('#cl'+i+' .w-r',host),views[i].R,{showCounts:o.counts!==false});});
   const sched=(R,play)=>{const c=actx(),beat=60/tempo,t0=c.currentTime+0.35,T=t0+R.meter*beat;for(let k=0;k<R.meter;k++)Engine.click(t0+k*beat,k===0);if(play){R.onsets.forEach(b=>Engine.wood(T+b*beat));for(let k=0;k<R.meter;k++)Engine.click(T+k*beat,k===0);}return{c,beat,t0,T,end:T+R.meter*R.measures*beat};};
-  const anim=(i,sc,onEnd)=>{const v=views[i].v,msg=$('#cl'+i+' .w-msg',host);const step=()=>{const now=sc.c.currentTime;if(now<sc.T){msg.textContent='Count-off: '+(Math.floor((now-sc.t0)/sc.beat)+1);}else if(now<sc.end){msg.textContent=RHY.mode==='voice'?'Go! (Tah, Ti-Ti…)':RHY.mode==='clap'&&!isInst()?'Clap!':'Play!';const x=v.xOf((now-sc.T)/sc.beat)-6;v.ph.setAttribute('x1',x);v.ph.setAttribute('x2',x);v.ph.setAttribute('visibility','visible');}else if(now>sc.end+0.35){v.ph.setAttribute('visibility','hidden');onEnd();return;}Learn.raf(step);};Learn.raf(step);};
+  const anim=(i,sc,onEnd)=>{const v=views[i].v,msg=$('#cl'+i+' .w-msg',host);const step=()=>{const now=audNow(sc.c);if(now<sc.T){msg.textContent='Count-off: '+(Math.floor((now-sc.t0)/sc.beat)+1);}else if(now<sc.end){msg.textContent=RHY.mode==='voice'?'Go! (Tah, Ti-Ti…)':RHY.mode==='clap'&&!isInst()?'Clap!':'Play!';const x=v.xOf((now-sc.T)/sc.beat);v.ph.setAttribute('x1',x);v.ph.setAttribute('x2',x);v.ph.setAttribute('visibility','visible');}else if(now>sc.end+0.35){v.ph.setAttribute('visibility','hidden');onEnd();return;}Learn.raf(step);};Learn.raf(step);};
   $$('[data-hear]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();const i=+b.dataset.hear;const sc=sched(views[i].R,true);anim(i,sc,()=>{$('#cl'+i+' .w-msg',host).textContent='Your turn: press Start.';});});
   $('[data-skip]',host).onclick=()=>{Learn.cleanup();onPass&&onPass('skip');$('.w-total',host).textContent='Skipped for now. The lesson will not be marked Done until you pass this check.';};
   $$('[data-go]',host).forEach(b=>b.onclick=async()=>{
     if(!await ensureMic())return;Learn.cleanup();const i=+b.dataset.go,R=views[i].R;views[i].v=drawRhythm($('#cl'+i+' .w-r',host),R,{showCounts:o.counts!==false});
     const sc=sched(R,false),lat=Engine.latency(),claps=[];
     RHY.last={lat,ev:rhyEvents(R).map(e=>({t:sc.T+e.b*sc.beat,end:sc.T+(e.b+e.d)*sc.beat,rest:e.rest}))};Learn.listenOnset(()=>{});const LS=rhyListen(on=>{const t=on.t-lat;if(t>=sc.T-0.45*sc.beat&&t<=sc.end+0.4*sc.beat)claps.push(t);},rhyMinIoi(R.onsets)*sc.beat);
-    anim(i,sc,()=>{const env=LS.env().map((x,k)=>k%2?x:x-lat);Learn.cleanup();const ev=rhyEvents(R).map(e=>({t:sc.T+e.b*sc.beat,end:sc.T+(e.b+e.d)*sc.beat,rest:e.rest})),r=scoreRhythmV(ev,claps,env,sc.beat,LS.voice),v=views[i].v;
+    anim(i,sc,()=>{const env=LS.env().map((x,k)=>k%2?x:x-lat);Learn.cleanup();const ev=rhyEvents(R).map(e=>({t:sc.T+e.b*sc.beat,end:sc.T+(e.b+e.d)*sc.beat,rest:e.rest})),r=scoreRhythmV(ev,claps,env,sc.beat,LS.voice,rhyVlog(LS,lat)),v=views[i].v;
       if(LS.voice)rhySpans(env,r.thr,sc.T-0.3,sc.end+0.3).forEach(([a,b])=>{const x0=v.xOf((a-sc.T)/sc.beat),x1=v.xOf((b-sc.T)/sc.beat);svgEl('rect',{x:x0,y:v.lineY+70,width:Math.max(2,x1-x0),height:10,rx:3,class:'hit-sound'},v.lane);});
       r.res.forEach((q,j)=>svgEl('circle',{cx:v.xOf(R.onsets[j]),cy:v.lineY+56,r:5,class:q.grade==='good'?'hit-good':q.grade==='ok'?'hit-ok':'hit-miss'},v.lane));
-      claps.forEach(t=>{const q=r.res.find(x=>x.hit===t);svgEl('rect',{x:v.xOf((t-sc.T)/sc.beat)-1.5,y:v.lineY+68,width:3,height:16,rx:1.5,class:q?(q.grade==='good'?'hit-good':'hit-ok'):LS.voice?'hit-faint':'hit-extra'},v.lane);});
+      claps.forEach(t=>{const q=r.res.find(x=>x.hit===t);svgEl('rect',{x:v.xOf((t-sc.T)/sc.beat)-1.5,y:v.lineY+68,width:3,height:16,rx:1.5,class:q?(q.grade==='good'?'hit-good':'hit-ok'):r.extras.includes(t)?'hit-extra':'hit-faint'},v.lane);});
       r.rests.forEach(x=>{const t=svgEl('text',{x:(v.xOf((x.t-sc.T)/sc.beat)+v.xOf((x.end-sc.T)/sc.beat))/2,y:v.lineY+100,'text-anchor':'middle',class:x.ok?'hit-good-t':'hit-miss-t'},v.lane);t.textContent=x.ok?'✓ rest':'✗ rest';});
       const ok=r.score>=0.8,c=$('#cl'+i,host),pill=$('.w-pill',c);pill.textContent=ok?`Passed · ${Math.round(r.score*100)}%`:`${Math.round(r.score*100)}% · try again`;pill.className='pill w-pill '+(ok?'good':'miss');
       const ontime=r.res.filter(q=>q.grade==='good').length;$('.w-msg',c).textContent=claps.length?`${ontime} of ${r.res.length} notes on time${r.extras.length?`, ${r.extras.length} extra`:''}.${rhySummary(r)} Dots show the notes; ${LS.voice?'the blue bar shows how long you held each sound':'bars show what the app heard'}.`:'Nothing was heard. Make each attack clear and a little louder.';
@@ -7236,7 +7287,7 @@ function gRacer(host){
     const hud=$('.g-hud',host)||(()=>{const d=document.createElement('div');d.className='card g-hud';box.before(d);return d;})();
     hud.innerHTML=`<div class="row"><span class="g-clock num">0:00.0</span><span class="pill royal g-tempo">♩ = ${run.bpms[0]}</span><span class="pill g-mnum">Count-in</span><span class="grow"></span><button class="btn quiet" type="button" id="gStop">Stop</button></div>`;
     $('#gStop').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);ph.setAttribute('visibility','hidden');$('.g-mnum',host).textContent='Stopped';};
-    const step=()=>{const now=c.currentTime;if(!host.isConnected)return;
+    const step=()=>{const now=audNow(c);if(!host.isConnected)return;
       $('.g-clock',host).textContent=fmtT(Math.max(0,now-T));
       if(now<T){$('.g-mnum',host).textContent='Count-in';}
       else if(now<end){let mi=0;while(mi<mStart.length-1&&mStart[mi+1]<=now)mi++;const b=sc.notes.find(q=>q.m===mi).beat+(now-mStart[mi])*run.bpms[mi]/60;const p=sc.xAtBeat(b),top=p.sys*sc.sysH+sc.top0;
@@ -7245,7 +7296,7 @@ function gRacer(host){
         const br=box.getBoundingClientRect(),py=br.top+top-box.scrollTop;if(top-box.scrollTop>box.clientHeight-60||top<box.scrollTop)box.scrollTop=Math.max(0,top-30);}
       else if(now>end+0.4){ph.setAttribute('visibility','hidden');if(perform)grade(exp,claps,T);else $('.g-mnum',host).textContent='Preview done';return;}
       Learn.raf(step);};Learn.raf(step);}
-  function grade(exp,claps,T){const LS=run.LS,voice=!!(LS&&LS.voice),env=LS?LS.env().map((x,k)=>k%2?x:x-run.lat):[];Learn.cleanup();const beat=Math.min(...run.bpms.map(b=>60/b)),r=scoreRhythmV(run.ev,claps,env,beat,voice),sc=run.sc;
+  function grade(exp,claps,T){const LS=run.LS,voice=!!(LS&&LS.voice),env=LS?LS.env().map((x,k)=>k%2?x:x-run.lat):[];Learn.cleanup();const beat=Math.min(...run.bpms.map(b=>60/b)),r=scoreRhythmV(run.ev,claps,env,beat,voice,rhyVlog(LS,run.lat)),sc=run.sc;
     r.res.forEach((q,j)=>{const n=exp[j].n;svgEl('circle',{cx:n.x,cy:n.top+2*10+30,r:5,class:q.grade==='good'?'hit-good':q.grade==='ok'?'hit-ok':'hit-miss'},sc.svg);});
     if(voice){const ms=run.mStart,bAt=(mi,t)=>run.mBeat[mi]+(t-ms[mi])*run.bpms[mi]/60;
       rhySpans(env,r.thr,ms[0]-0.2,run.ev[run.ev.length-1].end+0.3).forEach(([a,b])=>{for(let mi=0;mi<ms.length;mi++){const m0=ms[mi],m1=mi<ms.length-1?ms[mi+1]:run.ev[run.ev.length-1].end+0.3;const x0=Math.max(a,m0),x1=Math.min(b,m1);if(x1<=x0)continue;
