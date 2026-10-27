@@ -2745,7 +2745,8 @@ async function assessRun(){
 }
 /* ---------- Learn: lessons and interactive tools ---------- */
 const Learn={timers:[],owns:false,
-  cleanup(){this.timers.forEach(clearTimeout);this.timers=[];(this.rafs||[]).forEach(cancelAnimationFrame);this.rafs=[];if(this.owns){Engine.frameFn=null;this.owns=false;}if(this.ownsOnset){Engine.onsetFn=null;this.ownsOnset=false;rhyQuiet();}if(Engine.ctx)Engine.silence();},
+  /* keepSound: stop timers and listening but let a note the student just tapped ring out */
+  cleanup(keepSound){this.timers.forEach(clearTimeout);this.timers=[];(this.rafs||[]).forEach(cancelAnimationFrame);this.rafs=[];if(this.owns){Engine.frameFn=null;this.owns=false;}if(this.ownsOnset){Engine.onsetFn=null;this.ownsOnset=false;rhyQuiet();}if(Engine.ctx&&!keepSound)Engine.silence();},
   listenOnset(fn){this.ownsOnset=true;Engine.onsetFn=fn;},raf(fn){(this.rafs=this.rafs||[]).push(requestAnimationFrame(fn));},
   later(fn,ms){this.timers.push(setTimeout(fn,ms));},
   listen(fn){this.owns=true;Engine.frameFn=fn;},
@@ -7228,7 +7229,7 @@ function gPresto(host){
     Engine.fastFn=fn;Learn.listen(fn);}
   function answer(s){if(!run||run.done)return;const k=run.gi[run.i],n=run.sc.notes[k],src=run.all[run.i];noteMode()?playName(s,src):playSyl(s,src);src.given=s;n.given=s;const lab=$('.g-lab',run.sc.gs[k]);lab.textContent=s;
     if(run.i<run.gi.length-1)run.i++;cur();if(run.all.every(x=>x.given))finish();}
-  function finish(){if(run.done)return;run.done=true;Learn.cleanup();clearInterval(Game.timer);document.removeEventListener('keydown',keys);const secs=(performance.now()-run.t0)/1000;
+  function finish(){if(run.done)return;run.done=true;Learn.cleanup(true);clearInterval(Game.timer);document.removeEventListener('keydown',keys);const secs=(performance.now()-run.t0)/1000;
     let right=0;run.gi.forEach((k,j)=>{const src=run.all[j],g=run.sc.gs[k],lab=$('.g-lab',g),ok=src.given===src.ans;if(ok)right++;g.classList.remove('cur');lab.textContent=ok?src.ans:`${src.given||'?'}→${src.ans}`;lab.style.fill=ok?'var(--good)':'var(--miss)';});
     const pct=Math.round(right/run.all.length*100),key=`${S.lv}|${run.meas}`+(noteMode()?'|N':'')+(singMode()?'|S':''),old=D.best[key],rec=pct>=85,nb=rec&&(!old||secs<old);if(nb)D.best[key]=secs;gLog(D,key,pct,secs,rec);
     const prevOk=run.times.filter(x=>x.ok).map(x=>x.secs),prevBest=prevOk.length?Math.min(...prevOk):null;run.times.push({secs,pct,ok:rec});
@@ -7505,7 +7506,7 @@ function gDaily(host){
       t+=gap;});
     Learn.later(done,(t-c.currentTime+0.3)*1000);}
   const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(run.base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`;
-  function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.4,0.7);fn(s);});}
+  function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.8,0.85);fn(s);});}
   function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.doneItem||(!beginner&&run.replayed))return;run.replayed=true;const b=$('#gRe');if(b)b.disabled=true;fn(()=>{const b2=$('#gRe');if(b2&&beginner&&!run.doneItem)b2.disabled=false;});};}
   function item(){if(!run||run.over)return;const it=run.items[run.i];run.lock=true;run.doneItem=false;run.replayed=false;
     $('.g-prog',host).textContent=`Item ${run.i+1} of ${run.items.length}`;$('.g-score',host).textContent=`${run.right} right`;
@@ -7519,7 +7520,7 @@ function gDaily(host){
         $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;resolve(+b.dataset.w===it.ansIdx,`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
         replayBtn(done=>playSeq(it.pair,done));run.lock=false;});}
     else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base)}</div>`;
-      $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.5,0.8);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
+      $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
     else if(run.noMic){dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
       msg.innerHTML='No microphone is available, so this one is skipped — it won’t count against you.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" type="button" id="gSkip">Skip this item</button></span>';
       $('#gSkip').onclick=skipItem;run.lock=false;}
@@ -7527,7 +7528,7 @@ function gDaily(host){
       msg.innerHTML='Sing it on any syllable, in any octave — and hold it a moment.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn quiet" type="button" id="gSkip">Can’t sing right now — skip</button></span>';
       $('#gSkip').onclick=skipItem;run.lock=false;listenSing(it);
       Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},singMs);}}
-  function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();
+  function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup(true);
     if(ok)run.right++;
     $('.g-msg',host).innerHTML=ok?`<b style="color:var(--good)">Correct!</b> ${explain}`:`<b style="color:var(--miss)">Not quite.</b> ${explain}`;
     $('.g-score',host).textContent=`${run.right} right`;
@@ -7558,8 +7559,8 @@ function gDaily(host){
     if(wasDue)me.daily.done=today;Store.save();
     host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">Daily Do complete: ${run.right} of ${n}${run.skip?` (${run.skip} skipped)`:''}</p>
       <p>${pct>=85?'Strong ears today.':pct>=60?'A solid warm-up. The items that got away are the ones to listen for tomorrow.':'Done — and done is what counts. It gets easier fast when it is every day.'} ${wasDue?'Today’s Daily Do is stamped, and the rest of Measure Up! is open.':'Extra session logged — nice initiative.'}</p>
-      <div class="row"><button class="btn primary" type="button" id="gMore">↻ Do another Daily Do</button><button class="btn" type="button" id="gHub">Go to Games</button><button class="btn" type="button" id="gSet">Daily Do settings</button></div></div></div>`;
-    $('#gMore').onclick=start;$('#gHub').onclick=()=>showView('games');$('#gSet').onclick=settings;}
+      <div class="row">${wasDue?'<button class="btn primary" type="button" id="gLearn">Time to Measure Up! →</button><button class="btn" type="button" id="gMore">↻ Do another Daily Do</button>':'<button class="btn primary" type="button" id="gMore">↻ Do another Daily Do</button><button class="btn" type="button" id="gHub">Go to Games</button><button class="btn" type="button" id="gPrac">Go Practice &amp; Measure Up! →</button>'}<button class="btn" type="button" id="gSet">Daily Do settings</button></div></div></div>`;
+    $('#gMore').onclick=start;const gh=$('#gHub');if(gh)gh.onclick=()=>showView('games');const gl=$('#gLearn');if(gl)gl.onclick=()=>showView('learn');const gp=$('#gPrac');if(gp)gp.onclick=()=>showView('hub');$('#gSet').onclick=settings;}
   settings();
 }
 
