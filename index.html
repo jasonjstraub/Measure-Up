@@ -499,6 +499,11 @@ svg.staff.mini{max-width:420px;width:100%}
 .anat-plate g[data-part] path,.anat-plate g[data-part] ellipse{fill:rgba(47,111,178,0);stroke:rgba(47,111,178,0);stroke-width:3;vector-effect:non-scaling-stroke;transition:fill .15s ease,stroke .15s ease}
 .anat-plate g.sel path,.anat-plate g.sel ellipse{fill:rgba(47,111,178,.30);stroke:#2f6fb2}
 .anat-plate g.dim,.anat-sch g.dim{opacity:.38}
+.rec-bar{gap:10px;margin:-4px 0 10px;flex-wrap:wrap;align-items:center}
+.rec-toggle{font-weight:600}
+.rec-live{background:#c62828;color:#fff;border-color:#c62828;font-variant-numeric:tabular-nums}
+.rec-row{display:grid;gap:6px}.rec-pick{font-weight:600;display:flex;gap:8px;align-items:center}
+.rec-card .rec-snap{overflow-x:auto;pointer-events:none;margin-top:4px}
 </style>
 </head>
 <body>
@@ -543,6 +548,7 @@ svg.staff.mini{max-width:420px;width:100%}
       </div>
       <span class="pill" id="exCount"></span>
     </div>
+    <div class="row rec-bar" id="exRecBar"></div>
     <div class="ex-ctl" id="exCtl"></div>
     <div class="ex-grid">
       <div class="card stage" id="exStage"></div>
@@ -559,6 +565,7 @@ svg.staff.mini{max-width:420px;width:100%}
   <section data-view="tools" id="viewTools" hidden></section>
   <section data-view="lesson" id="viewLesson" hidden></section>
   <section data-view="progress" id="viewProgress" hidden></section>
+  <section data-view="recs" id="viewRecs" hidden></section>
   <section data-view="settings" id="viewSettings" hidden></section>
   <section data-view="miccheck" id="viewWiz" hidden></section>
   <section data-view="assess" id="viewAssess" hidden></section>
@@ -869,21 +876,62 @@ function regress(xs,ys){const n=xs.length;if(n<3)return{slope:0,r:0,icpt:ys[0]||
 
 /* ---------- scoring ---------- */
 function rubric(p){if(p>=90)return{n:5,l:'Exemplary'};if(p>=80)return{n:4,l:'Proficient'};if(p>=70)return{n:3,l:'Proficient'};if(p>=55)return{n:2,l:'Developing'};return{n:1,l:'Basic'};}
-function scoreRhythm(expected,detected,beatSec){
-  const used=new Set();
-  const res=expected.map((e,i)=>{
-    const gp=i>0?e-expected[i-1]:9,gn=i<expected.length-1?expected[i+1]-e:9;
-    const win=Math.min(0.24,0.5*Math.min(gp,gn,beatSec*1.2)),good=Math.min(0.11,0.22*beatSec,0.85*win);
-    let best=-1,bd=1e9;
-    detected.forEach((d,j)=>{if(used.has(j))return;const dd=Math.abs(d-e);if(dd<=win&&dd<bd){bd=dd;best=j;}});
-    if(best<0)return{t:e,hit:null,err:null,grade:'miss'};
-    used.add(best);const err=detected[best]-e;
-    return{t:e,hit:detected[best],err,grade:Math.abs(err)<=good?'good':'ok'};
-  });
-  const extras=detected.filter((d,j)=>!used.has(j));
+/* Rhythm timing is judged the way a teacher listens: against the student's own steady pulse, not a stopwatch.
+   This follows what rhythm games and ear-training apps do. Each computer has its own fixed sound delay
+   (speakers + microphone), so a constant lag is measured from the take itself and removed. With no
+   metronome sounding, a student who settles a little faster or slower than the count-off, or drifts
+   gradually, is graded against the pulse they actually kept (a robust straight-line fit, then a slow local
+   drift taken from the NEIGHBOURING notes only, so a note can never excuse its own error). Claps are matched
+   to notes in order (dynamic programming), so a missed note can't steal the next note's clap.
+   opt.tempoFree: true when no metronome plays during the performance (the default). */
+function rhyAlign(pred,detected,winOf){
+  const n=pred.length,m=detected.length,W=m+1,dp=new Float64Array((n+1)*W),bk=new Int8Array((n+1)*W);
+  for(let i=0;i<=n;i++)for(let j=0;j<=m;j++){if(!i&&!j)continue;let best=-1e9,b=0;
+    if(i>0){const v=dp[(i-1)*W+j];if(v>best){best=v;b=1;}}                       /* note missed */
+    if(j>0){const v=dp[i*W+j-1]-0.001;if(v>best){best=v;b=2;}}                   /* extra clap */
+    if(i>0&&j>0){const e=Math.abs(detected[j-1]-pred[i-1]),w=winOf(i-1);if(e<=w){const v=dp[(i-1)*W+j-1]+1-0.5*e/w;if(v>best){best=v;b=3;}}}
+    dp[i*W+j]=best;bk[i*W+j]=b;}
+  const hit=new Array(n).fill(-1);let i=n,j=m;while(i>0||j>0){const b=bk[i*W+j];if(b===3){hit[i-1]=j-1;i--;j--;}else if(b===1)i--;else j--;}
+  return hit;}
+function rhyFit(xs,ys,tempoFree,beatSec){
+  const n=xs.length;if(!n)return{a:0,b:1,x0:0};const x0=xs[0];
+  let a=median(ys.map((y,k)=>y-xs[k])),b=1,keep=xs.map(()=>true);
+  for(let it=0;it<3;it++){const X=[],Y=[];xs.forEach((x,k)=>{if(keep[k]){X.push(x-x0);Y.push(ys[k]-x0);}});
+    if(tempoFree&&X.length>=4&&X[X.length-1]-X[0]>2*beatSec){const g=regress(X,Y);b=clamp(g.slope,0.85,1.18);a=median(X.map((x,k)=>Y[k]-b*x))+x0-x0;}
+    else{b=1;a=median(X.map((x,k)=>Y[k]-x));}
+    const res=xs.map((x,k)=>ys[k]-x0-(a+b*(x-x0))),mad=median(res.map(Math.abs))||0.01;keep=res.map(r=>Math.abs(r)<=Math.max(0.06,3*mad));}
+  a=clamp(a,tempoFree?-0.3:-0.15,tempoFree?0.3:0.2);return{a,b,x0};}
+function scoreRhythm(expected,detected,beatSec,opt){
+  const tempoFree=!opt||opt.tempoFree!==false,n=expected.length,det=[...detected].sort((x,y)=>x-y);
+  const winN=i=>{const e=expected[i],gp=i>0?e-expected[i-1]:9,gn=i<n-1?expected[i+1]-e:9;return Math.min(0.24,0.5*Math.min(gp,gn,beatSec*1.2));};
+  const goodN=i=>Math.min(0.11,0.22*beatSec,0.85*winN(i));
+  /* pass 1: generous windows to find the student's pulse */
+  const wide=i=>Math.max(winN(i),Math.min(0.4,0.5*beatSec));
+  let fit={a:0,b:1,x0:expected[0]||0},local=new Array(n).fill(0);
+  const pred=()=>expected.map((e,i)=>fit.x0+fit.a+fit.b*(e-fit.x0)+local[i]);
+  /* find the pulse first: try a range of steady tempos and lags, keep the one that lines up the most claps */
+  if(det.length&&n){const x0=fit.x0,span=expected[n-1]-x0,bs=tempoFree&&span>2*beatSec?Array.from({length:23},(_,k)=>0.85+k*0.015):[1];let best=-1e9;
+    const dpScore=(A,B)=>{const pr=expected.map(e=>x0+A+B*(e-x0)),h=rhyAlign(pr,det,wide);let sc=0;h.forEach((j,i)=>{if(j>=0)sc+=1-0.5*Math.abs(det[j]-pr[i])/wide(i);});return sc;};
+    bs.forEach(B=>{for(let A=-0.3;A<=0.301;A+=0.03){const v=dpScore(A,B)-0.3*Math.abs(B-1);if(v>best){best=v;fit={a:A,b:B,x0};}}});}
+  for(let pass=0;pass<3;pass++){
+    const hit=rhyAlign(pred(),det,wide),X=[],Y=[];hit.forEach((j,i)=>{if(j>=0){X.push(expected[i]);Y.push(det[j]-local[i]);}});
+    if(X.length<2)break;fit=rhyFit(X,Y,tempoFree,beatSec);
+    /* slow drift: median offset of up to 4 matched neighbours on each side, never the note itself */
+    if(tempoFree&&X.length>=6){const base=expected.map(e=>fit.x0+fit.a+fit.b*(e-fit.x0)),r=new Array(n).fill(null);hit.forEach((j,i)=>{if(j>=0)r[i]=det[j]-base[i];});
+      local=expected.map((e,i)=>{const nb=[];for(let k=i-1;k>=0&&nb.length<4;k--)if(r[k]!=null&&Math.abs(r[k])<0.6*beatSec)nb.push(r[k]);const L=nb.length;for(let k=i+1;k<n&&nb.length<L+4;k++)if(r[k]!=null&&Math.abs(r[k])<0.6*beatSec)nb.push(r[k]);
+        return nb.length>=3?clamp(median(nb),-0.35*beatSec,0.35*beatSec):0;});}}
+  /* final pass: the normal windows, measured from the fitted pulse */
+  const P=pred(),hit=rhyAlign(P,det,winN),used=new Set();
+  const res=expected.map((e,i)=>{const j=hit[i];if(j<0)return{t:e,hit:null,err:null,grade:'miss'};used.add(j);const err=det[j]-P[i];return{t:e,hit:det[j],err,grade:Math.abs(err)<=goodN(i)?'good':'ok'};});
+  const extras=det.filter((d,j)=>!used.has(j));
   const pts=res.reduce((a,r)=>a+(r.grade==='good'?1:r.grade==='ok'?0.5:0),0)-0.5*extras.length;
-  return{res,extras,score:clamp(pts/expected.length,0,1)};
+  /* expected time → the student's time, for checking held notes and rests against the pulse they kept */
+  const warp=t=>{let k=0;while(k<n-1&&expected[k+1]<=t)k++;return fit.x0+fit.a+fit.b*(t-fit.x0)+(n?local[k]:0);};
+  return{res,extras,score:clamp(pts/Math.max(1,n),0,1),lag:fit.a,tempoRatio:fit.b,warp};
 }
+/* one sentence about the pulse the student kept, for the result messages */
+function rhyPulseNote(r,bpm){if(!r||!r.tempoRatio||!bpm)return'';const kept=Math.round(bpm/r.tempoRatio);
+  return Math.abs(kept-bpm)>=3?` You kept a steady beat at about ♩ = ${kept} (the count-off was ♩ = ${bpm}); your rhythm was judged against your own beat — next time try to lock in with the count-off.`:'';}
 
 /* ---------- rhythm performance: clap, or rhythmic solfege / instrument (attacks + note lengths + rests) ---------- */
 const RHY={get mode(){const me=Store.me;const m=me&&me.rhyMode;return m==='voice'||m==='inst'?m:'clap';},set mode(v){if(Store.me){Store.me.rhyMode=v;Store.save();}},
@@ -922,7 +970,7 @@ function rhyPcenter(t,env){
   for(let i=lo;i<(env.length>>1)&&env[2*i]<=t+0.12;i++){if(env[2*i+1]<pk-10)continue;let ok=true;for(let k=1;k<=3&&i+k<(env.length>>1);k++)if(env[2*(i+k)+1]<pk-12){ok=false;break;}if(ok)return Math.max(t,env[2*i]-0.012);}
   return t;}
 /* vlog: flat [t,voiced(0|1),…] from the pitch tracker, latency-corrected like env. Breath noise is not voiced; syllables are. */
-function scoreRhythmV(ev,detected,env,beatSec,voice,vlog){
+function scoreRhythmV(ev,detected,env,beatSec,voice,vlog,opt){
   const notes=ev.filter(e=>!e.rest),win=Math.min(0.24,0.5*beatSec);
   if(voice&&env.length&&detected.length){
     /* move each attack to its vowel, then merge the T and the vowel of one syllable if both fired (in place, so callers draw the same times) */
@@ -931,10 +979,10 @@ function scoreRhythmV(ev,detected,env,beatSec,voice,vlog){
   const vfrac=(a,b)=>{if(!vlog||!vlog.length)return null;let n=0,on=0;for(let i=0;i<vlog.length;i+=2){const t=vlog[i];if(t<a)continue;if(t>b)break;n++;if(vlog[i+1])on++;}return n?on/n:null;};
   let det=detected;
   if(voice)det=detected.filter(t=>!notes.some(n=>n.end-n.t>=1.4*beatSec&&t>n.t+win&&t<n.end-win));
-  const r=scoreRhythm(notes.map(n=>n.t),det,beatSec);
+  const r=scoreRhythm(notes.map(n=>n.t),det,beatSec,opt),W=r.warp;
   r.rests=[];r.short=0;r.restBad=0;r.thr=null;
   if(!env.length){r.ignored=detected.length-det.length;return r;}
-  const t0=ev[0].t-0.2,t1=ev[ev.length-1].end+0.2,dbs=[];for(let i=0;i<env.length;i+=2)if(env[i]>=t0&&env[i]<=t1)dbs.push(env[i+1]);
+  const t0=W(ev[0].t)-0.2,t1=W(ev[ev.length-1].end)+0.2,dbs=[];for(let i=0;i<env.length;i+=2)if(env[i]>=t0&&env[i]<=t1)dbs.push(env[i+1]);
   const srt=[...dbs].sort((a,b)=>a-b),peak=srt.length?srt[Math.floor(srt.length*0.9)]:-60,thr=Math.max((Engine.noiseDb??-70)+8,peak-24);r.thr=thr;
   const frac=(a,b)=>{let n=0,on=0;for(let i=0;i<env.length;i+=2){const t=env[i];if(t<a)continue;if(t>b)break;n++;if(env[i+1]>thr)on++;}return n?on/n:null;};
   /* a real voice swells and wavers while it sounds (vibrato, room echo): only an attack that starts out of silence counts as an extra note */
@@ -946,11 +994,11 @@ function scoreRhythmV(ev,detected,env,beatSec,voice,vlog){
     return true;});r.ignoredSwell=ex0-r.extras.length;
   let pts=r.res.reduce((a,q)=>a+(q.grade==='good'?1:q.grade==='ok'?0.5:0),0),items=notes.length;
   if(voice)notes.forEach((n,i)=>{const q=r.res[i],len=n.end-n.t;if(len<1.4*beatSec||q.grade==='miss')return;
-    const f=frac(n.t+0.1,n.end-Math.max(0.1,0.12*len));q.held=f;if(f!=null&&f<0.7){q.short=true;r.short++;pts-=(q.grade==='good'?0.75:0.25);q.grade='ok';}});
+    const f=frac(W(n.t)+0.1,W(n.end)-Math.max(0.1,0.12*len));q.held=f;if(f!=null&&f<0.7){q.short=true;r.short++;pts-=(q.grade==='good'?0.75:0.25);q.grade='ok';}});
   /* rests: merge neighbours, check those a beat or longer */
   const rs=[];if(voice)ev.forEach(e=>{if(!e.rest)return;const l=rs[rs.length-1];if(l&&Math.abs(l.end-e.t)<0.01)l.end=e.end;else rs.push({t:e.t,end:e.end});});
   /* the breath before the next note and the T of that note belong to the end of a rest: only a voiced sound in the body of the rest counts */
-  rs.forEach(x=>{if(x.end-x.t<0.95*beatSec)return;const a=x.t+0.15,b=x.end-0.12,f=frac(a,b),vf=vfrac(a,b);x.ok=f==null||f<=0.3||(vf!=null&&vf<=0.2);x.sound=f;r.rests.push(x);items++;if(x.ok)pts++;else r.restBad++;});
+  rs.forEach(x=>{if(x.end-x.t<0.95*beatSec)return;const a=W(x.t)+0.15,b=W(x.end)-0.12,f=frac(a,b),vf=vfrac(a,b);x.ok=f==null||f<=0.3||(vf!=null&&vf<=0.2);x.sound=f;r.rests.push(x);items++;if(x.ok)pts++;else r.restBad++;});
   pts-=0.5*r.extras.length;r.score=clamp(pts/Math.max(1,items),0,1);r.ignored=detected.length-det.length;return r;}
 /* sounding spans from the level log, for drawing */
 function rhySpans(env,thr,a,b){const out=[];let s=null,last=null;for(let i=0;i<env.length;i+=2){const t=env[i];if(t<a||t>b)continue;const on=env[i+1]>thr;if(on&&s==null)s=t;if(!on&&s!=null){if(t-s>0.03)out.push([s,t]);s=null;}last=t;}if(s!=null&&last-s>0.03)out.push([s,last]);return out;}
@@ -1792,14 +1840,14 @@ Modules.rhythm={
       setActions(ui.actions,[{label:'■ Stop',on:()=>{rhyQuiet();ui.stopListening();Modules.rhythm.mount(item,ui);}}]);
       animate(s,()=>{
         Engine.onsetFn=null;const env=LS.env().map((v,i)=>i%2?v:v-lat);rhyQuiet();
-        const ev=rhyEvents(R).map(e=>({t:s.T+e.b*s.beat,end:s.T+(e.b+e.d)*s.beat,rest:e.rest}));const sc=scoreRhythmV(ev,claps,env,s.beat,LS.voice,rhyVlog(LS,lat));
+        const ev=rhyEvents(R).map(e=>({t:s.T+e.b*s.beat,end:s.T+(e.b+e.d)*s.beat,rest:e.rest}));const sc=scoreRhythmV(ev,claps,env,s.beat,LS.voice,rhyVlog(LS,lat),{tempoFree:!me.metOn});
         const view2={res:sc.res.map((r,i)=>({...r,beat:R.onsets[i],grade:r.short?'ok':r.grade})),hits:claps.map(t=>{const r=sc.res.find(x=>x.hit===t);return{b:(t-s.T)/s.beat,cls:r?(r.grade==='good'?'hit-good':'hit-ok'):sc.extras.includes(t)?'hit-extra':'hit-faint'};}),
           spans:LS.voice?rhySpans(env,sc.thr,s.T-0.3,s.end+0.3).map(([a,b])=>[(a-s.T)/s.beat,(b-s.T)/s.beat]):null,rests:sc.rests.map(r=>({b0:(r.t-s.T)/s.beat,b1:(r.end-s.T)/s.beat,ok:r.ok}))};
         lastScore=view2;overlay(view2);
         const ontime=sc.res.filter(r=>r.grade==='good').length,ok=sc.res.filter(r=>r.grade==='ok').length,miss=sc.res.filter(r=>r.grade==='miss').length;
         const errs=sc.res.filter(r=>r.err!=null).map(r=>r.err*1000);const avg=mean(errs);
         let sum=`${ontime} of ${sc.res.length} notes on time`+(ok?`, ${ok} close`:'')+(miss?`, ${miss} missed`:'')+'.';
-        if(errs.length>=2&&Math.abs(avg)>=35)sum+=` On average you ${LS.voice?'came in':'clapped'} ${Math.round(Math.abs(avg))} ms ${avg<0?'early (rushing)':'late (dragging)'}.`;
+        sum+=rhyPulseNote(sc,tempo);if(errs.length>=2&&Math.abs(avg)>=35)sum+=` On average you ${LS.voice?'came in':'clapped'} ${Math.round(Math.abs(avg))} ms ${avg<0?'early (rushing)':'late (dragging)'}.`;
         if(sc.extras.length)sum+=` ${sc.extras.length} extra ${LS.voice?'attack':'clap'}${sc.extras.length>1?'s':''} (check the rests and held notes).`;
         sum+=rhySummary(sc);
         if(!claps.length)sum=LS.voice?'Nothing was heard. Use a clear consonant on each syllable (T, K) and move closer to the microphone.':'No claps were heard. Clap louder or move closer to the microphone.';
@@ -2090,7 +2138,7 @@ const Session={
   start(modId,level,focus){
     const me=Store.me;if(!me){showView('hub');const n=$('#inName');if(n){n.focus();toast('Sign in first so your results are saved under your name.');}return;}
     if(!(Modules[modId]&&Modules[modId].hidden)&&!modList().some(m=>m.id===modId)){toast('That skill needs a pitched instrument. Choose your instrument in Settings.');showView('hub');return;}
-    this.mod=Modules[modId];this.spTally=null;this.level=level||(this.mod.ownLevel?(me.spLevel||1):curLevel());this.focus=focusList(modId).some(x=>x.id===focus)?focus:'mix';this.mode=App.mode;this.idx=0;this.results=[];this.total=this.mode==='assess'?5:0;this.tempo=null;
+    this.mod=Modules[modId];this.spTally=null;this.level=level||(this.mod.ownLevel?(me.spLevel||1):curLevel());this.focus=focusList(modId).some(x=>x.id===focus)?focus:'mix';this.mode=App.mode;this.idx=0;this.pracN=0;this.results=[];this.total=this.mode==='assess'?5:0;this.tempo=null;
     $('#exTitle').textContent=this.mod.title;this.renderCtl();
     $('#exMode').textContent=this.mode==='assess'?'Assessment · saved':'Practice';$('#exMode').className='pill '+(this.mode==='assess'?'good':'');
     $('#exLearnBody').innerHTML=this.mod.learn;
@@ -2117,13 +2165,20 @@ const Session={
       stopListening:()=>{Engine.frameFn=null;Engine.onsetFn=null;rhyQuiet();if(Engine.ctx)Engine.silence();this.cleanups.forEach(f=>f());this.cleanups=[];},
       onCleanup:f=>this.cleanups.push(f)};
     this.ui=ui;this.mod.mount(this.item,ui);
+    Rec.finish(null);Rec.bar();this.recBegin();
   },
-  cleanup(){if(this.token)this.token.alive=false;Engine.frameFn=null;Engine.onsetFn=null;rhyQuiet();if(Engine.ctx)Engine.silence();(this.cleanups||[]).forEach(f=>f());this.cleanups=[];App.redraw=null;},
+  /* start recording the item now on screen (when the student has Record my takes on) */
+  recBegin(){if(!Rec.on||!this.token||!this.token.alive)return;
+    Rec.begin({token:this.token,mode:this.mode,skill:this.mod.title,level:this.level,focus:this.focus&&this.focus!=='mix'?focusLabel(this.mod.id,this.focus):'',
+      item:this.mode==='assess'?this.idx+1:(this.pracN=(this.tries&&this.tries.length?this.pracN:(this.pracN||0)+1)),total:this.total,tryN:(this.tries||[]).length+1});},
+  cleanup(){Rec.finish(null);if(this.token)this.token.alive=false;Engine.frameFn=null;Engine.onsetFn=null;rhyQuiet();if(Engine.ctx)Engine.silence();(this.cleanups||[]).forEach(f=>f());this.cleanups=[];App.redraw=null;},
   done(r){
     Engine.frameFn=null;Engine.onsetFn=null;
     const pct=Math.round(r.score*100);const v=pct>=85?['good','Nicely done']:pct>=55?['close','Getting there']:['miss','Keep working'];
     $('#exFeedback').innerHTML=`<div class="verdict v-${v[0]}"><b class="big num">${pct}%</b><div><strong>${v[1]}</strong><p>${esc(r.summary)}</p></div></div>`;
+    if(Rec.active()){const snap=Rec.snapshot(),tok=this.token;Rec.meta.snap=snap;Rec.meta.result={pct,summary:r.summary};setTimeout(()=>{if(Rec.active()&&Rec.meta&&Rec.meta.token===tok)Rec.finish({pct,summary:r.summary});},800);}
     if(this.mode==='practice'){
+      this.tries=this.tries||[];this.tries.push({pct,summary:r.summary});
       setActions($('#exActions'),[{label:'New one →',kind:'primary',on:()=>this.newItem()},{label:'Try this one again',on:()=>this.mountItem()}]);
     }else{
       /* up to 3 tries per item; the best try is the score that counts */
@@ -2141,6 +2196,136 @@ const Session={
     const entry={ts:Date.now(),mod:this.mod.id,level:this.level,focus:this.focus,pct,rubric:rb.n,rl:rb.l,items:this.results.map(r=>r.pct),tries:this.results.map(r=>r.tries||[r.pct]),cls:curClassKey(),voice:partKey(),path:curPath()};
     me.history.push(entry);Store.save();renderResults(entry,this.results);showView('results');
   },
+};
+
+/* ---------- Recordings: students record their takes; teachers hear them next to the exercise ----------
+   With "Record my takes" on, every try in the Practice room or an Assessment is recorded from the moment the
+   item appears until it is scored (or left). Each take keeps a picture of the exercise exactly as it was on
+   the screen when it was scored (notation, key, tempo and the green/yellow/red result marks), plus the score.
+   Takes are kept in this browser (IndexedDB) until the student turns them in: "Download for my teacher"
+   builds ONE self-contained .html file (audio inside) that opens in any browser, and that the teacher can also
+   drop, many at once, into Recordings → "Open recordings from students". No server, no accounts. */
+const RecDB={
+  db:null,
+  open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{if(!window.indexedDB){rej(new Error('no idb'));return;}
+    const r=indexedDB.open('measureup-recordings',1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('takes')){const s=d.createObjectStore('takes',{keyPath:'id'});s.createIndex('sid','sid');}};
+    r.onsuccess=()=>{this.db=r.result;res(this.db);};r.onerror=()=>rej(r.error);});},
+  async tx(mode,fn){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction('takes',mode),s=t.objectStore('takes');let out;const q=fn(s);if(q)q.onsuccess=()=>{out=q.result;};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);});},
+  put(take){return this.tx('readwrite',s=>s.put(take));},
+  del(id){return this.tx('readwrite',s=>s.delete(id));},
+  async mine(sid){const all=await this.tx('readonly',s=>s.index('sid').getAll(sid));return(all||[]).sort((a,b)=>b.ts-a.ts);},
+};
+const Rec={
+  mr:null,chunks:[],t0:0,meta:null,tick:null,stream:null,
+  get on(){const me=Store.me;return !!(me&&me.recOn);},
+  set on(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}},
+  supported(){return !!(window.MediaRecorder&&window.indexedDB);},
+  mime(){const c=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];return c.find(m=>{try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||'';},
+  active(){return !!(this.mr&&this.mr.state!=='inactive');},
+  /* begin a take for the item now on screen */
+  async begin(meta){
+    if(!this.on||!this.supported()||this.active())return;
+    if(!await ensureMic())return;
+    const st=Engine.stream;if(!st||!st.getAudioTracks().some(t=>t.readyState==='live'))return;
+    if(meta.token&&!meta.token.alive)return;
+    const mt=this.mime();let mr;try{mr=new MediaRecorder(st,mt?{mimeType:mt,audioBitsPerSecond:64000}:{audioBitsPerSecond:64000});}catch(e){try{mr=new MediaRecorder(st);}catch(e2){toast('This browser can’t record audio. Try Chrome.');return;}}
+    this.mr=mr;this.chunks=[];this.meta=meta;this.t0=performance.now();this.snap=null;this.result=null;
+    mr.ondataavailable=e=>{if(e.data&&e.data.size)this.chunks.push(e.data);};
+    const chunks=this.chunks,m=meta;mr.onstop=()=>this.save(m,chunks,mr.mimeType||mt||'audio/webm');
+    mr.start(1000);this.show();},
+  /* end the current take; result = {pct, summary} when it was scored */
+  finish(result){
+    if(!this.active())return;
+    this.meta.snap=this.meta.snap||Rec.snapshot();if(result)this.meta.result=result;
+    this.meta.dur=(performance.now()-this.t0)/1000;
+    try{this.mr.stop();}catch(e){}
+    this.mr=null;this.show();},
+  /* a picture of the exercise as the student saw it: the stage, with canvases flattened and controls removed */
+  snapshot(){
+    const st=$('#exStage');if(!st)return'';const cl=st.cloneNode(true);
+    const cs=[...st.querySelectorAll('canvas')],cc=[...cl.querySelectorAll('canvas')];
+    cc.forEach((c,i)=>{try{const img=document.createElement('img');img.src=cs[i].toDataURL('image/png');img.style.maxWidth='100%';c.replaceWith(img);}catch(e){c.remove();}});
+    cl.querySelectorAll('button,input,select,textarea,label.toggle,script,.status,.beats,.countbig').forEach(x=>x.remove());
+    cl.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
+    return cl.innerHTML;},
+  async save(m,chunks,mime){
+    const dur=m.dur||0;if(dur<1.5||!chunks.length)return;
+    const blob=new Blob(chunks,{type:mime.split(';')[0]||'audio/webm'});
+    const me=Store.me;if(!me)return;
+    const take={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),sid:Store.data.current,name:me.name,
+      cls:CLASSES[curClassKey()]?CLASSES[curClassKey()].name:'',part:partName(me),ts:Date.now(),mode:m.mode,skill:m.skill,level:m.level,focus:m.focus,
+      item:m.item,total:m.total,tryN:m.tryN,pct:m.result?m.result.pct:null,summary:m.result?m.result.summary:'',snap:m.snap||'',mime:blob.type,dur:Math.round(dur*10)/10,blob};
+    try{await RecDB.put(take);toast(`Take saved (${Math.round(dur)} s) · see My Recordings.`,2200);}catch(e){toast('The recording could not be saved in this browser.');}},
+  show(){const b=$('#exRecLive');if(!b)return;clearInterval(this.tick);
+    if(this.active()){b.hidden=false;const up=()=>{b.textContent=`● REC ${fmtT((performance.now()-this.t0)/1000).replace(/\.\d$/,'')}`;};up();this.tick=setInterval(up,500);}else b.hidden=true;},
+  bar(){const t=$('#exRecBar');if(!t)return;
+    if(!this.supported()){t.innerHTML='';return;}
+    t.innerHTML=`<label class="toggle rec-toggle"><input type="checkbox" id="exRecOn" ${this.on?'checked':''}> Record my takes</label><span class="pill rec-live" id="exRecLive" hidden></span><button class="btn quiet" type="button" id="exRecList">My recordings</button>`;
+    $('#exRecOn').onchange=async e=>{this.on=e.target.checked;if(this.on){toast('Recording is on: each try is saved with the exercise, for your teacher.',3200);Session.recBegin();}else this.finish(null);};
+    $('#exRecList').onclick=()=>showView('recs');this.show();},
+};
+/* the card a teacher (or the student) sees for one take: the exercise, the audio, and the result */
+function recTakeCard(t,src){
+  const e=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const when=new Date(t.ts).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+  const sc=t.pct==null?'<span class="pill">Not scored (stopped early)</span>':`<span class="pill ${t.pct>=85?'good':t.pct>=55?'close':'miss'}">${t.pct}%</span>`;
+  return `<article class="card rec-card"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px"><div><p class="eyebrow">${e(t.mode==='assess'?'Assessment':'Practice')} · ${e(t.skill)} · Level ${e(t.level)}${t.focus?` · ${e(t.focus)}`:''}</p>
+    <h3 style="margin:2px 0">${t.mode==='assess'?`Item ${e(t.item)} of ${e(t.total)} · try ${e(t.tryN)}`:`Practice item ${e(t.item)}${t.tryN>1?` · try ${e(t.tryN)}`:''}`}</h3><p class="muted" style="font-size:14px;margin:0">${e(t.name)} · ${e(t.part)} · ${e(when)} · ${e(t.dur)} s</p></div>${sc}</div>
+    <audio controls preload="metadata" src="${e(src)}" style="width:100%;margin:10px 0" onloadedmetadata="if(this.duration===Infinity){this.currentTime=1e101;this.ontimeupdate=function(){this.ontimeupdate=null;this.currentTime=0;};}"></audio>
+    <div class="stage rec-snap">${t.snap||'<p class="muted">No picture of the exercise was saved.</p>'}</div>
+    ${t.summary?`<p class="muted" style="margin-top:8px;font-size:14px">${e(t.summary)}</p>`:''}</article>`;}
+const blobToDataURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(b);});
+/* one self-contained file for the teacher: the app's styles, the takes (audio inside) and a tiny viewer */
+async function recExportHTML(takes){
+  const me=Store.me,css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  const data=[];for(const t of takes){const{blob,...rest}=t;data.push({...rest,audio:await blobToDataURL(blob)});}
+  const json=JSON.stringify({app:'Measure Up!',kind:'recordings',v:1,student:me?me.name:'',made:Date.now(),takes:data}).replace(/</g,'\\u003c');
+  const title=`Measure Up! recordings · ${me?me.name:''}`;
+  return `<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${css}
+body{background:var(--bg,#f6f8fc)}.rec-wrap{max-width:980px;margin:0 auto;padding:20px 16px;display:grid;gap:16px}.rec-snap{overflow-x:auto;pointer-events:none}</style></head>
+<body><div class="rec-wrap"><div><p class="eyebrow">Measure Up! · recordings turned in</p><h1 id="who"></h1><p class="muted" id="sub"></p></div><div id="list" style="display:grid;gap:16px"></div></div>
+<script type="application/json" id="mu-takes">${json}</`+`script>
+<script>${recTakeCard.toString()}
+const D=JSON.parse(document.getElementById('mu-takes').textContent);document.getElementById('who').textContent=D.student;
+document.getElementById('sub').textContent=D.takes.length+' take'+(D.takes.length===1?'':'s')+' · turned in '+new Date(D.made).toLocaleString();
+document.getElementById('list').innerHTML=D.takes.map(t=>recTakeCard(t,t.audio)).join('');</`+`script></body></html>`;}
+function recFileName(){const me=Store.me,d=new Date();return `MeasureUp-${(me?me.name:'student').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')}-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.html`;}
+/* the Recordings page: the student's own takes, and (for teachers) a viewer for files students turned in */
+const RecView={sel:new Set(),urls:[],
+  free(){this.urls.forEach(u=>URL.revokeObjectURL(u));this.urls=[];},
+  async render(){
+    const v=$('#viewRecs');this.free();const me=Store.me;let mine=[];
+    if(me){try{mine=await RecDB.mine(Store.data.current);}catch(e){}}
+    const today=new Date().toDateString();if(!this._init){this._init=true;this.sel=new Set(mine.filter(t=>new Date(t.ts).toDateString()===today).map(t=>t.id));}
+    this.sel=new Set([...this.sel].filter(id=>mine.some(t=>t.id===id)));
+    v.innerHTML=`<div><p class="eyebrow">${me?esc(me.name)+' · ':''}Recordings</p><h1>My Recordings</h1></div>
+      ${!this.supportedNote()?'':this.supportedNote()}
+      ${me?`<div class="card"><p>Turn on <b>Record my takes</b> in the Practice room (Practice or Assessment) and every try is recorded with the exercise you performed. Listen back here, tick the takes you want to hand in, then download one file and turn it in on Google Classroom.</p>
+        <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="rvDl" ${this.sel.size?'':'disabled'}>⬇ Download ${this.sel.size||''} take${this.sel.size===1?'':'s'} for my teacher</button><button class="btn" type="button" id="rvAll" ${mine.length?'':'disabled'}>Select all</button><button class="btn" type="button" id="rvNone" ${this.sel.size?'':'disabled'}>Select none</button><span class="grow"></span><button class="btn quiet" type="button" id="rvPrac">Go to the Practice room →</button></div>
+        <p class="muted" style="font-size:14px;margin-top:8px">Recordings stay in this browser on this computer until you download them. Already-downloaded takes can be deleted to free space.</p></div>
+        <div id="rvList" style="display:grid;gap:14px">${mine.length?mine.map(t=>{const u=URL.createObjectURL(t.blob);this.urls.push(u);return`<div class="rec-row"><label class="rec-pick"><input type="checkbox" data-sel="${t.id}" ${this.sel.has(t.id)?'checked':''}> Hand in</label>${recTakeCard(t,u)}<div class="row"><button class="btn quiet" type="button" data-del="${t.id}">Delete this take</button></div></div>`;}).join(''):'<div class="card"><p class="muted">No recordings yet.</p></div>'}</div>`
+      :`<div class="card"><p class="muted">Sign in to record and hand in your takes.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="rvSign">Go to sign in</button></div></div>`}
+      <div class="card"><h3>For Teachers: Open Recordings from Students</h3><p class="muted" style="margin-top:6px">Download the files students turned in (from Google Classroom), then choose them here, as many as you like at once. Each take shows the exercise the student performed next to the recording. The files also open on their own in any browser.</p>
+        <div class="row" style="margin-top:10px"><label class="btn" style="cursor:pointer">Choose student files…<input type="file" id="rvFiles" accept=".html,text/html" multiple hidden></label><span class="muted" id="rvFileNote"></span></div></div>
+      <div id="rvInbox" style="display:grid;gap:18px"></div>`;
+    const dl=$('#rvDl');if(dl)dl.onclick=()=>this.download(mine.filter(t=>this.sel.has(t.id)));
+    const a=$('#rvAll');if(a)a.onclick=()=>{mine.forEach(t=>this.sel.add(t.id));this.render();};
+    const n=$('#rvNone');if(n)n.onclick=()=>{this.sel.clear();this.render();};
+    const p=$('#rvPrac');if(p)p.onclick=()=>showView('hub');const sg=$('#rvSign');if(sg)sg.onclick=()=>showView('hub');
+    $$('[data-sel]',v).forEach(c=>c.onchange=()=>{c.checked?this.sel.add(c.dataset.sel):this.sel.delete(c.dataset.sel);const b=$('#rvDl');if(b){b.disabled=!this.sel.size;b.textContent=`⬇ Download ${this.sel.size||''} take${this.sel.size===1?'':'s'} for my teacher`;}});
+    $$('[data-del]',v).forEach(b=>b.onclick=async()=>{await RecDB.del(b.dataset.del);this.sel.delete(b.dataset.del);this.render();});
+    $('#rvFiles').onchange=e=>this.openFiles([...e.target.files]);},
+  supportedNote(){return Rec.supported()?'':'<div class="card"><p class="muted">This browser can’t record audio here. Use an up-to-date Chrome or Edge.</p></div>';},
+  async download(takes){if(!takes.length)return;const b=$('#rvDl');if(b){b.disabled=true;b.textContent='Building the file…';}
+    try{const html=await recExportHTML(takes.sort((x,y)=>x.ts-y.ts)),url=URL.createObjectURL(new Blob([html],{type:'text/html'})),a=document.createElement('a');a.href=url;a.download=recFileName();document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+      toast('Downloaded. Turn this file in on Google Classroom (Add or create → File).',5000);}
+    catch(e){toast('The file could not be built. Try fewer takes at a time.');}
+    if(b){b.disabled=false;b.textContent=`⬇ Download ${this.sel.size} take${this.sel.size===1?'':'s'} for my teacher`;}},
+  async openFiles(files){const box=$('#rvInbox'),note=$('#rvFileNote');const groups=[];let bad=0;
+    for(const f of files){try{const txt=await f.text(),doc=new DOMParser().parseFromString(txt,'text/html'),j=doc.getElementById('mu-takes');if(!j)throw 0;const D=JSON.parse(j.textContent);if(D.kind!=='recordings')throw 0;groups.push({file:f.name,D});}catch(e){bad++;}}
+    groups.sort((a,b)=>a.D.student.localeCompare(b.D.student));
+    note.textContent=`${groups.length} file${groups.length===1?'':'s'} opened${bad?` · ${bad} could not be read (not a Measure Up! recordings file)`:''}.`;
+    box.innerHTML=groups.map(g=>`<section style="display:grid;gap:12px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(g.D.student)}</h2><span class="muted">${g.D.takes.length} take${g.D.takes.length===1?'':'s'} · ${esc(g.file)}</span></div>${g.D.takes.map(t=>recTakeCard(t,t.audio)).join('')}</section>`).join('');}
 };
 
 function rememberFocus(mod,f){const me=Store.me;if(!me)return;me.focus=me.focus||{};me.focus[mod]=f;Store.save();}
@@ -2190,14 +2375,14 @@ function showView(v){
   if(v!=='ex'&&Session.token)Session.cleanup();
   if(v!=='settings'&&Engine._mon){Engine.taps.delete(Engine._mon);Engine._mon=null;}
   $$('[data-view]').forEach(s=>s.hidden=s.dataset.view!==v);
-  const tabFor={hub:'hub',games:'games',game:'games',setup:'hub',ex:'hub',results:'hub',learn:'learn',lesson:Learn.inTool?'tools':'learn',tools:'tools',progress:'progress',settings:'settings',miccheck:'settings',spec:'hub',assess:'learn'}[v];
+  const tabFor={hub:'hub',games:'games',game:'games',setup:'hub',ex:'hub',results:'hub',learn:'learn',lesson:Learn.inTool?'tools':'learn',tools:'tools',progress:'progress',recs:'progress',settings:'settings',miccheck:'settings',spec:'hub',assess:'learn'}[v];
   if(v!=='lesson')Learn.cleanup();
   if(v!=='miccheck')Wiz.cleanup();
   if(v!=='assess')Assess.cleanup();
   if(v!=='spec')Spec.cleanup();
   if(v!=='game'&&typeof Game!=='undefined'){clearInterval(Game.timer);Game.cleanup&&Game.cleanup();Game.cleanup=null;}
   $$('.tab').forEach(t=>{if(t.dataset.go===tabFor)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');});
-  if(v==='hub')renderHub();if(v==='games')renderGames();if(v==='game')renderGame();if(v==='learn')renderLearn();if(v==='tools')renderTools();if(v==='progress')renderProgress();if(v==='settings')renderSettings();if(v==='miccheck')renderWiz();if(v==='spec')renderSpec();if(v==='assess')renderAssess();
+  if(v==='recs')RecView.render();else RecView.free&&RecView.free();if(v==='hub')renderHub();if(v==='games')renderGames();if(v==='game')renderGame();if(v==='learn')renderLearn();if(v==='tools')renderTools();if(v==='progress')renderProgress();if(v==='settings')renderSettings();if(v==='miccheck')renderWiz();if(v==='spec')renderSpec();if(v==='assess')renderAssess();
   if(v==='learn'||v==='hub'||v==='games')restoreScroll(v);else window.scrollTo(0,0);
 }
 /* ---------- stay on your page across a refresh ---------- */
@@ -2325,7 +2510,9 @@ function renderProgress(){
     ${h.length?`<div class="tablewrap"><table class="hist"><thead><tr><th>Date</th><th>Part</th><th>Skill</th><th>Level</th><th>Score</th><th>Rubric</th><th>Items</th></tr></thead><tbody>${h.map(e=>`<tr><td>${fmtDate(e.ts)}</td><td>${partLabel(e.voice)}</td><td>${Modules[e.mod].title}${e.focus&&e.focus!=='mix'?`<br><small class="muted">${focusLabel(e.mod,e.focus)}</small>`:''}</td><td class="num">${e.level}</td><td><span class="pill ${e.pct>=85?'good':e.pct>=55?'close':'miss'}">${e.pct}%</span></td><td>${e.rubric} · ${e.rl}</td><td class="num">${e.items.join(' / ')}</td></tr>`).join('')}</tbody></table></div>`
     :`<p class="muted">Switch to Assessment mode in the Practice room to record a score. Practice rounds are not saved.</p>`}
     <div id="pgCopyHost"></div></div>
-    <p class="muted" style="font-size:14px">Scores are saved in this browser on this computer only. Use “Copy all” to send them to your teacher.</p>`;
+    <p class="muted" style="font-size:14px">Scores are saved in this browser on this computer only. Use “Copy all” to send them to your teacher.</p>
+    <div class="card"><div class="row" style="justify-content:space-between"><div><h3>My Recordings</h3><p class="muted" style="font-size:14px;margin-top:4px">Listen to your recorded takes and hand them in to your teacher.</p></div><button class="btn" type="button" id="pgRecs">Open My Recordings →</button></div></div>`;
+  $('#pgRecs').onclick=()=>showView('recs');
   const b=$('#pgCopy');if(b)b.onclick=()=>copyText(reportText(h),$('#pgCopyHost'));bindPathSwitch(v,renderProgress);
 }
 function renderSettings(){
@@ -2780,6 +2967,22 @@ function comfyDo(rels){
 }
 const NOTE_NAME=['C','D♭','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 const midiName=m=>NOTE_NAME[mod(m,12)]+(Math.floor(m/12)-1);
+const SHARP_NAME=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+/* A note's letter name as the student reads it IN THE KEY: spelled from its solfege degree above do
+   (A major: ti = G♯, not A♭; E♭ major: fa = A♭), at written pitch for transposing instruments.
+   Falls back to sharps in sharp keys / flats in flat keys if the spelling would need a double sharp or flat. */
+function keyNoteName(m,base,keyName,scale){
+  const tr=trOf(),rel=mod(m-base,12),w=mod(m+tr,12),tonic=mod(base+tr,12);
+  const syl=(scale==='minor'?['do','ra','re','me','mi','fa','fi','sol','le','la','te','ti']:['do','di','re','ri','mi','fa','fi','sol','si','la','te','ti'])[rel];
+  let home=null;
+  if(mod(tr,12))home=keyByPc(tonic);
+  else if(keyName){home=keyByName(keyName);if(!home){const k=parseKey(keyName);if(k.L>=0)home={l:k.L,pc:k.pc,sig:k.acc*7};}}
+  if(!home||home.l==null)return NOTE_NAME[w];
+  let nm=spell({l:home.l,pc:tonic},rel,syl);
+  /* a chromatic (non-scale) note never takes an odd spelling like B♯, E♯, C♭ or F♭: use its other name (A: ri → C, li → F) */
+  const diat=(scale==='minor'?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11]).includes(rel);
+  if(!diat&&/^(B♯|E♯|C♭|F♭)$/.test(nm)){const alt=(scale==='minor'?['do','di','re','ri','mi','fa','fi','sol','si','la','li','ti']:['do','ra','re','me','mi','fa','se','sol','le','la','te','ti'])[rel];nm=spell({l:home.l,pc:tonic},rel,alt);}
+  return /[𝄪𝄫]|^(B♯|E♯|C♭|F♭)$/.test(nm)&&!diat?((home.sig||0)>=0?SHARP_NAME:NOTE_NAME)[w]:/[𝄪𝄫]/.test(nm)?((home.sig||0)>=0?SHARP_NAME:NOTE_NAME)[w]:nm;}
 function D(syl,rel){if(!isInst()||!isPitchedPath())return syl;const cx=Learn.cx&&Learn.cx.inst?Learn.cx:ctxFor({});return String(syl).split(' · ').map(x=>spell(cx.home,rel,x)).join(' · ');}
 const cxNow=()=>Learn.cx&&Learn.cx.inst?Learn.cx:ctxFor({});
 function actx(){return Engine.ensureCtx();}
@@ -7303,7 +7506,7 @@ function gRacer(host){
         const br=box.getBoundingClientRect(),py=br.top+top-box.scrollTop;if(top-box.scrollTop>box.clientHeight-60||top<box.scrollTop)box.scrollTop=Math.max(0,top-30);}
       else if(now>end+0.4){ph.setAttribute('visibility','hidden');if(perform)grade(exp,claps,T);else $('.g-mnum',host).textContent='Preview done';return;}
       Learn.raf(step);};Learn.raf(step);}
-  function grade(exp,claps,T){const LS=run.LS,voice=!!(LS&&LS.voice),env=LS?LS.env().map((x,k)=>k%2?x:x-run.lat):[];Learn.cleanup();const beat=Math.min(...run.bpms.map(b=>60/b)),r=scoreRhythmV(run.ev,claps,env,beat,voice,rhyVlog(LS,run.lat)),sc=run.sc;
+  function grade(exp,claps,T){const LS=run.LS,voice=!!(LS&&LS.voice),env=LS?LS.env().map((x,k)=>k%2?x:x-run.lat):[];Learn.cleanup();const beat=Math.min(...run.bpms.map(b=>60/b)),r=scoreRhythmV(run.ev,claps,env,beat,voice,rhyVlog(LS,run.lat),{tempoFree:!S.met}),sc=run.sc;
     r.res.forEach((q,j)=>{const n=exp[j].n;svgEl('circle',{cx:n.x,cy:n.top+2*10+30,r:5,class:q.grade==='good'?'hit-good':q.grade==='ok'?'hit-ok':'hit-miss'},sc.svg);});
     if(voice){const ms=run.mStart,bAt=(mi,t)=>run.mBeat[mi]+(t-ms[mi])*run.bpms[mi]/60;
       rhySpans(env,r.thr,ms[0]-0.2,run.ev[run.ev.length-1].end+0.3).forEach(([a,b])=>{for(let mi=0;mi<ms.length;mi++){const m0=ms[mi],m1=mi<ms.length-1?ms[mi+1]:run.ev[run.ev.length-1].end+0.3;const x0=Math.max(a,m0),x1=Math.min(b,m1);if(x1<=x0)continue;
@@ -7314,7 +7517,7 @@ function gRacer(host){
     const prevOk=run.hist.filter(x=>x.ok).map(x=>x.bpm),prevBest=prevOk.length?Math.max(...prevOk):null;run.hist.push({pct,bpm:S.bpm,ok:rec});
     const mine=run.tries>1?`<p class="muted">This rhythm, try ${run.tries}: ${run.hist.map(x=>`${x.pct}% at ♩ = ${x.bpm}`).join(' · ')}${rec&&prevBest!=null&&S.bpm>prevBest?` · <b>Your fastest yet on this rhythm.</b>`:''}</p>`:'';
     $('.g-hud',host).innerHTML=`<div class="g-res"><p class="g-big">${pct}% at ♩ = ${S.bpm}${S.tm!=='steady'?` (${S.tm==='faster'?'getting faster':'changing'})`:''}</p>
-      <p>${claps.length?`${ontime} of ${r.res.length} notes on time${r.extras.length?`, ${r.extras.length} extra ${voice?'attack':'clap'}${r.extras.length>1?'s':''}`:''}.${rhySummary(r)} Green dots are on time, yellow close${voice?' or held too short':''}, red missed.${voice?' The blue bar shows how long you held each sound.':''}`:voice?'Nothing was heard. Use a clear consonant on each syllable (T, K) and move closer to the microphone.':'No claps were heard. Clap louder or move closer to the microphone.'}</p>
+      <p>${claps.length?`${ontime} of ${r.res.length} notes on time${r.extras.length?`, ${r.extras.length} extra ${voice?'attack':'clap'}${r.extras.length>1?'s':''}`:''}.${rhySummary(r)} ${S.tm==='steady'?rhyPulseNote(r,S.bpm):''} Green dots are on time, yellow close${voice?' or held too short':''}, red missed.${voice?' The blue bar shows how long you held each sound.':''}`:voice?'Nothing was heard. Use a clear consonant on each syllable (T, K) and move closer to the microphone.':'No claps were heard. Clap louder or move closer to the microphone.'}</p>
       <p>${rec?(nb?`<b>New best tempo${old?`! Up from ♩ = ${old}`:''}.</b> Try it a little faster.`:`Recorded. Your best is ♩ = ${old}.`):'You need 85% to record this tempo. Try again, or slow down a little.'}</p>${mine}
       <div class="row"><button class="btn primary" type="button" id="gSame">${micIcon} ↻ Play again: same rhythm</button><button class="btn" type="button" id="gFaster">Same rhythm, faster: ♩ = ${Math.min(220,S.bpm+6)}</button><button class="btn" type="button" id="gAgain">New rhythm</button><button class="btn" type="button" id="gSet">Change settings</button></div></div>`;
     $('#gSame').onclick=()=>start(true,true);$('#gAgain').onclick=()=>start(true,false);$('#gFaster').onclick=()=>{S.bpm=Math.min(220,S.bpm+6);D.set=S;Store.save();const v=$('.g-bpmv',host),r=$('.g-bpm',host);if(v)v.textContent=S.bpm;if(r)r.value=S.bpm;start(true,true);};$('#gSet').onclick=()=>{$('.g-hud',host)&&$('.g-hud',host).remove();settings();};}
@@ -7354,7 +7557,7 @@ function gMemory(host){
   function keyboard(base){
     const wr=trOf?trOf():0,isB=m=>[1,3,6,8,10].includes(mod(m+wr,12));let lo=base,hi=base+12;if(isB(lo))lo--;if(isB(hi))hi++;
     const keys=[];for(let m=lo;m<=hi;m++)keys.push(m);const whites=keys.filter(m=>!isB(m)),W=100/whites.length;
-    return `<div class="g-kb" role="group" aria-label="Piano keyboard">${keys.map(m=>{const s=m-base,nm=NOTE_NAME[mod(m+wr,12)];
+    return `<div class="g-kb" role="group" aria-label="Piano keyboard">${keys.map(m=>{const s=m-base,nm=keyNoteName(m,base,run&&run.keyName,S.scale);
       if(!isB(m))return`<button type="button" class="kw" data-s="${s}" aria-label="${nm}" style="width:${W}%">${s===0||s===12?'<i>do</i>':''}<span>${nm}</span></button>`;
       const wi=whites.filter(x=>x<m).length;return`<button type="button" class="kb" data-s="${s}" aria-label="${nm}" style="left:${wi*W-W*0.31}%;width:${W*0.62}%">${s===0||s===12?'<i>do</i>':''}</button>`;}).join('')}</div>`;}
   async function start(){
@@ -7362,7 +7565,7 @@ function gMemory(host){
     const pads=PADS[S.scale][S.rng];run={pads,base,seq:[],keyName,over:false,turn:false,k:0,deadline:0};Game.run=run;
     const clickPads=S.inp==='syl',tag=clickPads?'button type="button"':'div';
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Round 1</span><span class="pill royal">do = ${keyName} · ${S.scale} · ${S.rng==='full'?'full scale':'do – '+S.rng}</span><span class="grow"></span><span class="pill g-st">Listen…</span><span class="pill g-cd" hidden></span><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
-      ${S.inp==='piano'?`<div class="g-kbwrap">${keyboard(base)}</div>`:`<div class="g-pads${clickPads?' tap':''}">${pads.map((s,i)=>`<${tag} class="g-pad" data-i="${i}" style="--c:${COL[i%COL.length]}"><b>${sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(base+s+trOf(),12)]}</small>`:''}</${tag.split(' ')[0]}>`).join('')}</div>`}
+      ${S.inp==='piano'?`<div class="g-kbwrap">${keyboard(base)}</div>`:`<div class="g-pads${clickPads?' tap':''}">${pads.map((s,i)=>`<${tag} class="g-pad" data-i="${i}" style="--c:${COL[i%COL.length]}"><b>${sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</${tag.split(' ')[0]}>`).join('')}</div>`}
       <p class="muted g-msg" style="text-align:center"></p>`;
     $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);settings();};
     if(clickPads)$$('.g-pad',host).forEach(p=>p.onclick=()=>{const s=pads[+p.dataset.i];tap(s,sylOf(s),p);});
@@ -7451,10 +7654,10 @@ function nShared(S){
     doBtn:()=>`<button class="btn" type="button" id="gDo">🔊 Hear do</button>`,
     wireDo(){const b=$('#gDo');if(b)b.onclick=async()=>{const kn=await hearDo();b.textContent=`🔊 Hear do (do = ${kn})`;};}};
 }
-function nKeyboard(base){
+function nKeyboard(base,keyName,scale){
   const wr=trOf?trOf():0,isB=m=>[1,3,6,8,10].includes(mod(m+wr,12));let lo=base,hi=base+12;if(isB(lo))lo--;if(isB(hi))hi++;
   const keys=[];for(let m=lo;m<=hi;m++)keys.push(m);const whites=keys.filter(m=>!isB(m)),W=100/whites.length;
-  return `<div class="g-kb" role="group" aria-label="Piano keyboard">${keys.map(m=>{const s=m-base,nm=NOTE_NAME[mod(m+wr,12)];
+  return `<div class="g-kb" role="group" aria-label="Piano keyboard">${keys.map(m=>{const s=m-base,nm=keyNoteName(m,base,keyName,scale);
     if(!isB(m))return`<button type="button" class="kw" data-s="${s}" aria-label="${nm}" style="width:${W}%">${s===0||s===12?'<i>do</i>':''}<span>${nm}</span></button>`;
     const wi=whites.filter(x=>x<m).length;return`<button type="button" class="kb" data-s="${s}" aria-label="${nm}" style="left:${wi*W-W*0.31}%;width:${W*0.62}%">${s===0||s===12?'<i>do</i>':''}</button>`;}).join('')}</div>`;}
 const nLit=(el,cls,ms)=>{if(!el)return;el.classList.add(cls);const k='_t'+cls;clearTimeout(el[k]);el[k]=setTimeout(()=>el.classList.remove(cls),ms);};
@@ -7518,7 +7721,7 @@ function gDaily(host){
       if(ds[j])Learn.later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';Learn.later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},Math.max(330,P.ring*900));},(at-c.currentTime)*1000);
       t+=gap;});
     Learn.later(done,(t-c.currentTime+0.3)*1000);}
-  const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(run.base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`;
+  const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(run.base+s,run.base,run.keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`;
   function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.8,0.85);fn(s);});}
   function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.doneItem||(!beginner&&run.replayed))return;run.replayed=true;const b=$('#gRe');if(b)b.disabled=true;fn(()=>{const b2=$('#gRe');if(b2&&beginner&&!run.doneItem)b2.disabled=false;});};}
   function item(){if(!run||run.over)return;const it=run.items[run.i];run.lock=true;run.doneItem=false;run.replayed=false;
@@ -7532,7 +7735,7 @@ function gDaily(host){
       playSeq(it.pair,()=>{q.innerHTML=`Which one was <b>${N.sylOf(it.target)}</b>?`;ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
         $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;resolve(+b.dataset.w===it.ansIdx,`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
         replayBtn(done=>playSeq(it.pair,done));run.lock=false;});}
-    else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base)}</div>`;
+    else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base,run.keyName,S.scale)}</div>`;
       $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
     else if(run.noMic){dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
       msg.innerHTML='No microphone is available, so this one is skipped — it won’t count against you.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" type="button" id="gSkip">Skip this item</button></span>';
@@ -7599,18 +7802,25 @@ function gRush(host){
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     const clickPads=S.inp==='syl';
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-streak">Streak 0</span><span class="pill g-lives" title="Lives left"></span><span class="pill g-tempo" title="How fast the notes are coming">Andante</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div><div class="g-timebar" aria-hidden="true"><i></i></div></div>
-      ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`}
+      ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base,keyName,S.scale)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`}
       <p class="muted g-msg" style="text-align:center">Listen, then tap the note you heard…</p>`;
     $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
     $('.g-lives',host).innerHTML=lifeNote(4);
     if(clickPads)$$('.g-pad',host).forEach(p=>p.onclick=()=>answer(pads[+p.dataset.i],p));
     if(S.inp==='piano')$$('.g-kb button',host).forEach(b=>b.onclick=()=>answer(+b.dataset.s,b));
+    /* establish the key before the clock starts: do – mi – sol – mi – do (me in minor), lighting each pad as it sounds */
+    const mi=S.scale==='minor'?3:4,arp=[0,mi,7,mi,0],step=0.62,me=run;$('.g-clock',host).textContent=S.dur;
+    $('.g-msg',host).innerHTML=`Hear the key first: <b>do – ${mi===3?'me':'mi'} – sol – ${mi===3?'me':'mi'} – do</b>. The clock starts right after.`;
+    actx();const tA=Engine.ctx.currentTime+0.25;
+    arp.forEach((x,k)=>{pianoHit(base+x,tA+k*step,k===arp.length-1?1.3:step*0.95,0.9);
+      Learn.later(()=>{if(run!==me||run.over)return;const el=S.inp==='piano'?$(`.g-kb button[data-s="${x}"]`,host):$(`.g-pad[data-i="${pads.indexOf(x)}"]`,host);if(el)nLit(el,'want',Math.round(step*900));},(0.25+k*step)*1000);});
+    Learn.later(()=>{if(run!==me||run.over)return;run.t0=performance.now();$('.g-msg',host).textContent='Go! Listen, then tap the note you heard…';startClock();next();},(0.25+arp.length*step+0.9)*1000);}
+  function startClock(){
     clearInterval(Game.timer);Game.timer=setInterval(()=>{if(!host.isConnected){clearInterval(Game.timer);return;}if(!run||run.over)return;
       const left=S.dur-(performance.now()-run.t0)/1000,c=$('.g-clock',host);if(c){c.textContent=Math.max(0,Math.ceil(left));c.style.color=left<=10?'var(--miss)':'';}
       if(left<=0){finish();return;}
-      if(!run.lock&&run.deadline&&performance.now()>run.deadline)timeUp();},100);
-    next();}
+      if(!run.lock&&run.deadline&&performance.now()>run.deadline)timeUp();},100);}
   /* accelerando: how far through the run (0 → 1), the answer window for the next note, and its tempo word */
   const prog=()=>Math.min(1,(performance.now()-run.t0)/1000/S.dur);
   const windowSec=()=>4-2.6*prog();
