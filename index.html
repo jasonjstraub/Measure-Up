@@ -7123,7 +7123,7 @@ const fmtT=s=>{const m=Math.floor(s/60),r=s-m*60;return`${m}:${r<10?'0':''}${r.t
 const gSeg=(name,opts,val,lab)=>`<div class="g-f"><span class="eyebrow">${lab}</span><div class="seg" role="group" aria-label="${lab}" style="flex-wrap:wrap">${opts.map(([v,l])=>`<button type="button" data-${name}="${v}" aria-pressed="${String(v)===String(val)}">${l}</button>`).join('')}</div></div>`;
 const gSel=(name,opts,val,lab)=>`<label class="g-f"><span class="eyebrow">${lab}</span><select data-sel="${name}">${opts.map(([v,l])=>`<option value="${v}" ${String(v)===String(val)?'selected':''}>${l}</option>`).join('')}</select></label>`;
 function gBind(host,set,redraw){
-  $$('[data-lv],[data-meas],[data-mode],[data-clef],[data-ts],[data-tsm],[data-tm],[data-met],[data-scale],[data-rng],[data-first],[data-lab],[data-inp],[data-wait],[data-lights],[data-snd],[data-ans],[data-len],[data-dur],[data-drop]',host).forEach(b=>{const k=Object.keys(b.dataset)[0];b.onclick=()=>{let v=b.dataset[k];if(!isNaN(+v)&&v!=='')v=+v;set[k]=v;redraw();};});
+  $$('[data-lv],[data-meas],[data-mode],[data-clef],[data-ts],[data-tsm],[data-tm],[data-met],[data-scale],[data-rng],[data-first],[data-lab],[data-inp],[data-wait],[data-lights],[data-snd],[data-ans],[data-len],[data-pace],[data-dur],[data-drop]',host).forEach(b=>{const k=Object.keys(b.dataset)[0];b.onclick=()=>{let v=b.dataset[k];if(!isNaN(+v)&&v!=='')v=+v;set[k]=v;redraw();};});
   $$('[data-sel]',host).forEach(s=>s.onchange=()=>{let v=s.value;if(!isNaN(+v)&&v!==''&&s.dataset.sel!=='key')v=+v;set[s.dataset.sel]=v;redraw();});}
 function openGame(id){Game.id=id;showView('game');}
 const Game={id:null,timer:null};
@@ -7463,20 +7463,27 @@ const nLit=(el,cls,ms)=>{if(!el)return;el.classList.add(cls);const k='_t'+cls;cl
 const dailyToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 function dailyDue(){const me=Store.me;if(!me)return false;me.daily=me.daily||{done:'',log:[]};return me.daily.done!==dailyToday();}
 function gDaily(host){
-  const D=gData('daily'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile'},D.set),N=nShared(S),me=Store.me;
+  const D=gData('daily'),S=Object.assign({scale:'major',rng:'sol',key:'rand',len:'profile',pace:'slow'},D.set),N=nShared(S),me=Store.me;
   if(!me){host.innerHTML='<div class="card"><p>Sign in first — your Daily Do is saved under your name.</p></div>';return;}
   me.daily=me.daily||{done:'',log:[]};
   /* Difficulty follows the student: Middle School Chorus, or anyone still early in the lessons, gets the
      beginner set — 8 items (2 of each kind), more time on the singing items, and unlimited replays. */
   const lessonsDone=Object.keys(me.lessons||{}).length,clsLvl={msc:1,hcc:2,msi:3}[me.cls]||2;
   const beginner=clsLvl<=1||lessonsDone<5,perCat=beginner?2:3,singMs=beginner?45000:30000;
+  /* Listening pace: ring = how long each pitch sounds, step = start-to-start spacing (the difference is a rest),
+     doRing/doWait = the opening do, after = how much longer to linger on the feedback before the next item. */
+  const PACE={standard:{ring:0.57,step:0.62,doRing:1.1,doWait:1700,after:1},
+              relaxed:{ring:1.2,step:1.55,doRing:1.6,doWait:2400,after:1.3},
+              slow:{ring:1.9,step:2.4,doRing:2.0,doWait:3000,after:1.6}};
+  const pc=()=>PACE[S.pace]||PACE.slow;
   let run=null;
-  function settings(){clearInterval(Game.timer);N.fixKey();D.set=S;Store.save();
+  function settings(){clearInterval(Game.timer);N.fixKey();if(!PACE[S.pace])S.pace='slow';D.set=S;Store.save();
     const doneToday=me.daily.done===dailyToday(),last=me.daily.log[me.daily.log.length-1];
     host.innerHTML=`<div class="card g-set"><div class="g-grid">
       ${N.scaleSeg()}${N.rngSeg()}${N.keySel()}
-      ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (singing items)')}</div>
-      <p class="muted">${beginner?'Eight':'Twelve'} items${beginner?' — the beginner set for your class and lesson progress':''}, about ${beginner?'a minute and a half':'two minutes'}: ${perCat} × name the pitch you hear, ${perCat} × find one pitch inside a group of four, ${perCat} × say which of two pitches is the one asked for, and ${perCat} × ${isInst()?'play':'sing'} the step you are given. The session opens by playing do, so you can center first.${beginner?' Beginners also get extra time on the singing items, and can hear do and replay the pitches as many times as they need.':''} ${doneToday?'Today’s Daily Do is done — this run is an extra.':'Finishing today’s Daily Do unlocks the rest of Measure Up! for the day.'}</p>
+      ${gSeg('len',[['profile','Game default (wider)'],['65','65¢'],['80','80¢'],['100','100¢']],S.len,'Pitch leniency (singing items)')}
+      ${gSeg('pace',[['slow','Slow'],['relaxed','Relaxed'],['standard','Standard']],S.pace,'Listening pace')}</div>
+      <p class="muted">${beginner?'Eight':'Twelve'} items${beginner?' — the beginner set for your class and lesson progress':''}, about ${({slow:beginner?'two and a half minutes':'three and a half minutes',relaxed:beginner?'two minutes':'three minutes',standard:beginner?'a minute and a half':'two minutes'})[S.pace]||(beginner?'two and a half minutes':'three and a half minutes')}: ${perCat} × name the pitch you hear, ${perCat} × find one pitch inside a group of four, ${perCat} × say which of two pitches is the one asked for, and ${perCat} × ${isInst()?'play':'sing'} the step you are given. The session opens by playing do, so you can center first. On <b>Slow</b> pace each pitch rings for about two seconds with a short rest before the next one; <b>Relaxed</b> and <b>Standard</b> move along faster.${beginner?' Beginners also get extra time on the singing items, and can hear do and replay the pitches as many times as they need.':''} ${doneToday?'Today’s Daily Do is done — this run is an extra.':'Finishing today’s Daily Do unlocks the rest of Measure Up! for the day.'}</p>
       <div class="row"><button class="btn primary" type="button" id="gGo">▶ ${doneToday?'Do an extra Daily Do':'Start today’s Daily Do'}</button>${N.doBtn()}<span class="pill ${doneToday?'good':''}">${doneToday?`Today: done${last&&last.d===dailyToday()?` · ${last.pct}%`:''}`:'Today: not done yet'}</span></div></div>
       ${me.daily.log.length?`<p class="eyebrow" style="margin-top:14px">Your recent Daily Dos</p><table class="maptab ref-tab"><tr><th>Day</th><td><b>Score</b></td></tr>${me.daily.log.slice(-6).reverse().map(x=>`<tr><th>${x.d===dailyToday()?'Today':x.d}</th><td>${x.right} of ${x.n} (${x.pct}%)${x.skip?` · ${x.skip} skipped`:''}</td></tr>`).join('')}</table>`:''}`;
     gBind(host,S,settings);$('#gGo').onclick=start;N.wireDo();}
@@ -7500,15 +7507,15 @@ function gDaily(host){
         <div class="g-ans" style="width:100%"></div>
         <p class="muted g-msg" style="margin:0"></p>
       </div>`;
-    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
-    actx();pianoHit(base,Engine.ctx.currentTime+0.1,1.1,0.9);
+    $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,pc().doRing,0.9);};
+    actx();pianoHit(base,Engine.ctx.currentTime+0.1,pc().doRing,0.9);
     $('.g-msg',host).textContent='That was do — your home pitch for this session.';
-    Learn.later(()=>item(),1700);}
+    Learn.later(()=>item(),pc().doWait);}
   const ORD=['1st','2nd','3rd','4th'];
   const dotRow=n=>Array.from({length:n},()=>'<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--line);display:inline-block"></span>').join('');
-  function playSeq(notes,done){actx();const c=Engine.ctx,gap=0.62;let t=c.currentTime+0.45;const ds=$$('.g-dots span',host);
-    notes.forEach((s,j)=>{const at=t;pianoHit(run.base+s,at,gap*0.92,0.9);
-      if(ds[j])Learn.later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';Learn.later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},330);},(at-c.currentTime)*1000);
+  function playSeq(notes,done){actx();const c=Engine.ctx,P=pc(),gap=P.step;let t=c.currentTime+0.45;const ds=$$('.g-dots span',host);
+    notes.forEach((s,j)=>{const at=t;pianoHit(run.base+s,at,P.ring,0.9);
+      if(ds[j])Learn.later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';Learn.later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},Math.max(330,P.ring*900));},(at-c.currentTime)*1000);
       t+=gap;});
     Learn.later(done,(t-c.currentTime+0.3)*1000);}
   const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${NOTE_NAME[mod(run.base+s+trOf(),12)]}</small>`:''}</button>`).join('')}</div>`;
@@ -7538,7 +7545,7 @@ function gDaily(host){
     if(ok)run.right++;
     $('.g-msg',host).innerHTML=ok?`<b style="color:var(--good)">Correct!</b> ${explain}`:`<b style="color:var(--miss)">Not quite.</b> ${explain}`;
     $('.g-score',host).textContent=`${run.right} right`;
-    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},ok?(beginner?1300:1000):(beginner?2400:1750));}
+    Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},(ok?(beginner?1300:1000):(beginner?2400:1750))*pc().after);}
   function skipItem(){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();run.skip++;
     $('.g-msg',host).textContent='Skipped — no harm done.';
     Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},700);}
