@@ -7598,7 +7598,12 @@ function gMemory(host){
     judge(mod(s-run.pads[run.seq[run.k]],12)===0,label,el);}
   function listen(){
     let win=[],need=false,acc=null,lastP=-9,onset=-9,pk=-200,lo=200,dip=false,accT=-9;
+    /* Lenient but not slow: a RIGHT note is accepted the moment it settles. A WRONG reading is only "pending":
+       it ends the game only if the student holds that wrong pitch steadily (HOLD_WRONG s) or stops singing on it.
+       A scoop into the note, or the tail of the glide from the last note, is forgiven as soon as the pitch lands. */
+    const HOLD_WRONG=0.4;let pend=null;
     const fn=L=>{if(run.over||!run.turn)return;const t=L.t;
+      if(pend&&!L.pitched&&t-lastP>0.22){const lab=pend.lab;pend=null;judge(false,lab);return;}
       /* Repeated pitch: when the next note is the same as the one just accepted, a fresh syllable shows up as a
          loudness dip and rise (the consonant) rather than silence. Watch for it so "do-do" at tempo counts twice. */
       if(need&&acc!=null&&run.k<run.seq.length&&Math.abs(pcDiff(acc,run.base+run.pads[run.seq[run.k]]))<0.5&&t-accT>0.12){
@@ -7620,8 +7625,13 @@ function gMemory(host){
          reads a fifth sharp in pitch class (d near -5). If the implied fundamental (d+5) is within
          tolerance, count the note as sung. */
       if(want<=52&&Math.abs(d+5)<tol)d+=5;
-      const ok=Math.abs(d)<tol;
-      acc=med;need=true;win=[];onset=t;accT=t;pk=L.db;dip=false;judge(ok,chrSyl(Math.round(med)-run.base));};Engine.fastFn=fn;Learn.listen(fn);}
+      const ok=Math.abs(d)<tol,lab=chrSyl(Math.round(med)-run.base);
+      if(!ok){const pc=mod(Math.round(med),12);
+        if(!pend||pend.pc!==pc)pend={pc,t0:t,lab};
+        if(t-pend.t0<HOLD_WRONG)return;            /* not sure yet: keep listening */
+        pend=null;}
+      else pend=null;
+      acc=med;need=true;win=[];onset=t;accT=t;pk=L.db;dip=false;judge(ok,lab);};Engine.fastFn=fn;Learn.listen(fn);}
   function fail(msg){if(run.over)return;run.over=true;run.turn=false;if(S.inp==='mic')Learn.cleanup();const cd=$('.g-cd',host);if(cd)cd.hidden=true;
     const len=run.seq.length-1,key=recKey(),old=D.best[key]||0,nb=len>old;if(nb)D.best[key]=len;
     gLog(D,key,null,len,len>0);$('.g-st',host).classList.remove('good');$('.g-st',host).textContent='Game over';
@@ -7733,7 +7743,9 @@ function gDaily(host){
       playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(done=>playSeq([it.s],done));run.lock=false;});}
     else if(it.type==='which'){q.textContent='Listen to the two pitches…';dots.innerHTML=dotRow(2);
       playSeq(it.pair,()=>{q.innerHTML=`Which one was <b>${N.sylOf(it.target)}</b>?`;ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
-        $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;resolve(+b.dataset.w===it.ansIdx,`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
+        /* if both pitches are the same, either answer is right */
+        const same=mod(it.pair[0]-it.pair[1],12)===0;
+        $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;const w=+b.dataset.w;resolve(mod(it.pair[w]-it.target,12)===0,same?`Both pitches were ${N.sylOf(it.target)}, so either answer is correct.`:`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
         replayBtn(done=>playSeq(it.pair,done));run.lock=false;});}
     else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base,run.keyName,S.scale)}</div>`;
       $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
