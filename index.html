@@ -524,6 +524,7 @@ svg.staff.mini{max-width:420px;width:100%}
   </nav>
   <div class="side-lab">Student</div>
   <button class="side-btn" id="whoChip" type="button" hidden></button>
+  <button class="side-btn" id="classChip" type="button" hidden></button>
   <button class="side-btn" id="micChip" type="button" title="Turn microphone on" aria-pressed="false"><span class="dot"></span><span id="micChipText">Mic off</span><span class="lvl"><i id="micLvl"></i></span><svg class="fa fa-power-off mic-pw" width="1em" height="1em" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V256c0 17.7 14.3 32 32 32s32-14.3 32-32V32zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c38.9 32.3 63.5 81 63.5 135.4c0 97.2-78.8 176-176 176s-176-78.8-176-176c0-54.4 24.7-103.1 63.5-135.4z"/></svg></button>
   <div class="gators" style="margin-top:auto"><img src="gators.png" alt="Gators mascot"><div style="min-width:0"><b>Go Gators</b><small>Gateway Regional HS · Performing Arts</small></div></div>
 </aside>
@@ -9568,6 +9569,124 @@ function themeChoice(){return document.documentElement.getAttribute('data-theme'
 $$('[data-theme-toggle]').forEach(b=>b.onclick=()=>setTheme(isDark()?'light':'dark'));syncThemeBtns();
 function drawer(open){$('#side').classList.toggle('open',open);$('#scrim').hidden=!open;}
 $('#menuBtn').onclick=()=>drawer(true);$('#scrim').onclick=()=>drawer(false);
+/* ---------- My Class: results and recordings go to the teacher's Conduct page ----------
+   A student joins a class with the class code the teacher set up in Conduct (the Google Classroom code works)
+   and their school Google account. From then on, every scored try in the Practice room and every finished
+   assessment is sent, with the recording and the exercise as it looked on screen, to the teacher's own
+   Google Drive through the teacher's Apps Script. Conduct shows it within seconds. If the internet drops,
+   results wait in this browser and are sent when it's back. */
+const SYNC_URL='https://script.google.com/macros/s/AKfycbyaSneDhEn_djnYducyYpL6I5clx60PvVquoRN-K4RwtUqnftB3Dpi76lKVu3VcUUBn0A/exec';   /* ← the teacher's Apps Script Web app address (ends in /exec) goes between the quotes */
+const SYNC_CLIENT_ID='478685706300-832naimdntbm14n3toh9rhg6i2o91haf.apps.googleusercontent.com';
+const Sync={
+  busy:false,waiting:0,
+  enabled(){return !!SYNC_URL;},
+  joined(){const me=Store.me;return !!(SYNC_URL&&me&&me.sync&&me.sync.key);},
+  async post(body){
+    let r;try{r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});}
+    catch(e){const er=new Error('No internet connection right now.');er.offline=true;throw er;}
+    if(!r.ok){const er=new Error('Your class connection isn’t answering right now ('+r.status+'). Try again in a minute.');er.offline=true;throw er;}
+    let j;try{j=await r.json();}catch(e){const er=new Error('Your class connection isn’t answering right now. Try again in a minute.');er.offline=true;throw er;}
+    if(!j.ok){const er=new Error(j.error||'Something went wrong.');er.server=true;throw er;}
+    return j;},
+  gsi(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();let s=document.getElementById('gsiJs');
+    if(!s){s=document.createElement('script');s.id='gsiJs';s.src='https://accounts.google.com/gsi/client';document.head.appendChild(s);}
+    s.addEventListener('load',()=>res());s.addEventListener('error',()=>rej(new Error('Couldn’t load Google sign-in. Check the internet connection.')));});},
+  token(){return this.gsi().then(()=>new Promise((res,rej)=>{try{const tc=google.accounts.oauth2.initTokenClient({client_id:SYNC_CLIENT_ID,scope:'openid email profile',
+    callback:r=>r&&r.access_token?res(r.access_token):rej(new Error('Google sign-in didn’t finish.')),
+    error_callback:e=>rej(new Error(e&&e.type==='popup_closed'?'The Google sign-in window was closed. Try again.':'Google sign-in didn’t finish. Try again.'))});tc.requestAccessToken({prompt:''});}catch(e){rej(e);}}));},
+  async join(code){
+    const me=Store.me;if(!me)throw new Error('Sign in first.');
+    code=String(code||'').trim().toLowerCase().replace(/\s+/g,'');
+    if(!/^[a-z0-9]{4,12}$/.test(code))throw new Error('Type the class code from your teacher (letters and numbers, like the Google Classroom code).');
+    const tok=await this.token();
+    const j=await this.post({action:'join',token:tok,code});
+    me.sync={key:j.key,email:j.email,gname:j.name,code:j.code,cls:j.className,joined:Date.now(),err:''};Store.save();Store.flush();
+    toast(`You joined ${j.className}. Your results now go to your teacher.`,4500);
+    this.flush();return j;},
+  leave(){const me=Store.me;if(me&&me.sync){delete me.sync;Store.save();Store.flush();}},
+  /* waiting to be sent: scored takes and finished assessments since the student joined */
+  async pending(){const me=Store.me;if(!me||!me.sync)return{takes:[],tests:[]};let takes=[];
+    try{takes=(await RecDB.mine(Store.data.current)).filter(t=>!t.sent&&t.pct!=null&&t.ts>=me.sync.joined);}catch(e){}
+    const tests=(me.history||[]).filter(h=>!h.sent&&h.ts>=me.sync.joined);return{takes,tests};},
+  async flush(){
+    if(!this.joined()||this.busy)return;this.busy=true;
+    const me=Store.me,sid=Store.data.current;let err='';
+    try{
+      const {takes,tests}=await this.pending();
+      for(const t of takes.sort((a,b)=>a.ts-b.ts)){
+        if(Store.data.current!==sid)break;
+        const html=await recExportHTML([t]);
+        await this.post({action:'submit',skey:me.sync.key,code:me.sync.code,html,
+          rec:{id:t.id,ts:t.ts,mode:t.mode,skill:t.skill,level:t.level,focus:t.focus,item:t.item,total:t.total,tryN:t.tryN,pct:t.pct,summary:t.summary,part:t.part,dur:t.dur,hasAudio:true}});
+        t.sent=Date.now();await RecDB.put(t);}
+      for(const h of tests.sort((a,b)=>a.ts-b.ts)){
+        if(Store.data.current!==sid)break;
+        const mod=Modules[h.mod];
+        await this.post({action:'submit',skey:me.sync.key,code:me.sync.code,
+          rec:{id:'a'+h.ts.toString(36)+String(sid||'').replace(/[^a-z0-9]/gi,'').slice(0,12),ts:h.ts,kind:'assessment',mode:'assess',skill:mod?mod.title:h.mod,level:h.level,
+            focus:h.focus&&h.focus!=='mix'?focusLabel(h.mod,h.focus):'',pct:h.pct,rubric:h.rl||'',items:h.items||[],total:(h.items||[]).length,part:partName(me)}});
+        h.sent=Date.now();Store.save();}
+      me.sync.last=Date.now();
+    }catch(e){err=e.server?e.message:'';if(e.offline)this.offline=true;}
+    finally{this.busy=false;}
+    if(me.sync){me.sync.err=err;Store.save();}
+    if(!err)this.offline=false;
+    await this.count();this.paint();},
+  async count(){const p=await this.pending();this.waiting=p.takes.length+p.tests.length;return this.waiting;},
+  /* the My Class card: shown on the home page, in Settings and on My Recordings */
+  card(compact){
+    const me=Store.me;if(!SYNC_URL||!me)return'';
+    if(!me.sync)return`<div class="card sync-card"><h3>Join Your Class</h3>
+      <p class="muted" style="font-size:14px;margin-top:6px">Type the class code from your teacher (the same code you use for Google Classroom), then sign in with your <b>school Google account</b>. Your practice and assessment results, with recordings of your takes, go to your teacher.</p>
+      <div class="row" style="margin-top:10px;align-items:flex-end"><label class="field" style="flex:1 1 180px;max-width:240px">Class code<input type="text" class="sync-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. abc12de"></label><button class="btn primary sync-join" type="button">Join with Google</button></div>
+      <p class="muted sync-msg" style="font-size:14px;margin-top:8px" role="status"></p></div>`;
+    const s=me.sync,w=this.waiting;
+    const st=s.err?`<span class="pill miss">Not sending</span> <span class="muted" style="font-size:14px">${esc(s.err)}</span>`
+      :w?`<span class="pill close">${w} waiting to send</span> <span class="muted" style="font-size:14px">${this.offline?'They’ll send when the internet is back.':'Sending now…'}</span>`
+      :`<span class="pill good">All results sent</span>${s.last?` <span class="muted" style="font-size:14px">last sent ${new Date(s.last).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span>`:''}`;
+    if(compact)return`<div class="card sync-card"><div class="row" style="justify-content:space-between;gap:10px"><div><p class="eyebrow">My class</p><b>${esc(s.cls)}</b></div><div class="row" style="gap:8px">${st}</div></div></div>`;
+    return`<div class="card sync-card"><h3>My Class</h3>
+      <p style="margin-top:6px"><b>${esc(s.cls)}</b><br><span class="muted" style="font-size:14px">Signed in as ${esc(s.email)}</span></p>
+      <p class="muted" style="font-size:14px;margin-top:8px">Every scored try in the Practice room and every assessment is recorded and sent to your teacher, who hears it next to the exercise you performed.</p>
+      <div class="row" style="margin-top:10px;gap:8px">${st}</div>
+      <div class="row" style="margin-top:10px"><button class="btn sync-now" type="button" ${w&&!this.busy?'':'disabled'}>Send now</button><button class="btn quiet sync-leave" type="button">Leave this class</button></div>
+      <p class="muted sync-msg" style="font-size:14px;margin-top:8px" role="status"></p></div>`;},
+  bind(root){
+    $$('.sync-join',root).forEach(b=>{const box=b.closest('.sync-card'),inp=$('.sync-code',box),msg=$('.sync-msg',box);
+      const go=async()=>{b.disabled=true;msg.textContent='Opening Google sign-in…';try{await this.join(inp.value);this.refresh();}catch(e){msg.textContent=e.message;b.disabled=false;}};
+      b.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go();};this.gsi().catch(()=>{});});
+    $$('.sync-now',root).forEach(b=>b.onclick=()=>{b.disabled=true;this.flush();});
+    $$('.sync-leave',root).forEach(b=>b.onclick=()=>{const msg=$('.sync-msg',b.closest('.sync-card'));
+      if(b.dataset.sure){this.leave();this.refresh();toast('You left the class. Results stay on this computer.');}else{b.dataset.sure='1';b.textContent='Yes, leave the class';msg.textContent='Your teacher will stop getting your results until you join again.';}});},
+  /* the sidebar button under the student's name */
+  chip(){const c=$('#classChip');if(!c)return;const me=Store.me;c.hidden=!(SYNC_URL&&me);if(c.hidden)return;
+    const s=me.sync,w=this.waiting;
+    c.innerHTML=s?`<span class="dot" style="background:${s.err?'var(--miss,#c93b33)':w?'var(--close,#d08a00)':'var(--good,#1a8a57)'}"></span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.cls)}${w?` · ${w} to send`:''}</span>`
+      :`<span class="dot" style="background:var(--close,#d08a00)"></span><span>Join my class</span>`;
+    c.title=s?(s.err||'Your results go to your teacher'):'Join your class with the code from your teacher';
+    c.onclick=()=>showView('settings');},
+  /* draw the card wherever it is showing */
+  paint(){this.chip();$$('.sync-slot').forEach(s=>{s.innerHTML=this.card(s.dataset.compact==='1');this.bind(s);});if($('#exRecBar'))Rec.bar();},
+  refresh(){this.count().then(()=>this.paint());const ex=$('#exRecBar');if(ex)Rec.bar();},
+  slot(compact){return`<div class="sync-slot" data-compact="${compact?1:0}">${this.card(compact)}</div>`;},
+  start(){if(!SYNC_URL)return;
+    addEventListener('online',()=>this.flush());
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')this.flush();});
+    setInterval(()=>{if(this.waiting||this.offline)this.flush();},60000);
+    setTimeout(()=>this.flush(),1500);}
+};
+/* in a class, every try is recorded (the teacher hears it); otherwise the student's own switch decides */
+Object.defineProperty(Rec,'on',{configurable:true,get(){const me=Store.me;return !!(me&&(me.recOn||Sync.joined()));},set(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}}});
+{const save=Rec.save;Rec.save=async function(...a){await save.apply(this,a);Sync.flush();};}
+{const bar=Rec.bar;Rec.bar=function(){bar.call(this);const t=$('#exRecBar');if(!t||!Sync.joined()||!this.supported())return;const me=Store.me;
+  t.innerHTML=`<span class="pill good" title="Every try is recorded and sent to your teacher">● Recording for ${esc(me.sync.cls)}</span><span class="pill rec-live" id="exRecLive" hidden></span><button class="btn quiet" type="button" id="exRecList">My recordings</button>`;
+  $('#exRecList').onclick=()=>showView('recs');this.show();};}
+{const fin=Session.finishAssessment;Session.finishAssessment=function(...a){const r=fin.apply(this,a);Sync.flush();return r;};}
+{const wc=whoChip;whoChip=function(...a){const r=wc.apply(this,a);Sync.chip();return r;};}
+{const rh=renderHub;renderHub=function(...a){const r=rh.apply(this,a);if(Sync.enabled()&&Store.me){const top=$('#viewHub .hub-top');if(top){top.insertAdjacentHTML('afterend',Sync.slot(Sync.joined()));Sync.bind($('#viewHub'));}}return r;};}
+{const rs=renderSettings;renderSettings=function(...a){const r=rs.apply(this,a);if(Sync.enabled()&&Store.me){const g=$('#viewSettings .setgrid');if(g){g.insertAdjacentHTML('afterbegin',Sync.slot(false));Sync.bind(g);}}return r;};}
+{const rr=RecView.render;RecView.render=async function(...a){const r=await rr.apply(this,a);if(Sync.enabled()&&Store.me){const h=$('#viewRecs > div');if(h){h.insertAdjacentHTML('afterend',Sync.slot(false));Sync.bind($('#viewRecs'));}}return r;};}
+
 /* ---------- boot ---------- */
 $('#exToLessons').onclick=()=>{if(Session.mod&&Session.mod.id==='soundprops'){openLesson(isInst()?'bt0':'s0',0);return;}const id=Session.mod&&trackOf({skill:Session.mod.id});showView('learn');const t=id&&$('#track-'+id);if(t)t.scrollIntoView({block:'start'});};
 Store.load();
@@ -9580,6 +9699,7 @@ let rT;window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>
 if(document.fonts){document.fonts.ready.then(()=>App.redraw&&App.redraw());document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>App.redraw&&App.redraw());}
 window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{syncThemeBtns();App.redraw&&App.redraw();});
 bootNav();
+Sync.count().then(()=>Sync.paint());Sync.start();
 
 ;(window.requestIdleCallback||(f=>setTimeout(f,2500)))(()=>{try{REC.warm();}catch(e){}});
 </script>
