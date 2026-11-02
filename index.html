@@ -2255,7 +2255,7 @@ const Rec={
     const me=Store.me;if(!me)return;
     const take={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),sid:Store.data.current,name:me.name,
       cls:CLASSES[curClassKey()]?CLASSES[curClassKey()].name:'',part:partName(me),ts:Date.now(),mode:m.mode,skill:m.skill,level:m.level,focus:m.focus,
-      item:m.item,total:m.total,tryN:m.tryN,pct:m.result?m.result.pct:null,summary:m.result?m.result.summary:'',snap:m.snap||'',mime:blob.type,dur:Math.round(dur*10)/10,blob};
+      item:m.item,total:m.total,tryN:m.tryN,run:m.run||'',share:m.mode==='assess'||!(me.sync&&me.sync.sendPractice===false),pct:m.result?m.result.pct:null,summary:m.result?m.result.summary:'',snap:m.snap||'',mime:blob.type,dur:Math.round(dur*10)/10,blob};
     try{await RecDB.put(take);toast(`Take saved (${Math.round(dur)} s) · see My Recordings.`,2200);}catch(e){toast('The recording could not be saved in this browser.');}},
   show(){const b=$('#exRecLive');if(!b)return;clearInterval(this.tick);
     if(this.active()){b.hidden=false;const up=()=>{b.textContent=`● REC ${fmtT((performance.now()-this.t0)/1000).replace(/\.\d$/,'')}`;};up();this.tick=setInterval(up,500);}else b.hidden=true;},
@@ -9580,6 +9580,13 @@ const SYNC_CLIENT_ID='478685706300-j72e6l2mma0eurs50ksf9582gu1to4lb.apps.googleu
 const Sync={
   busy:false,waiting:0,
   enabled(){return !!SYNC_URL;},
+  /* the student decides whether Practice room tries go to the teacher (assessments always do) */
+  sharePractice(){const me=Store.me;return !!(me&&me.sync&&me.sync.sendPractice!==false);},
+  setSharePractice(on){const me=Store.me;if(!me||!me.sync)return;me.sync.sendPractice=!!on;Store.save();
+    toast(on?'Your Practice room tries will go to your teacher.':'Practice room tries stay on this computer. Assessments still go to your teacher.',3600);
+    if(on&&Session.mode!=='assess'&&Session.token&&Session.token.alive)Session.recBegin();
+    if(!on&&Session.mode!=='assess'&&!me.recOn)Rec.finish(null);
+    this.refresh();},
   joined(){const me=Store.me;return !!(SYNC_URL&&me&&me.sync&&me.sync.key);},
   async post(body){
     let r;try{r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});}
@@ -9606,7 +9613,9 @@ const Sync={
   leave(){const me=Store.me;if(me&&me.sync){delete me.sync;Store.save();Store.flush();}},
   /* waiting to be sent: scored takes and finished assessments since the student joined */
   async pending(){const me=Store.me;if(!me||!me.sync)return{takes:[],tests:[]};let takes=[];
-    try{takes=(await RecDB.mine(Store.data.current)).filter(t=>!t.sent&&t.pct!=null&&t.ts>=me.sync.joined);}catch(e){}
+    const pick=me.syncPick||{};
+    try{takes=(await RecDB.mine(Store.data.current)).filter(t=>!t.sent&&t.pct!=null&&t.ts>=me.sync.joined
+      &&(t.mode!=='assess'?t.share!==false:(t.run&&pick[t.run+'|'+t.item]===t.tryN)));}catch(e){}
     const tests=(me.history||[]).filter(h=>!h.sent&&h.ts>=me.sync.joined);return{takes,tests};},
   async flush(){
     if(!this.joined()||this.busy)return;this.busy=true;
@@ -9618,7 +9627,7 @@ const Sync={
         const html=await recExportHTML([t]);
         await this.post({action:'submit',skey:me.sync.key,code:me.sync.code,html,
           rec:{id:t.id,ts:t.ts,mode:t.mode,skill:t.skill,level:t.level,focus:t.focus,item:t.item,total:t.total,tryN:t.tryN,pct:t.pct,summary:t.summary,part:t.part,dur:t.dur,hasAudio:true}});
-        t.sent=Date.now();await RecDB.put(t);}
+        t.sent=Date.now();await RecDB.put(t);if(t.mode==='assess'&&me.syncPick){delete me.syncPick[t.run+'|'+t.item];Store.save();}}
       for(const h of tests.sort((a,b)=>a.ts-b.ts)){
         if(Store.data.current!==sid)break;
         const mod=Modules[h.mod];
@@ -9647,7 +9656,8 @@ const Sync={
     if(compact)return`<div class="card sync-card"><div class="row" style="justify-content:space-between;gap:10px"><div><p class="eyebrow">My class</p><b>${esc(s.cls)}</b></div><div class="row" style="gap:8px">${st}</div></div></div>`;
     return`<div class="card sync-card"><h3>My Class</h3>
       <p style="margin-top:6px"><b>${esc(s.cls)}</b><br><span class="muted" style="font-size:14px">Signed in as ${esc(s.email)}</span></p>
-      <p class="muted" style="font-size:14px;margin-top:8px">Every scored try in the Practice room and every assessment is recorded and sent to your teacher, who hears it next to the exercise you performed.</p>
+      <label class="toggle" style="margin-top:10px"><input type="checkbox" class="sync-share" ${this.sharePractice()?'checked':''}> Send my Practice room tries to my teacher</label>
+      <p class="muted" style="font-size:14px;margin-top:6px">${this.sharePractice()?'Every scored try in the Practice room is recorded and sent to your teacher, who hears it next to the exercise you performed.':'Your Practice room tries stay on this computer.'} Assessments are always sent: only the try you keep for each item.</p>
       <div class="row" style="margin-top:10px;gap:8px">${st}</div>
       <div class="row" style="margin-top:10px"><button class="btn sync-now" type="button" ${w&&!this.busy?'':'disabled'}>Send now</button><button class="btn quiet sync-leave" type="button">Leave this class</button></div>
       <p class="muted sync-msg" style="font-size:14px;margin-top:8px" role="status"></p></div>`;},
@@ -9656,6 +9666,7 @@ const Sync={
       const go=async()=>{b.disabled=true;msg.textContent='Opening Google sign-in…';try{await this.join(inp.value);this.refresh();}catch(e){msg.textContent=e.message;b.disabled=false;}};
       b.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go();};this.gsi().catch(()=>{});});
     $$('.sync-now',root).forEach(b=>b.onclick=()=>{b.disabled=true;this.flush();});
+    $$('.sync-share',root).forEach(c=>c.onchange=()=>this.setSharePractice(c.checked));
     $$('.sync-leave',root).forEach(b=>b.onclick=()=>{const msg=$('.sync-msg',b.closest('.sync-card'));
       if(b.dataset.sure){this.leave();this.refresh();toast('You left the class. Results stay on this computer.');}else{b.dataset.sure='1';b.textContent='Yes, leave the class';msg.textContent='Your teacher will stop getting your results until you join again.';}});},
   /* the sidebar button under the student's name */
@@ -9676,12 +9687,35 @@ const Sync={
     setTimeout(()=>this.flush(),1500);}
 };
 /* in a class, every try is recorded (the teacher hears it); otherwise the student's own switch decides */
-Object.defineProperty(Rec,'on',{configurable:true,get(){const me=Store.me;return !!(me&&(me.recOn||Sync.joined()));},set(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}}});
+Object.defineProperty(Rec,'on',{configurable:true,get(){const me=Store.me;return !!(me&&(me.recOn||(Sync.joined()&&(Session.mode==='assess'||Sync.sharePractice()))));},set(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}}});
 {const save=Rec.save;Rec.save=async function(...a){await save.apply(this,a);Sync.flush();};}
 {const bar=Rec.bar;Rec.bar=function(){bar.call(this);const t=$('#exRecBar');if(!t||!Sync.joined()||!this.supported())return;const me=Store.me;
-  t.innerHTML=`<span class="pill good" title="Every try is recorded and sent to your teacher">● Recording for ${esc(me.sync.cls)}</span><span class="pill rec-live" id="exRecLive" hidden></span><button class="btn quiet" type="button" id="exRecList">My recordings</button>`;
+  const assess=Session.mode==='assess',share=Sync.sharePractice();
+  if(assess||share)t.innerHTML=`<span class="pill good" title="${assess?'Assessment tries are recorded; the try you keep for each item goes to your teacher':'Every try is recorded and sent to your teacher'}">● Recording for ${esc(me.sync.cls)}</span><span class="pill rec-live" id="exRecLive" hidden></span><button class="btn quiet" type="button" id="exRecList">My recordings</button>`;
+  if(!assess){t.insertAdjacentHTML('beforeend',`<label class="toggle rec-toggle"><input type="checkbox" id="exShare" ${share?'checked':''}> Send to my teacher</label>`);
+    $('#exShare').onchange=e=>Sync.setSharePractice(e.target.checked);}
   $('#exRecList').onclick=()=>showView('recs');this.show();};}
-{const fin=Session.finishAssessment;Session.finishAssessment=function(...a){const r=fin.apply(this,a);Sync.flush();return r;};}
+/* assessments: only the try the student keeps for each item goes to the teacher.
+   Each assessment gets a run id; when the student moves on from an item, the kept (best) try is recorded,
+   and only that take is sent. The other tries stay in this browser (My Recordings). */
+Sync.keep=function(sess){const me=Store.me;if(!me||sess.mode!=='assess'||!sess._run)return;
+  const res=sess.results||[];sess._kept=sess._kept||0;let changed=false;
+  for(let i=sess._kept;i<res.length;i++){const tr=res[i].tries||[res[i].pct];const best=Math.max(...tr);me.syncPick=me.syncPick||{};me.syncPick[sess._run+'|'+(i+1)]=tr.indexOf(best)+1;changed=true;}
+  sess._kept=res.length;if(changed){Store.save();this.flush();}};
+{const st=Session.start;Session.start=function(...a){this._kept=0;this._run=App.mode==='assess'?'r'+Date.now().toString(36):null;return st.apply(this,a);};}
+{const ni=Session.newItem;Session.newItem=function(...a){Sync.keep(this);return ni.apply(this,a);};}
+{const b=Rec.begin;Rec.begin=function(meta){if(meta&&meta.mode==='assess')meta.run=Session._run;return b.call(this,meta);};}
+/* recording starts when the student presses ▶ Start (or ▶ Measure…), not when the item appears.
+   Exercises without such a button record from the moment the item is shown, as before. */
+{const rb=Session.recBegin,isGo=b=>/^\s*▶\s*(Start|Measure)/.test(b.textContent||'');
+  Session.recBegin=function(...a){const acts=$('#exActions');
+    if(acts&&acts._recWait){acts.removeEventListener('click',acts._recWait,true);acts._recWait=null;}
+    if(!acts||![...acts.querySelectorAll('button')].some(isGo))return rb.apply(this,a);
+    const tok=this.token,self=this;
+    acts._recWait=e=>{const b=e.target&&e.target.closest&&e.target.closest('button');if(!b||!isGo(b))return;
+      acts.removeEventListener('click',acts._recWait,true);acts._recWait=null;if(self.token===tok&&tok&&tok.alive)rb.apply(self,a);};
+    acts.addEventListener('click',acts._recWait,true);};}
+{const fin=Session.finishAssessment;Session.finishAssessment=function(...a){Sync.keep(this);const r=fin.apply(this,a);Sync.flush();return r;};}
 {const wc=whoChip;whoChip=function(...a){const r=wc.apply(this,a);Sync.chip();return r;};}
 {const rh=renderHub;renderHub=function(...a){const r=rh.apply(this,a);if(Sync.enabled()&&Store.me){const top=$('#viewHub .hub-top');if(top){top.insertAdjacentHTML('afterend',Sync.slot(Sync.joined()));Sync.bind($('#viewHub'));}}return r;};}
 {const rs=renderSettings;renderSettings=function(...a){const r=rs.apply(this,a);if(Sync.enabled()&&Store.me){const g=$('#viewSettings .setgrid');if(g){g.insertAdjacentHTML('afterbegin',Sync.slot(false));Sync.bind(g);}}return r;};}
