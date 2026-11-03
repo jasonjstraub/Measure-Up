@@ -1649,6 +1649,7 @@ function focusList(mod){
     notation:inst?[MIX,{id:'major',label:'Major melodies',desc:'Read melodies in major keys.'},{id:'minor',label:'Minor melodies',desc:'Read melodies in minor keys.'},{id:'chrom',label:'Chromatic notes',desc:'Read sharps, flats and naturals in a melody.'}]
       :[MIX,{id:'keyC',label:'Key of C',desc:'No sharps or flats.'},{id:'sharp',label:'Sharp keys',desc:'G, D and A major.'},{id:'flat',label:'Flat keys',desc:'F, B♭ and E♭ major.'},{id:'minor',label:'Minor melodies',desc:'Find do in a minor key.'},{id:'chrom',label:'Chromatic notes',desc:'Read sharps, flats and naturals in a melody.'}],
     scales:[MIX,{id:'major',label:'Major scale',desc:'The major scale, up and down.'},{id:'penta',label:'Do to sol',desc:'The first five notes of major.'},{id:'natural',label:'Natural minor',desc:'Minor with te and le.'},{id:'harmonic',label:'Harmonic minor',desc:'Minor with ti raised.'},{id:'melodic',label:'Melodic minor',desc:'La and ti going up, te and le going down.'},{id:'chromatic',label:'Chromatic scale',desc:'Every half step.'},{id:'modes',label:'Modes',desc:'All seven modes on the same home note (do-based).'}],
+    daily:[MIX,{id:'name',label:'Name the pitch',desc:'Hear one pitch and tap its syllable.'},{id:'pos',label:'Find a pitch in a group',desc:'Hear four pitches and name the one asked for.'},{id:'which',label:'Which of two',desc:'Hear two pitches and choose the one asked for.'},{id:'sing',label:inst?'Play the step':'Sing the step',desc:inst?'Hear do, then play the step shown.':'Hear do, then sing the step shown.'}],
     mixed:[{id:'mix',label:'Everything',desc:'Each item comes from a different area, at random.'},{id:'ear',label:'Listening only',desc:'Half steps, whole steps, octaves, chords and meter by ear.'}],
     intervals:[MIX,{id:'chordBuild',label:'Build chords',desc:'Add the 3rd and 5th to make a major or minor triad.'},{id:'chordSee',label:'Major or minor? (sight)',desc:'Identify triads on the staff.'},{id:'chordEar',label:'Major or minor? (ear)',desc:'Hear a chord and name its quality.'},{id:'hw',label:'Half and whole steps (ear)',desc:'Hear three intervals and find the half step or the whole step.'},{id:'octEar',label:'Octaves (ear)',desc:'Find the octaves, harmonic and melodic.'},{id:'small',label:'2nds and 3rds',desc:'Small intervals up from do.'},{id:'perfect',label:'4ths, 5ths and octaves',desc:'The perfect intervals.'},{id:'large',label:'6ths and 7ths',desc:'Wide intervals up from do.'},{id:'down',label:'Going down',desc:'Intervals down from high do.'}],
     rhythm:[MIX,{id:'triplets',label:'Triplets',desc:'Clap eighth- and quarter-note triplets.'},{id:'rnote',label:'Reading notation',desc:'Parts of a note, beams, dots, ties, rests and time signatures.'},{id:'rmeter',label:'Meter by ear',desc:'Duple, triple and quadruple; 5/4 and 7/8 groupings; triplets.'},{id:'meterEar',label:'Hear the meter (melodies)',desc:'2/4 or 3/4, and recognizing simple, compound, 5/4 and changing meters.'},{id:'tsWrite',label:'Write the time signature',desc:'Count the beats, choose the time signature and place it.'},{id:'basic',label:'Quarter, half and whole notes',desc:'Long notes and quarter rests.'},{id:'eighths',label:'Eighth notes',desc:'Ti-Ti and eighth rests.'},{id:'sixteenths',label:'Sixteenth notes',desc:'Ti-Ka-Ti-Ka and its cousins.'},{id:'dotted',label:'Dotted rhythms',desc:'Dotted quarter and eighth.'},{id:'sync',label:'Syncopation',desc:'Accents off the beat.'}],
@@ -2250,13 +2251,13 @@ const Rec={
     cl.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
     return cl.innerHTML;},
   async save(m,chunks,mime){
-    const dur=m.dur||0;if(dur<1.5||!chunks.length)return;
+    const dur=m.dur||0;if(dur<(m.minDur||1.5)||!chunks.length)return;
     const blob=new Blob(chunks,{type:mime.split(';')[0]||'audio/webm'});
     const me=Store.me;if(!me)return;
-    const take={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),sid:Store.data.current,name:me.name,
+    const take={id:m.id||('t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),sid:Store.data.current,name:me.name,
       cls:CLASSES[curClassKey()]?CLASSES[curClassKey()].name:'',part:partName(me),ts:Date.now(),mode:m.mode,skill:m.skill,level:m.level,focus:m.focus,
-      item:m.item,total:m.total,tryN:m.tryN,run:m.run||'',share:m.mode==='assess'||!(me.sync&&me.sync.sendPractice===false),pct:m.result?m.result.pct:null,summary:m.result?m.result.summary:'',snap:m.snap||'',mime:blob.type,dur:Math.round(dur*10)/10,blob};
-    try{await RecDB.put(take);toast(`Take saved (${Math.round(dur)} s) · see My Recordings.`,2200);}catch(e){toast('The recording could not be saved in this browser.');}},
+      item:m.item,total:m.total,tryN:m.tryN,run:m.run||'',share:m.mode==='assess'||m.mode==='daily'||!(me.sync&&me.sync.sendPractice===false),pct:m.result?m.result.pct:null,summary:m.result?m.result.summary:'',snap:m.snap||'',mime:blob.type,dur:Math.round(dur*10)/10,blob};
+    try{await RecDB.put(take);if(!m.quiet)toast(`Take saved (${Math.round(dur)} s) · see My Recordings.`,2200);}catch(e){toast('The recording could not be saved in this browser.');}},
   show(){const b=$('#exRecLive');if(!b)return;clearInterval(this.tick);
     if(this.active()){b.hidden=false;const up=()=>{b.textContent=`● REC ${fmtT((performance.now()-this.t0)/1000).replace(/\.\d$/,'')}`;};up();this.tick=setInterval(up,500);}else b.hidden=true;},
   bar(){const t=$('#exRecBar');if(!t)return;
@@ -5548,7 +5549,7 @@ function wOctFind(host,o,onPass){
 /* ---------- Musical Independence: rounds, layered melodies and part-singing ---------- */
 /* Notes are written in solfege relative to each part's "do": syl[,'] : duration. "," = an octave lower, "'" = an octave higher.
    Durations: w whole, h. dotted half, h half, q. dotted quarter, q quarter, e eighth. r = rest. "|" marks a barline (checked, not drawn from). */
-const ENS_DUR={w:4,'h.':3,h:2,'q.':1.5,q:1,e:0.5};
+const ENS_DUR={w:4,'h.':3,h:2,'q.':1.5,q:1,'e.':0.75,e:0.5,s:0.25};
 const ENS_SYL={do:0,re:1,mi:2,fa:3,sol:4,la:5,ti:6},ENS_SYLN=['do','re','mi','fa','sol','la','ti'];
 /* comfortable written ranges (MIDI) for each kind of part */
 const ENS_RANGE={S:[60,79],A:[55,74],T:[48,67],B:[41,62],Bar:[45,64],P1:[60,77],P2:[55,72],H:[60,77],M:[55,72],L:[45,64]};
@@ -5665,7 +5666,7 @@ function ensScore(host,o){
   /* the solfege row sits below the lowest note of any part */
   const labOff=Math.max(30,...o.parts.map(p=>{const bd=CLEF_BOTTOM[p.clef]??30,sh=p.clef==='treble8'?7:0,ds=p.n.filter(n=>n.deg!=null).map(n=>tD0+7*p.oct+n.deg+sh);return ds.length?(bd-Math.min(...ds))*sp/2+17:0;}));
   const blockH=30+staffH+labOff+(hasLyr?20:6);
-  const anyE=o.parts.some(p=>p.n.some(n=>n.dur<1)),bw=(o.meter==='6/8'?50:anyE?46:40)+(hasLyr?12:0);
+  const anyE=o.parts.some(p=>p.n.some(n=>n.dur<1)),anyS=o.parts.some(p=>p.n.some(n=>n.dur<0.5)),bw=(anyS?68:o.meter==='6/8'?50:anyE?46:40)+(hasLyr?12:0);
   const len=Math.max(...o.parts.map(p=>p.n.len)),nMeas=Math.ceil(len/M.per-1e-6);
   const labW=o.parts.length>1?62:8,clefX=labW+2,x0=clefX+34+nAcc*9+24;
   /* as many measures per line as fit the space, balanced across lines; a round puts each entrance at the start of a line */
@@ -5720,7 +5721,8 @@ function ensScore(host,o){
       if(e.dur<4){const bm=beamOf.get(e),up=bm?bm.up:e.d<mid,sx=up?x+5.1:x-5.1,ey=bm?bm.by:(up?e.y-27:e.y+27);
         svgEl('line',{x1:sx,x2:sx,y1:e.y+(up?-1:1),y2:ey,class:'stk','stroke-width':1.3},g);
         if(bm&&bm.grp[0]===e){const L=bm.grp[bm.grp.length-1],lx=(bm.up?L.x+5.1:L.x-5.1),th=bm.up?4:-4;svgEl('path',{d:`M${sx} ${ey}L${lx} ${ey}L${lx} ${ey+th}L${sx} ${ey+th}Z`,class:'ink'},svg);}
-        if(!bm&&e.dur<1)svgEl('path',{d:up?`M${sx} ${ey}c1 6 9 8 7 17`:`M${sx} ${ey}c1-6 9-8 7-17`,class:'stk','stroke-width':1.6},g);}
+        if(!bm&&e.dur<1)svgEl('path',{d:up?`M${sx} ${ey}c1 6 9 8 7 17`:`M${sx} ${ey}c1-6 9-8 7-17`,class:'stk','stroke-width':1.6},g);
+        if(!bm&&e.dur<0.5)svgEl('path',{d:up?`M${sx} ${ey+7}c1 6 9 8 7 17`:`M${sx} ${ey-7}c1-6 9-8 7-17`,class:'stk','stroke-width':1.6},g);}
       const sy=svgEl('text',{x,y:e.bot+labOff,class:'syl-lab ens-syl'},g);sy.textContent=e.name?e.name+(e.deg>=7?'′':''):ensSyl(e.deg);
       {const L=mod(e.d,7),pc=mod(o.key.t+ensSemiN(e),12),a=mod(pc-MAJOR[L]+6,12)-6,mk=Math.floor(e.beat/M.per+1e-6)+':'+e.d,was=accMem.has(mk)?accMem.get(mk):keyAcc(L,sig);
         if(a!==was){const at=svgEl('text',{x:x-9,y:e.y,class:'acc','font-size':20,'text-anchor':'end'},g);at.textContent=ACC_GLYPH[a];fitAcc(at,e.y,ACC_GLYPH[a]);}accMem.set(mk,a);}
@@ -5772,6 +5774,7 @@ function wEns(host,o,onPass){
     const vr=ensVoice(),oct=(vr==='T'||vr==='B')?-1:0;
     return[...Array(st.voices).keys()].map(v=>({id:'V'+(v+1),name:'Voice '+(v+1),oct,rng:vr,n:ex.mel,start:v*ex.round.entry,me:v===st.myV}));}
   function fitKey(){
+    if(ex.fixKey)return ex.fixKey;
     if(!round)return ensFit(parts,ex.minor);
     const vr=ensVoice(),oct=(vr==='T'||vr==='B')?-1:0;return ensFit([{n:ex.mel,oct,rng:vr}],ex.minor);}
   function render(){
@@ -7711,7 +7714,7 @@ function gDaily(host){
     return out;}
   async function start(){
     Learn.cleanup();clearInterval(Game.timer);const{keyName,base}=N.resolve(),pads=N.PADS[S.scale][S.rng];
-    run={pads,base,keyName,items:buildItems(pads),i:0,right:0,skip:0,over:false,lock:true,doneItem:false,noMic:false,replayed:false};Game.run=run;
+    run={pads,base,keyName,items:buildItems(pads),i:0,right:0,skip:0,over:false,lock:true,doneItem:false,noMic:false,replayed:false};Game.run=run;run.id='d'+Date.now().toString(36);run.log=[];run.lvl=beginner?1:2;
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     if(!isInst())run.noMic=!(await ensureMic());
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Daily Do</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-prog">Item 1 of ${run.items.length}</span><span class="pill g-score">0 right</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button></div></div>
@@ -7735,34 +7738,34 @@ function gDaily(host){
   const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(run.base+s,run.base,run.keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`;
   function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.8,0.85);fn(s);});}
   function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.doneItem||(!beginner&&run.replayed))return;run.replayed=true;const b=$('#gRe');if(b)b.disabled=true;fn(()=>{const b2=$('#gRe');if(b2&&beginner&&!run.doneItem)b2.disabled=false;});};}
-  function item(){if(!run||run.over)return;const it=run.items[run.i];run.lock=true;run.doneItem=false;run.replayed=false;
+  function item(){if(!run||run.over)return;const it=run.items[run.i];run.chosen=null;run.lock=true;run.doneItem=false;run.replayed=false;
     $('.g-prog',host).textContent=`Item ${run.i+1} of ${run.items.length}`;$('.g-score',host).textContent=`${run.right} right`;
     const q=$('.g-q',host),dots=$('.g-dots',host),ans=$('.g-ans',host),msg=$('.g-msg',host);msg.textContent='';ans.innerHTML='';
     if(it.type==='pos'){q.textContent='Listen to the four pitches…';dots.innerHTML=dotRow(4);
-      playSeq(it.seq,()=>{q.innerHTML=`What was the <b>${ORD[it.pos]}</b> pitch?`;ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.ans,12)===0,`The ${ORD[it.pos]} pitch was ${N.sylOf(it.ans)}.`));replayBtn(done=>playSeq(it.seq,done));run.lock=false;});}
+      playSeq(it.seq,()=>{q.innerHTML=`What was the <b>${ORD[it.pos]}</b> pitch?`;ans.innerHTML=padsHTML();wirePads(s=>(run.chosen=N.sylOf(s)||'?')&&resolve(mod(s-it.ans,12)===0,`The ${ORD[it.pos]} pitch was ${N.sylOf(it.ans)}.`));replayBtn(done=>playSeq(it.seq,done));run.lock=false;});}
     else if(it.type==='name'){q.textContent='Listen…';dots.innerHTML=dotRow(1);
-      playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(done=>playSeq([it.s],done));run.lock=false;});}
+      playSeq([it.s],()=>{q.textContent='What pitch was that?';ans.innerHTML=padsHTML();wirePads(s=>(run.chosen=N.sylOf(s)||'?')&&resolve(mod(s-it.s,12)===0,`That was ${N.sylOf(it.s)}.`));replayBtn(done=>playSeq([it.s],done));run.lock=false;});}
     else if(it.type==='which'){q.textContent='Listen to the two pitches…';dots.innerHTML=dotRow(2);
       playSeq(it.pair,()=>{q.innerHTML=`Which one was <b>${N.sylOf(it.target)}</b>?`;ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
         /* if both pitches are the same, either answer is right */
         const same=mod(it.pair[0]-it.pair[1],12)===0;
-        $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;const w=+b.dataset.w;resolve(mod(it.pair[w]-it.target,12)===0,same?`Both pitches were ${N.sylOf(it.target)}, so either answer is correct.`:`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
+        $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(run.lock||run.doneItem)return;const w=+b.dataset.w;run.chosen=w?'Second pitch':'First pitch';resolve(mod(it.pair[w]-it.target,12)===0,same?`Both pitches were ${N.sylOf(it.target)}, so either answer is correct.`:`${N.sylOf(it.target)} was the ${it.ansIdx?'second':'first'} pitch.`);});
         replayBtn(done=>playSeq(it.pair,done));run.lock=false;});}
     else if(isInst()){dots.innerHTML='';q.innerHTML=`Play: <b>${N.sylOf(it.s)}</b>`;ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(run.base,run.keyName,S.scale)}</div>`;
-      $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
+      $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(run.doneItem)return;actx();pianoHit(run.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);run.chosen=N.sylOf(+b.dataset.s)||'another note';resolve(mod(+b.dataset.s-it.s,12)===0,`That pitch is ${N.sylOf(it.s)}.`);});run.lock=false;}
     else if(run.noMic){dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
       msg.innerHTML='No microphone is available, so this one is skipped — it won’t count against you.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" type="button" id="gSkip">Skip this item</button></span>';
       $('#gSkip').onclick=skipItem;run.lock=false;}
     else{dots.innerHTML='';q.innerHTML=`Sing: <b>${N.sylOf(it.s)}</b>`;
       msg.innerHTML='Sing it on any syllable, in any octave — and hold it a moment.<br><span class="row" style="justify-content:center;margin-top:8px"><button class="btn quiet" type="button" id="gSkip">Can’t sing right now — skip</button></span>';
-      $('#gSkip').onclick=skipItem;run.lock=false;listenSing(it);
-      Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},singMs);}}
-  function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup(true);
+      $('#gSkip').onclick=skipItem;run.lock=false;listenSing(it);Sync.dailyRec(run,it,S);
+      Learn.later(()=>{if(run&&!run.over&&!run.doneItem&&run.items[run.i]===it)(run.chosen='(nothing heard in time)')&&resolve(false,`Time’s up — the step was ${N.sylOf(it.s)}.`);},singMs);}}
+  function resolve(ok,explain){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup(true);Sync.dailyLog(run,ok,explain,N,S);
     if(ok)run.right++;
     $('.g-msg',host).innerHTML=ok?`<b style="color:var(--good)">Correct!</b> ${explain}`:`<b style="color:var(--miss)">Not quite.</b> ${explain}`;
     $('.g-score',host).textContent=`${run.right} right`;
     Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},(ok?(beginner?1300:1000):(beginner?2400:1750))*pc().after);}
-  function skipItem(){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();run.skip++;
+  function skipItem(){if(!run||run.over||run.doneItem)return;run.doneItem=true;Learn.cleanup();run.skip++;Sync.dailyLog(run,null,'Skipped',N,S);
     $('.g-msg',host).textContent='Skipped — no harm done.';
     Learn.later(()=>{if(run&&!run.over){run.i++;run.i<run.items.length?item():finish();}},700);}
   function listenSing(it){
@@ -7779,13 +7782,13 @@ function gDaily(host){
       const want=run.base+it.s;let d=pcDiff(med,want);const tol=(S.len&&S.len!=='profile'?+S.len:Math.max(70,TOL().close+15))/100;
       if(want<=52&&Math.abs(d+5)<tol)d+=5; /* harmonic rescue, same rule as the other singing games */
       acc=med;need=true;win=[];onset=t;
-      const heard=G_CHR_UP[mod(Math.round(med)-run.base,12)];
+      const heard=G_CHR_UP[mod(Math.round(med)-run.base,12)];run.chosen=Math.abs(d)<tol?N.sylOf(it.s):heard;
       resolve(Math.abs(d)<tol,Math.abs(d)<tol?`You sang ${N.sylOf(it.s)}.`:`You sang ${heard} — the step was ${N.sylOf(it.s)}.`);};
     Engine.fastFn=fn;Learn.listen(fn);}
   function finish(){if(!run||run.over)return;run.over=true;Learn.cleanup();clearInterval(Game.timer);
     const n=run.items.length,pct=Math.round(run.right/n*100),today=dailyToday(),wasDue=me.daily.done!==today;
     me.daily.log.push({d:today,ts:Date.now(),right:run.right,n,skip:run.skip,pct});me.daily.log=me.daily.log.slice(-90);
-    if(wasDue)me.daily.done=today;Store.save();
+    if(wasDue)me.daily.done=today;Store.save();Sync.dailyDone(run,{right:run.right,n,skip:run.skip,pct},S);
     host.innerHTML=`<div class="card g-hud"><div class="g-res"><p class="g-big">Daily Do complete: ${run.right} of ${n}${run.skip?` (${run.skip} skipped)`:''}</p>
       <p>${pct>=85?'Strong ears today.':pct>=60?'A solid warm-up. The items that got away are the ones to listen for tomorrow.':'Done — and done is what counts. It gets easier fast when it is every day.'} ${wasDue?'Today’s Daily Do is stamped, and the rest of Measure Up! is open.':'Extra session logged — nice initiative.'}</p>
       <div class="row">${wasDue?'<button class="btn primary" type="button" id="gLearn">Time to Measure Up! →</button><button class="btn" type="button" id="gMore">↻ Do another Daily Do</button>':'<button class="btn primary" type="button" id="gMore">↻ Do another Daily Do</button><button class="btn" type="button" id="gHub">Go to Games</button><button class="btn" type="button" id="gPrac">Go Practice &amp; Measure Up! →</button>'}<button class="btn" type="button" id="gSet">Daily Do settings</button></div></div></div>`;
@@ -9612,16 +9615,16 @@ const Sync={
     this.flush();return j;},
   leave(){const me=Store.me;if(me&&me.sync){delete me.sync;Store.save();Store.flush();}},
   /* waiting to be sent: scored takes and finished assessments since the student joined */
-  async pending(){const me=Store.me;if(!me||!me.sync)return{takes:[],tests:[]};let takes=[];
+  async pending(){const me=Store.me;if(!me||!me.sync)return{takes:[],tests:[],queue:[]};let takes=[];
     const pick=me.syncPick||{};
     try{takes=(await RecDB.mine(Store.data.current)).filter(t=>!t.sent&&t.pct!=null&&t.ts>=me.sync.joined
       &&(t.mode!=='assess'?t.share!==false:(t.run&&pick[t.run+'|'+t.item]===t.tryN)));}catch(e){}
-    const tests=(me.history||[]).filter(h=>!h.sent&&h.ts>=me.sync.joined);return{takes,tests};},
+    const tests=(me.history||[]).filter(h=>!h.sent&&h.ts>=me.sync.joined);return{takes,tests,queue:(me.syncQ||[]).slice()};},
   async flush(){
     if(!this.joined()||this.busy)return;this.busy=true;
     const me=Store.me,sid=Store.data.current;let err='';
     try{
-      const {takes,tests}=await this.pending();
+      const {takes,tests,queue}=await this.pending();
       for(const t of takes.sort((a,b)=>a.ts-b.ts)){
         if(Store.data.current!==sid)break;
         const html=await recExportHTML([t]);
@@ -9635,13 +9638,17 @@ const Sync={
           rec:{id:'a'+h.ts.toString(36)+String(sid||'').replace(/[^a-z0-9]/gi,'').slice(0,12),ts:h.ts,kind:'assessment',mode:'assess',skill:mod?mod.title:h.mod,level:h.level,
             focus:h.focus&&h.focus!=='mix'?focusLabel(h.mod,h.focus):'',pct:h.pct,rubric:h.rl||'',items:h.items||[],total:(h.items||[]).length,part:partName(me)}});
         h.sent=Date.now();Store.save();}
+      for(const q of queue){
+        if(Store.data.current!==sid)break;
+        await this.post({action:'submit',skey:me.sync.key,code:me.sync.code,rec:q.rec,html:syncPage(q.rec,q.snap)});
+        me.syncQ=(me.syncQ||[]).filter(x=>x.rec.id!==q.rec.id);Store.save();}
       me.sync.last=Date.now();
     }catch(e){err=e.server?e.message:'';if(e.offline)this.offline=true;}
     finally{this.busy=false;}
     if(me.sync){me.sync.err=err;Store.save();}
     if(!err)this.offline=false;
     await this.count();this.paint();},
-  async count(){const p=await this.pending();this.waiting=p.takes.length+p.tests.length;return this.waiting;},
+  async count(){const p=await this.pending();this.waiting=p.takes.length+p.tests.length+p.queue.length;return this.waiting;},
   /* the My Class card: shown on the home page, in Settings and on My Recordings */
   card(compact){
     const me=Store.me;if(!SYNC_URL||!me)return'';
@@ -9657,7 +9664,7 @@ const Sync={
     return`<div class="card sync-card"><h3>My Class</h3>
       <p style="margin-top:6px"><b>${esc(s.cls)}</b><br><span class="muted" style="font-size:14px">Signed in as ${esc(s.email)}</span></p>
       <label class="toggle" style="margin-top:10px"><input type="checkbox" class="sync-share" ${this.sharePractice()?'checked':''}> Send my Practice room tries to my teacher</label>
-      <p class="muted" style="font-size:14px;margin-top:6px">${this.sharePractice()?'Every scored try in the Practice room is recorded and sent to your teacher, who hears it next to the exercise you performed.':'Your Practice room tries stay on this computer.'} Assessments are always sent: only the try you keep for each item.</p>
+      <p class="muted" style="font-size:14px;margin-top:6px">${this.sharePractice()?'Every scored try in the Practice room is recorded and sent to your teacher, who hears it next to the exercise you performed.':'Your Practice room tries stay on this computer.'} Assessments are always sent (only the try you keep for each item), and so is every Daily Do, with your answers and singing.</p>
       <div class="row" style="margin-top:10px;gap:8px">${st}</div>
       <div class="row" style="margin-top:10px"><button class="btn sync-now" type="button" ${w&&!this.busy?'':'disabled'}>Send now</button><button class="btn quiet sync-leave" type="button">Leave this class</button></div>
       <p class="muted sync-msg" style="font-size:14px;margin-top:8px" role="status"></p></div>`;},
@@ -9687,7 +9694,7 @@ const Sync={
     setTimeout(()=>this.flush(),1500);}
 };
 /* in a class, every try is recorded (the teacher hears it); otherwise the student's own switch decides */
-Object.defineProperty(Rec,'on',{configurable:true,get(){const me=Store.me;return !!(me&&(me.recOn||(Sync.joined()&&(Session.mode==='assess'||Sync.sharePractice()))));},set(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}}});
+Object.defineProperty(Rec,'on',{configurable:true,get(){const me=Store.me;return !!(me&&(me.recOn||Sync._dailyRec||(Sync.joined()&&(Session.mode==='assess'||Sync.sharePractice()))));},set(v){const me=Store.me;if(me){me.recOn=!!v;Store.save();}}});
 {const save=Rec.save;Rec.save=async function(...a){await save.apply(this,a);Sync.flush();};}
 {const bar=Rec.bar;Rec.bar=function(){bar.call(this);const t=$('#exRecBar');if(!t||!Sync.joined()||!this.supported())return;const me=Store.me;
   const assess=Session.mode==='assess',share=Sync.sharePractice();
@@ -9708,7 +9715,7 @@ Sync.keep=function(sess){const me=Store.me;if(!me||sess.mode!=='assess'||!sess._
 /* recording starts when the student presses ▶ Start (or ▶ Measure…), not when the item appears.
    Exercises without such a button record from the moment the item is shown, as before. */
 {const rb=Session.recBegin,isGo=b=>/^\s*▶\s*(Start|Measure)/.test(b.textContent||'');
-  Session.recBegin=function(...a){const acts=$('#exActions');
+  Session.recBegin=function(...a){if(this.mod&&this.mod.id==='daily'&&this.item&&!(this.item.type==='sing'&&!isInst()))return;const acts=$('#exActions');
     if(acts&&acts._recWait){acts.removeEventListener('click',acts._recWait,true);acts._recWait=null;}
     if(!acts||![...acts.querySelectorAll('button')].some(isGo))return rb.apply(this,a);
     const tok=this.token,self=this;
@@ -9716,10 +9723,235 @@ Sync.keep=function(sess){const me=Store.me;if(!me||sess.mode!=='assess'||!sess._
       acts.removeEventListener('click',acts._recWait,true);acts._recWait=null;if(self.token===tok&&tok&&tok.alive)rb.apply(self,a);};
     acts.addEventListener('click',acts._recWait,true);};}
 {const fin=Session.finishAssessment;Session.finishAssessment=function(...a){Sync.keep(this);const r=fin.apply(this,a);Sync.flush();return r;};}
+
+/* ---------- Daily Do: results go to the teacher too ----------
+   In a class, every Daily Do (the game) sends one result line with each question, the student's answer and the
+   correct answer, and the singing questions are recorded and sent with the step that was asked for.
+   The Practice room also has a Daily Do skill (Practice and Assessment) built from the same four kinds of question. */
+Sync.queue=function(rec,snap){const me=Store.me;if(!me||!me.sync)return;me.syncQ=me.syncQ||[];me.syncQ.push({rec,snap:snap||''});
+  if(me.syncQ.length>300)me.syncQ=me.syncQ.slice(-300);Store.save();this.count().then(()=>this.paint());this.flush();};
+function syncPage(t,snap){
+  const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n'),me=Store.me;
+  const card=recTakeCard({...t,name:me?me.name:'',snap:snap||'',dur:t.dur||0},'').replace(/<audio[\s\S]*?<\/audio>/,'');
+  return `<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Measure Up! result</title><style>${css}
+body{background:var(--bg,#f6f8fc)}.rec-wrap{max-width:980px;margin:0 auto;padding:20px 16px;display:grid;gap:16px}.rec-snap{overflow-x:auto;pointer-events:none}.dd-tab{width:100%;border-collapse:collapse;font-size:14px}.dd-tab th,.dd-tab td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}</style></head>
+<body><div class="rec-wrap"><div><p class="eyebrow">Measure Up! · result (no recording)</p><h1>${esc(me?me.name:'')}</h1></div>${card}</div></body></html>`;}
+const DD_KIND={pos:'Find a pitch in a group',name:'Name the pitch',which:'Which of two',sing:'Sing the step'};
+/* the Daily Do game: one log line per question, a recording for each singing question */
+Sync.dailyRec=function(run,it,S){if(!this.joined()||isInst())return;
+  const meta={daily:true,mode:'daily',skill:'Daily Do',level:run.lvl,focus:`${S.scale} · do = ${run.keyName}`,item:run.i+1,total:run.items.length,tryN:1,run:run.id,id:run.id+'_'+(run.i+1),quiet:true,minDur:0.6,token:{alive:true}};
+  run.recMeta=meta;run.recItem=run.i;this._dailyRec=true;try{Rec.begin(meta);}finally{this._dailyRec=false;}};
+Sync.dailyLog=function(run,ok,explain,N,S){
+  const it=run.items[run.i],syl=x=>N.sylOf(x)||'?',ORD=['1st','2nd','3rd','4th'];if(!it)return;
+  const q=it.type==='pos'?`Heard ${it.seq.map(syl).join(' – ')}; asked for the ${ORD[it.pos]}`:it.type==='name'?'Heard one pitch':it.type==='which'?`Heard ${syl(it.pair[0])} then ${syl(it.pair[1])}; which was ${syl(it.target)}?`:`${isInst()?'Play':'Sing'} ${syl(it.s)}`;
+  const a=it.type==='pos'?syl(it.ans):it.type==='name'?syl(it.s):it.type==='which'?(mod(it.pair[0]-it.pair[1],12)===0?'Either pitch':it.ansIdx?'Second pitch':'First pitch'):syl(it.s);
+  const e={n:run.i+1,t:it.type,q,a,c:ok===null?'(skipped)':(run.chosen||'(no answer)'),ok:ok===null?null:ok?1:0};
+  if(run.recMeta&&run.recItem===run.i){const meta=run.recMeta;e.k=meta.id;
+    meta.snap=`<div class="stage-top"><div><p class="eyebrow">Daily Do · question ${run.i+1} of ${run.items.length} · ${DD_KIND[it.type]}</p><p class="keyline">do = ${esc(run.keyName)} · ${esc(S.scale)}</p></div></div><p style="font:700 26px var(--f-display);margin:14px 0">${esc(q)}</p><p>Student’s answer: <b>${esc(e.c)}</b> · Correct answer: <b>${esc(a)}</b> · ${ok===null?'Skipped':ok?'Correct':'Not correct'}</p>`;
+    const res=ok===null?null:{pct:ok?100:0,summary:`${q}. Answer: ${e.c}. Correct: ${a}.`};
+    setTimeout(()=>{if(Rec.active()&&Rec.meta===meta)Rec.finish(res);},ok===null?0:500);run.recMeta=null;}
+  run.log=run.log||[];run.log.push(e);};
+Sync.dailyDone=function(run,res,S){if(!this.joined())return;const me=Store.me;
+  const rng={mi:'do – mi',sol:'do – sol',full:'full scale'}[S.rng]||S.rng;
+  const rec={id:run.id,ts:Date.now(),kind:'daily',mode:'daily',skill:'Daily Do',level:run.lvl,focus:`${S.scale} · ${rng} · do = ${run.keyName} · ${S.pace} pace`,
+    pct:res.pct,item:res.n,total:res.n,tryN:1,summary:`${res.right} of ${res.n} right${res.skip?` · ${res.skip} skipped`:''}`,items:run.log||[],part:partName(me),hasAudio:false};
+  const rows=(run.log||[]).map(e=>`<tr><th>${e.n}</th><td>${DD_KIND[e.t]||e.t}</td><td>${esc(e.q)}</td><td><b>${esc(e.c)}</b></td><td>${esc(e.a)}</td><td>${e.ok===null?'Skipped':e.ok?'✓ Correct':'✗ Not correct'}</td></tr>`).join('');
+  this.queue(rec,`<div class="stage-top"><div><p class="eyebrow">Daily Do (Games)</p><p class="keyline">${esc(rec.focus)}</p></div></div><p style="font:700 22px var(--f-display);margin:10px 0">${esc(rec.summary)} (${res.pct}%)</p><table class="dd-tab"><tr><th>#</th><th>Question</th><th>What was asked</th><th>Student’s answer</th><th>Correct answer</th><th>Result</th></tr>${rows}</table>`);};
+/* leaving the game mid-question stops that question's recording */
+{const sv=showView;showView=function(...a){if(a[0]!=='game'&&Rec.active()&&Rec.meta&&Rec.meta.daily)Rec.finish(null);return sv.apply(this,a);};}
+
+/* ---------- the Daily Do in the Practice room ---------- */
+ICONS.daily=GICON.daily;
+MOD_ORDER.unshift('daily');
+Modules.daily={id:'daily',title:'Daily Do',
+  blurb:'The daily ear workout: name a pitch, find one in a group of four, pick which of two, and sing a step.',
+  listens:'Your ears · pitch',
+  learn:`<p>The same four kinds of question as the Daily Do game:</p><ul><li><b>Name the pitch:</b> hear one pitch and tap its syllable.</li><li><b>Find a pitch in a group:</b> hear four pitches and name the one asked for.</li><li><b>Which of two:</b> hear two pitches and choose which one was the syllable asked for.</li><li><b>Sing the step:</b> hear do, then sing the syllable shown, on any vowel, in any octave.</li></ul><p>Every question starts by playing do. <b>Level</b> sets the notes: Level 1 uses do to sol, Level 2 the full major scale, Level 3 major or minor, Level 4 the chromatic scale.</p><p><b>Assessment:</b> 8 questions, two of each kind. Listening questions get one answer; singing questions allow up to 3 tries, and your best counts.</p>`,
+  make(level,voice,focus){
+    const scale=level>=4?'chromatic':level===3?(Math.random()<0.5?'minor':'major'):'major',rng=level===1?'sol':'full';
+    const S={scale,rng,key:'rand'},N=nShared(S),pads=N.PADS[scale][rng],r=N.resolve();
+    const T=['pos','name','which','sing'];
+    const type=T.includes(focus)?focus:Session.mode==='assess'?T[(Session.idx||0)%4]:pick(T);
+    const deg=()=>pads[rint(pads.length)],it={type,scale,rng,S,pads,keyName:r.keyName,base:r.base};
+    if(type==='pos'){it.seq=[deg(),deg(),deg(),deg()];it.pos=rint(4);it.ans=it.seq[it.pos];}
+    else if(type==='which'){const target=deg();let other=deg();if(pads.length>1&&other===target)other=deg();const first=Math.random()<0.5;it.pair=first?[target,other]:[other,target];it.target=target;it.ansIdx=first?0:1;}
+    else it.s=deg();
+    return it;},
+  mount(item,ui){
+    const N=nShared(item.S),syl=x=>N.sylOf(x)||'?',ORD=['1st','2nd','3rd','4th'],P={ring:0.92,step:1.0,doRing:1.5};
+    const inst=isInst(),assess=ui.mode==='assess';
+    const LBL={pos:'Find a pitch in a group',name:'Name the pitch',which:'Which of two',sing:inst?'Play the step':'Sing the step'};
+    ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">Daily Do · ${LBL[item.type]}</p><p class="keyline">do = ${esc(item.keyName)} · ${item.scale}</p></div><p class="status dd-st">Press ▶ Start to hear do.</p></div>
+      <div style="display:grid;gap:14px;justify-items:center;text-align:center;padding:12px 0 4px">
+        <p class="dd-q" style="font:700 20px var(--f-display);margin:0">${{pos:'You will hear four pitches.',name:'You will hear one pitch.',which:'You will hear two pitches.',sing:inst?'You will see a step to play.':'You will see a step to sing.'}[item.type]}</p>
+        <div class="dd-dots" style="display:flex;gap:10px;min-height:16px;align-items:center"></div>
+        <div class="dd-ans" style="width:100%"></div>
+        <p class="dd-msg" style="margin:0"></p></div>`;
+    ui.instr.innerHTML=`<ul class="tips"><li>Every question starts with do. Keep it in your ear.</li><li>${item.type==='sing'&&!inst?'Sing on any vowel, in any octave, and hold the note a moment.':'Answer with the buttons.'}</li><li>${assess?'Assessment: one answer per listening question'+(item.type==='sing'&&!inst?'; up to 3 tries when singing':'')+'.':'Practice: as many as you like.'}</li></ul>`;
+    const q=$('.dd-q',ui.stage),dots=$('.dd-dots',ui.stage),ans=$('.dd-ans',ui.stage),msg=$('.dd-msg',ui.stage),st=$('.dd-st',ui.stage);
+    const tm=[],later=(f,ms)=>{tm.push(setTimeout(()=>{if(ui.token.alive)f();},ms));};
+    let answered=false,replays=0,listenFn=null;
+    ui.onCleanup(()=>{tm.forEach(clearTimeout);if(listenFn&&Engine.fastFn===listenFn)Engine.fastFn=null;});
+    const dotRow=n=>Array.from({length:n},()=>'<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--line);display:inline-block"></span>').join('');
+    const playSeq=(notes,done)=>{actx();const c=Engine.ctx;let t=c.currentTime+0.45;const ds=$$('.dd-dots span',ui.stage);
+      notes.forEach((x,j)=>{const at=t;pianoHit(item.base+x,at,P.ring,0.9);
+        if(ds[j])later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},700);},(at-c.currentTime)*1000);t+=P.step;});
+      later(done,(t-c.currentTime+0.3)*1000);};
+    const hearDo=()=>{actx();pianoHit(item.base,Engine.ctx.currentTime+0.03,P.doRing,0.9);};
+    const answer=item.type==='pos'?syl(item.ans):item.type==='which'?(mod(item.pair[0]-item.pair[1],12)===0?'Either pitch':item.ansIdx?'Second pitch':'First pitch'):syl(item.s);
+    const asked=item.type==='pos'?`Heard ${item.seq.map(syl).join(' – ')}; asked for the ${ORD[item.pos]}`:item.type==='name'?'Heard one pitch':item.type==='which'?`Heard ${syl(item.pair[0])} then ${syl(item.pair[1])}; which was ${syl(item.target)}?`:`${inst?'Play':'Sing'} ${syl(item.s)}`;
+    function finish(ok,chosen){if(answered)return;answered=true;ui.stopListening();if(listenFn&&Engine.fastFn===listenFn)Engine.fastFn=null;
+      msg.innerHTML=`${ok?'<b style="color:var(--good)">Correct!</b>':'<b style="color:var(--miss)">Not quite.</b>'} ${esc(asked)}.<br>Your answer: <b>${esc(chosen)}</b> · Correct answer: <b>${esc(answer)}</b>`;
+      st.textContent=ok?'Correct':'Not quite';item.chosen=chosen;
+      ui.done({score:ok?1:0,summary:`${asked}. Your answer: ${chosen}. Correct answer: ${answer}.`});}
+    const pads=fn=>{ans.innerHTML=`<div class="g-pads tap" style="margin:0">${item.pads.map((x,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${syl(x)}</b></button>`).join('')}</div>`;
+      $$('.g-pad',ans).forEach(b=>b.onclick=()=>{if(answered)return;const x=item.pads[+b.dataset.i];actx();pianoHit(item.base+x,Engine.ctx.currentTime+0.01,0.8,0.85);fn(x);});};
+    const acts=replay=>setActions(ui.actions,[{label:'🔊 Hear do',on:hearDo},...(replay?[{label:'↻ Hear it again',on:()=>{if(answered)return;if(assess&&replays>=1){toast('In an assessment you can hear it again once.');return;}replays++;replay();}}]:[])]);
+    async function go(){setActions(ui.actions,[{label:'Playing…',disabled:true}]);actx();try{await REC.load(PIANO_ALL());}catch(e){}
+      if(!ui.token.alive)return;
+      if(item.type==='sing'&&!inst&&!(await ensureMic())){msg.textContent='The microphone is off, so this one can’t be checked. Turn the microphone on, then press ▶ Start again.';setActions(ui.actions,[{label:'▶ Start',kind:'primary',on:go}]);return;}
+      hearDo();st.textContent='That was do.';q.textContent='First, center on do…';later(present,2300);}
+    function present(){
+      if(item.type==='pos'){dots.innerHTML=dotRow(4);q.textContent='Listen to the four pitches…';const play=d=>playSeq(item.seq,d);
+        play(()=>{q.innerHTML=`What was the <b>${ORD[item.pos]}</b> pitch?`;st.textContent='Tap your answer.';pads(x=>finish(mod(x-item.ans,12)===0,syl(x)));acts(()=>play(()=>{}));});}
+      else if(item.type==='name'){dots.innerHTML=dotRow(1);q.textContent='Listen…';const play=d=>playSeq([item.s],d);
+        play(()=>{q.textContent='What pitch was that?';st.textContent='Tap your answer.';pads(x=>finish(mod(x-item.s,12)===0,syl(x)));acts(()=>play(()=>{}));});}
+      else if(item.type==='which'){dots.innerHTML=dotRow(2);q.textContent='Listen to the two pitches…';const play=d=>playSeq(item.pair,d);
+        play(()=>{q.innerHTML=`Which one was <b>${syl(item.target)}</b>?`;st.textContent='Choose first or second.';
+          ans.innerHTML=`<div class="row" style="justify-content:center"><button class="btn" type="button" data-w="0">First pitch</button><button class="btn" type="button" data-w="1">Second pitch</button></div>`;
+          $$('[data-w]',ans).forEach(b=>b.onclick=()=>{if(answered)return;const w=+b.dataset.w;finish(mod(item.pair[w]-item.target,12)===0,w?'Second pitch':'First pitch');});acts(()=>play(()=>{}));});}
+      else if(inst){q.innerHTML=`Play: <b>${syl(item.s)}</b>`;st.textContent='Tap the key.';ans.innerHTML=`<div class="g-kbwrap" style="margin:0 auto">${nKeyboard(item.base,item.keyName,item.scale)}</div>`;
+        $$('.g-kb button',ans).forEach(b=>b.onclick=()=>{if(answered)return;actx();pianoHit(item.base+(+b.dataset.s),Engine.ctx.currentTime+0.01,0.8,0.85);finish(mod(+b.dataset.s-item.s,12)===0,N.sylOf(+b.dataset.s)||'another note');});acts(null);}
+      else{q.innerHTML=`Sing: <b>${syl(item.s)}</b>`;st.textContent='Listening…';msg.textContent='Sing it on any syllable, in any octave, and hold it a moment.';acts(null);listen();
+        later(()=>{if(!answered)finish(false,'(nothing heard in time)');},30000);}}
+    function listen(){let win=[],lastP=-9,onset=-9;
+      listenFn=L=>{if(answered||!ui.token.alive)return;const t=L.t;
+        if(!L.pitched){if(t-lastP>0.06){win=[];onset=-9;}return;}
+        if(t-lastP>0.15)onset=t;lastP=t;const m=L.cmidi!=null?L.cmidi:L.midi;
+        if(onset>=0&&t-onset<0.12)return;
+        win.push(m);if(win.length>FR(16))win.shift();if(win.length<FR(12))return;
+        const w=[...win].sort((a,b)=>a-b);if(w[w.length-1]-w[0]>1.0)return;
+        const recent=win.slice(-6).sort((a,b)=>a-b),med=recent[recent.length>>1];if(Math.abs(m-med)>0.6)return;
+        const want=item.base+item.s;let d=pcDiff(med,want);const tol=Math.max(70,TOL().close+15)/100;
+        if(want<=52&&Math.abs(d+5)<tol)d+=5;
+        const ok=Math.abs(d)<tol;finish(ok,ok?syl(item.s):G_CHR_UP[mod(Math.round(med)-item.base,12)]);};
+      Engine.fastFn=listenFn;Engine.frameFn=listenFn;}
+    setActions(ui.actions,[{label:'▶ Start',kind:'primary',on:go},{label:'🔊 Hear do',on:hearDo}]);
+  }};
+/* Daily Do assessment = 8 questions, two of each kind; listening questions get one answer (no "try again") */
+{const st=Session.start;Session.start=function(...a){this._ddN=0;const r=st.apply(this,a);
+  if(this.mod&&this.mod.id==='daily'&&this.mode==='assess'){this.total=8;const c=$('#exCount');if(c)c.textContent=`Item 1 of 8 · Try 1 of 3`;}return r;};}
+{const dn=Session.done;Session.done=function(r){const res=dn.call(this,r);
+  if(this.mod&&this.mod.id==='daily'&&this.item){
+    const it=this.item,tap=!(it.type==='sing'&&!isInst());
+    if(tap){$$('#exActions .btn').forEach(b=>{if(/Try (this one )?again/.test(b.textContent))b.remove();});
+      if(Sync.joined()&&(this.mode==='assess'||Sync.sharePractice())){
+        const me=Store.me,n=this.mode==='assess'?this.idx+1:(this._ddN=(this._ddN||0)+1);
+        Sync.queue({id:'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:Date.now(),mode:this.mode,skill:'Daily Do',level:this.level,
+          focus:this.focus&&this.focus!=='mix'?focusLabel('daily',this.focus):'',item:n,total:this.total,tryN:1,pct:Math.round(r.score*100),summary:r.summary,part:partName(me),hasAudio:false},Rec.snapshot());}}}
+  return res;};}
+
 {const wc=whoChip;whoChip=function(...a){const r=wc.apply(this,a);Sync.chip();return r;};}
 {const rh=renderHub;renderHub=function(...a){const r=rh.apply(this,a);if(Sync.enabled()&&Store.me){const top=$('#viewHub .hub-top');if(top){top.insertAdjacentHTML('afterend',Sync.slot(Sync.joined()));Sync.bind($('#viewHub'));}}return r;};}
 {const rs=renderSettings;renderSettings=function(...a){const r=rs.apply(this,a);if(Sync.enabled()&&Store.me){const g=$('#viewSettings .setgrid');if(g){g.insertAdjacentHTML('afterbegin',Sync.slot(false));Sync.bind(g);}}return r;};}
 {const rr=RecView.render;RecView.render=async function(...a){const r=await rr.apply(this,a);if(Sync.enabled()&&Store.me){const h=$('#viewRecs > div');if(h){h.insertAdjacentHTML('afterend',Sync.slot(false));Sync.bind($('#viewRecs'));}}return r;};}
+
+/* ---------- From your teacher: exercises written in Composer ----------
+   The teacher writes exercises in Composer and saves them in their library (their Google Drive).
+   A student who has joined a class gets the exercises for that class:
+     - in the Practice room, mixed in with the app's own items (Random mix), or all of them with
+       the "My Teacher's Exercises" focus;
+     - as assignments: a set of exercises taken as an assessment (best of 3 tries each counts).
+   Each exercise is shown and scored by the same screens as the built-in items. */
+const LIB_USE_PREF=['independence','solfege','notation','rhythm'];
+const LIB_MIX={some:0.2,often:0.4};
+const LibX={
+  busy:false,
+  /* the class library this student has, if they are still in that class */
+  data(){const me=Store.me;return me&&me.sync&&me.lib&&me.lib.code===me.sync.code?me.lib:null;},
+  list(){const d=this.data();return d?(d.ex||[]):[];},
+  asgs(){const d=this.data();return d?(d.asg||[]):[];},
+  byId(id){return this.list().find(x=>x.id===id)||null;},
+  asg(id){return this.asgs().find(a=>a.id===id)||null;},
+  async fetch(force){const me=Store.me;if(!Sync.joined()||this.busy)return;
+    if(!force&&me.lib&&me.lib.code===me.sync.code&&Date.now()-me.lib.at<5*60000)return;
+    this.busy=true;try{const j=await Sync.post({action:'libStudent',skey:me.sync.key,code:me.sync.code});
+      me.lib={at:Date.now(),code:me.sync.code,ex:j.exercises||[],asg:j.assignments||[]};Store.save();this.install();this.paint();}
+    catch(e){/* Apps Script without the library, or offline: keep what we had */}
+    finally{this.busy=false;}},
+  /* Musical Independence reads ENS: register each exercise there */
+  install(){Object.keys(ENS).filter(k=>k.startsWith('lib_')).forEach(k=>delete ENS[k]);
+    this.list().forEach(x=>{const mu=x.mu||{},e=mu.ens;if(!e||!e.parts||!e.parts.length)return;const id='lib_'+x.id;
+      try{const base={title:x.title,meter:mu.meter,bpm:mu.bpm||84,minor:!!mu.minor,lib:x.id,fixKey:x.fixedKey?libKeyAt(e.t,!!mu.minor,mu.fifths):null};
+        if(e.parts.length===1){const mel=ensParse(e.parts[0].notes);ENS[id]={...base,melody:e.parts[0].notes,mel,lyr:null,parts:[],round:{entry:0,voices:1},solo:true};}
+        else ENS[id]={...base,parts:e.parts.map(p=>({id:p.id,name:p.name,clef:p.clef,oct:p.oct,rng:p.rng,notes:p.notes,n:ensParse(p.notes)}))};}
+      catch(err){console.warn('Teacher exercise '+x.title+' could not be read: '+err.message);}});},
+  /* exercises for one skill at one level (no levels set = every level) */
+  pool(modId,level,withOff){return this.list().filter(x=>(x.uses||[]).includes(modId)&&(withOff||x.mix!=='off')&&this.usable(x,modId)&&(!level||!(x.levels||[]).length||x.levels.includes(level)));},
+  usable(x,modId){const mu=x.mu||{};if(modId==='independence')return!!ENS['lib_'+x.id]&&!isInst();if(modId==='rhythm')return!!mu.rhythm;return!!mu.pitch;},
+  pickFrom(list){if(!list.length)return null;const last=Session.item&&Session.item.lib;const l2=list.length>1?list.filter(x=>x.id!==last):list;
+    const w=l2.map(x=>x.mix==='often'?2:1),tot=w.reduce((a,b)=>a+b,0);let r=Math.random()*tot;for(let i=0;i<l2.length;i++){r-=w[i];if(r<=0)return l2[i];}return l2[0];},
+  /* Random mix: sometimes swap the app's item for one of the teacher's */
+  maybe(modId,level,voice){const P=this.pool(modId,level);if(!P.length)return null;const ch=Math.max(...P.map(x=>LIB_MIX[x.mix]||0));
+    if(Math.random()>=ch)return null;return this.item(this.pickFrom(P),modId,level,voice);},
+  item(x,modId,level,voice){if(!x)return null;const mu=x.mu,tag={lib:x.id,libTitle:x.title,via:modId};
+    if(modId==='independence')return{ex:'lib_'+x.id,voices:1,myVoice:0,...tag};
+    if(modId==='rhythm'){const R=mu.rhythm,onsets=[];R.bars.forEach((toks,m)=>toks.forEach(k=>RT[k.t].on.forEach(o=>onsets.push(m*R.meter+k.pos+o))));
+      return{R:{meter:R.meter,measures:R.bars.length,bars:R.bars,onsets},level,bpm:mu.bpm,...tag};}
+    let key=null;if(x.fixedKey){const k=ALLKEYS.find(k=>k.sig===mu.fifths)||keyByPc(mu.minor?mu.tonicPc+3:mu.tonicPc);if(k)key=isInst()?{...writtenKey(k,Store.me.inst),concert:k}:k;}
+    const it=fitMake(()=>buildPitchItem(key||makeKey(level,keysFor(level)),{notes:mu.pitch.notes,minor:!!mu.minor},voice));return Object.assign(it,tag);},
+  /* an assignment item: the exercise's first use the student's setup can do */
+  anyItem(x,level,voice){if(!x)return null;const uses=LIB_USE_PREF.filter(u=>(x.uses||[]).includes(u)&&this.usable(x,u)&&modList().some(m=>m.id===u));
+    return uses.length?this.item(x,uses[0],level,voice):null;},
+  doneFor(id){const me=Store.me;return(me.history||[]).filter(h=>h.mod==='library'&&h.focus==='asg:'+id).sort((a,b)=>b.ts-a.ts)[0]||null;},
+  start(id){const a=this.asg(id);if(!a)return;App.mode='assess';Session.start('library',curLevel(),'asg:'+id);},
+  card(){const A=this.asgs(),n=this.list().filter(x=>x.mix!=='off').length;if(!A.length&&!n)return'';
+    const rows=A.map(a=>{const d=this.doneFor(a.id),items=a.exIds.filter(id=>{const x=this.byId(id);return x&&this.anyItem(x,1,partKey());}).length;
+      return`<div class="row" style="justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:10px;margin-top:10px"><div style="min-width:0"><b>${esc(a.title)}</b><br><span class="muted" style="font-size:13px">${items} exercise${items===1?'':'s'}${a.due?` · due ${esc(a.due)}`:''}${d?` · <span class="pill good">Done · ${d.pct}%</span>`:''}</span></div>
+        <button class="btn ${d?'':'primary'}" type="button" data-asg="${esc(a.id)}" ${items?'':'disabled'}>${d?'Take again':'Start assessment'}</button></div>`;}).join('');
+    return`<div class="card lib-card"><h3>From Your Teacher</h3>
+      ${A.length?`<p class="muted" style="font-size:14px;margin-top:6px">Assignments are assessments: up to 3 tries per exercise, and your best try goes to your teacher.</p>${rows}`:''}
+      ${n?`<p class="muted" style="font-size:14px;margin-top:${A.length?14:6}px">${n} exercise${n===1?'':'s'} from your teacher ${n===1?'is':'are'} mixed into the Practice room. Choose the focus <b>My Teacher’s Exercises</b> to practice ${n===1?'it':'them'} on purpose.</p>`:''}</div>`;},
+  paint(){$$('.lib-slot').forEach(s=>{s.innerHTML=this.card();$$('[data-asg]',s).forEach(b=>b.onclick=()=>this.start(b.dataset.asg));});}
+};
+function libKeyAt(t,minor,fifths){const k0=ALLKEYS.find(k=>k.sig===fifths)||keyByPc(minor?t+3:t);
+  const k=minor&&k0?(()=>{const l=mod(k0.l-2,7),a=mod(t-MAJOR[l]+6,12)-6;return{n:LETTERS[l]+(ACC_TXT[a]??''),l,pc:mod(t,12),sig:k0.sig,minor:true};})():k0;
+  return{t,k,pen:0};}
+
+/* the Practice room: teacher exercises in the Random mix, and their own focus */
+['solfege','notation','independence','rhythm'].forEach(id=>{const M=Modules[id],mk=M.make;
+  M.make=function(level,voice,focus){
+    if(focus==='lib'){const it=LibX.item(LibX.pickFrom(LibX.pool(id,level).length?LibX.pool(id,level):LibX.pool(id,0)),id,level,voice);if(it)return it;}
+    else if(Session.mode!=='assess'&&(!focus||focus==='mix')){const it=LibX.maybe(id,level,voice);if(it)return it;}
+    return mk.call(this,level,voice,focus);};});
+/* a sung teacher melody is one voice, in the singer's own octave */
+{const mt=Modules.independence.mount;Modules.independence.mount=function(item,ui){const ex=ENS[item.ex];if(!ex||!ex.solo)return mt.call(this,item,ui);
+  ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">Sing in time · from your teacher</p><p class="keyline">${esc(ex.title)}</p></div></div><div class="ens-host"></div>`;
+  ui.instr.innerHTML=`<ul class="tips"><li>Press <b>Listen</b> first to hear the melody.</li><li>Each note is checked at its place in the music: in tune and in time.</li><li>Use the Guide or the slower tempo while you learn it, then turn the Guide off.</li></ul>`;
+  setActions(ui.actions,[]);ui.onCleanup(()=>Learn.cleanup());
+  wEns($('.ens-host',ui.stage),{ex:item.ex,mode:'practice',voices:1,myVoice:0,lockVoices:true,lockVoice:true,lockTimes:true,guide:false,onResult:r=>ui.done(r)});};}
+{const mt=Modules.rhythm.mount;Modules.rhythm.mount=function(item,ui){if(!item.lib||!item.bpm)return mt.call(this,item,ui);const old=ui.session.tempo;ui.session.tempo=Math.max(50,Math.min(120,item.bpm));
+  try{return mt.call(this,item,ui);}finally{ui.session.tempo=old;}};}
+/* assignments run as their own (hidden) skill */
+Modules.library={id:'library',title:'From My Teacher',hidden:true,listens:'Your teacher’s exercises',blurb:'Exercises and assignments from your teacher.',
+  learn:`<p><b>From your teacher.</b> These exercises were written by your teacher in Composer. Each one uses the same screen as the app’s own exercises: singing in time, solfege, notation or rhythm.</p><p>In an assignment you get up to 3 tries per exercise. Your best try is the score that counts, and it goes to your teacher with its recording.</p>`,
+  _i:0,
+  make(level,voice,focus){const a=LibX.asg(String(focus||'').slice(4)),ids=(a?a.exIds:[]).filter(id=>{const x=LibX.byId(id);return x&&LibX.anyItem(x,level,voice);});
+    const s=Session;if(!ids.length){toast('This assignment has no exercises you can do on this setup.');return LibX.item(null)||Modules.solfege.make(level,voice,'mix');}
+    if(s.mode==='assess'&&s.idx===0)s.total=ids.length;
+    const i=s.mode==='assess'?s.idx:(this._i++);const x=LibX.byId(ids[i%ids.length]);return LibX.anyItem(x,level,voice);},
+  mount(item,ui){return Modules[item.via||'solfege'].mount(item,ui);}};
+{const fl=focusList;focusList=function(mod){
+  if(mod==='library')return[MIX,...LibX.asgs().map(a=>({id:'asg:'+a.id,label:a.title,desc:'An assignment from your teacher.'}))];
+  const r=fl(mod);if(['solfege','notation','independence','rhythm'].includes(mod)&&LibX.pool(mod,0).length)r.push({id:'lib',label:'My Teacher’s Exercises',desc:'Exercises your teacher wrote for your class.'});return r;};}
+/* recordings and results say which teacher exercise it was */
+{const b=Rec.begin;Rec.begin=function(meta){const it=Session.item;if(meta&&it&&it.libTitle){const asg=Session.mod&&Session.mod.id==='library'?focusLabel('library',Session.focus):'';
+  meta.focus=asg?asg+' · '+it.libTitle:'Teacher exercise · '+it.libTitle;}return b.call(this,meta);};}
+{const kt=keyTitle;keyTitle=function(item){const t=kt(item);return item&&item.libTitle?esc(item.libTitle)+' · '+t:t;};}
+/* the home page card, and keeping the library fresh */
+{const rh=renderHub;renderHub=function(...a){const r=rh.apply(this,a);if(Sync.joined()){const at=$('#viewHub .sync-slot')||$('#viewHub .hub-top');if(at&&!$('#viewHub .lib-slot')){at.insertAdjacentHTML('afterend','<div class="lib-slot"></div>');LibX.paint();}LibX.fetch(false);}return r;};}
+{const j=Sync.join;Sync.join=async function(...a){const r=await j.apply(this,a);LibX.fetch(true);return r;};}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')LibX.fetch(false);});
 
 /* ---------- boot ---------- */
 $('#exToLessons').onclick=()=>{if(Session.mod&&Session.mod.id==='soundprops'){openLesson(isInst()?'bt0':'s0',0);return;}const id=Session.mod&&trackOf({skill:Session.mod.id});showView('learn');const t=id&&$('#track-'+id);if(t)t.scrollIntoView({block:'start'});};
@@ -9734,6 +9966,7 @@ if(document.fonts){document.fonts.ready.then(()=>App.redraw&&App.redraw());docum
 window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{syncThemeBtns();App.redraw&&App.redraw();});
 bootNav();
 Sync.count().then(()=>Sync.paint());Sync.start();
+LibX.install();LibX.fetch(false);
 
 ;(window.requestIdleCallback||(f=>setTimeout(f,2500)))(()=>{try{REC.warm();}catch(e){}});
 </script>
