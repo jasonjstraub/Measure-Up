@@ -178,6 +178,8 @@ input[type=text],select{border:1.5px solid var(--line);background:var(--surface)
 .syls{display:flex;flex-wrap:wrap;gap:10px}
 .sy{min-width:70px;padding:10px 12px 8px;border-radius:12px;border:2px solid var(--line);text-align:center;background:var(--surface)}
 .sy .w{font:800 26px/1.1 var(--f-display)}
+/* solfege tiles take the game colors (see solCol); results colors below still override */
+.sy.sc{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 18%,var(--surface))}.sy.sc-chr{border-style:dashed}
 .sy .oct{font-size:14px;vertical-align:super;margin-left:1px}
 .sy small{display:block;font:600 12px var(--f-mono);color:var(--muted);min-height:16px;margin-top:2px}
 .sy.cur{border-color:var(--royal);background:var(--royal-tint);color:var(--royal)}
@@ -445,10 +447,12 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .rung::after{content:"";flex:1;height:2px;background:var(--line);margin-left:12px;border-radius:1px}
 .rung b{width:76px;text-align:right;font:700 16px var(--f-display)}
 .rung.home b{color:var(--ink);font-weight:800}
+.rung.sc b{color:var(--sc)}.rung.sc::after{background:color-mix(in srgb,var(--sc) 55%,var(--line))}
 .rung:hover b,.rung.hit b{color:var(--royal)}
 .rung:hover::after,.rung.hit::after{background:var(--royal);height:4px}
 .rung.chr b{font-size:13px;color:var(--royal)}
 .rung.chr::after{background:none;border-top:2px dashed var(--royal);height:0;opacity:.55}
+.rung.sc.chr b{color:var(--sc)}.rung.sc.chr::after{border-top-color:var(--sc);background:none}
 .lmark{position:absolute;left:150px;top:0;width:18px;height:18px;border-radius:50%;background:var(--royal);transform:translate(-50%,-50%);box-shadow:0 0 0 5px var(--royal-tint);pointer-events:none}
 .lmark.ok{background:var(--good)}
 .pat{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -7222,6 +7226,20 @@ function solCol(syl){const raw=String(syl||''),b=raw.toLowerCase().replace(/[^a-
   if(SOL_COLOR[b]&&b!=='hi')return{c:SOL_COLOR[b],chr:false};
   if(SOL_PARENT[b])return{c:SOL_COLOR[SOL_PARENT[b]],chr:/^(di|ri|fi|si|li)$/.test(b)};
   return{c:'#64748b',chr:false};}
+/* Every solfege tile in lessons, practice and assessments (.sy boxes, ladder rungs) is tinted by the syllable it
+   shows, so the colors match the games. It reads the visible text, so a hidden syllable ("?") stays plain until it is
+   revealed; hand-sign boxes stay neutral (as students see them). */
+const SOL_TILE_SEL='.sy,.rung';
+function tintSol(el){if(el.classList.contains('hs-chip')||el.classList.contains('gap'))return;
+  const w=el.querySelector('.w')||el.querySelector('b')||el,raw=(w.textContent||'').trim(),b=raw.toLowerCase().replace(/[^a-z]/g,'');
+  const known=(SOL_COLOR[b]&&b!=='hi')||SOL_PARENT[b];
+  if(!known){if(el.classList.contains('sc')){el.classList.remove('sc','sc-chr');el.style.removeProperty('--sc');}return;}
+  const high=b==='do'&&(/[′']/.test(raw)||/↑/.test(el.textContent)),k=solCol(high?'do′':b);
+  if(!el.classList.contains('sc'))el.classList.add('sc');if(el.classList.contains('sc-chr')!==k.chr)el.classList.toggle('sc-chr',k.chr);
+  if(el.style.getPropertyValue('--sc')!==k.c)el.style.setProperty('--sc',k.c);}
+{let queued=false;const sweep=()=>{queued=false;document.querySelectorAll(SOL_TILE_SEL).forEach(tintSol);};
+  const start=()=>{sweep();new MutationObserver(()=>{if(!queued){queued=true;requestAnimationFrame(sweep);}}).observe(document.body,{childList:true,subtree:true,characterData:true});};
+  if(document.body)start();else document.addEventListener('DOMContentLoaded',start);}
 const padStyle=syl=>{const k=solCol(syl);return'--c:'+k.c+(k.chr?';border-style:dashed':'');};
 /* the syllable a note carries: deg (scale step) + alt (half steps from the scale note) */
 function gSyl(deg,alt,mode,laBased){const s=mod(G_SCALE[mode][mod(deg,7)]+alt,12);
