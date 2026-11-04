@@ -7213,6 +7213,16 @@ function gRhythm(seq,lv){return seq.map((k,i)=>({ts:k,notes:gRhythmMeasure(k,lv,
 const G_SCALE={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10]};
 const G_SYL={major:['do','re','mi','fa','sol','la','ti'],minor:['do','re','me','fa','sol','le','te']};
 const G_CHR_UP=['do','di','re','ri','mi','fa','fi','sol','si','la','li','ti'],G_CHR_DN=['do','ra','re','me','mi','fa','se','sol','le','la','te','ti'];
+/* One color per syllable, everywhere solfege tiles appear (the Repeat After Mi scheme). Chromatic syllables take the color of
+   the scale note they come from (di → do, ra → re …) (raised ones — di ri fi si li — get a dashed border; me le te stay solid since they are scale notes in minor); the upper do (do′) is lime. */
+const SOL_COLOR={do:'#2563eb',re:'#16a34a',mi:'#dc2626',fa:'#d97706',sol:'#7c3aed',la:'#0891b2',ti:'#db2777',hi:'#65a30d'};
+const SOL_PARENT={di:'do',ra:'re',ri:'re',me:'mi',fi:'fa',se:'sol',si:'sol',le:'la',li:'la',te:'ti'};
+function solCol(syl){const raw=String(syl||''),b=raw.toLowerCase().replace(/[^a-z]/g,'');
+  if(b==='do'&&/[′']/.test(raw))return{c:SOL_COLOR.hi,chr:false};
+  if(SOL_COLOR[b]&&b!=='hi')return{c:SOL_COLOR[b],chr:false};
+  if(SOL_PARENT[b])return{c:SOL_COLOR[SOL_PARENT[b]],chr:/^(di|ri|fi|si|li)$/.test(b)};
+  return{c:'#64748b',chr:false};}
+const padStyle=syl=>{const k=solCol(syl);return'--c:'+k.c+(k.chr?';border-style:dashed':'');};
 /* the syllable a note carries: deg (scale step) + alt (half steps from the scale note) */
 function gSyl(deg,alt,mode,laBased){const s=mod(G_SCALE[mode][mod(deg,7)]+alt,12);
   if(mode==='minor'&&laBased){const r=mod(s+9,12);return alt>0?G_CHR_UP[r]:alt<0?G_CHR_DN[r]:['la','ti','do','re','mi','fa','sol'][mod(deg,7)];}
@@ -7571,7 +7581,7 @@ function gMemory(host){
     const pads=PADS[S.scale][S.rng];run={pads,base,seq:[],keyName,over:false,turn:false,k:0,deadline:0};Game.run=run;
     const clickPads=S.inp==='syl',tag=clickPads?'button type="button"':'div';
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">Round 1</span><span class="pill royal">do = ${keyName} · ${S.scale} · ${S.rng==='full'?'full scale':'do – '+S.rng}</span><span class="grow"></span><span class="pill g-st">Listen…</span><span class="pill g-cd" hidden></span><button class="btn quiet" type="button" id="gQuit">Quit</button></div></div>
-      ${S.inp==='piano'?`<div class="g-kbwrap">${keyboard(base)}</div>`:`<div class="g-pads${clickPads?' tap':''}">${pads.map((s,i)=>`<${tag} class="g-pad" data-i="${i}" style="--c:${COL[i%COL.length]}"><b>${sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</${tag.split(' ')[0]}>`).join('')}</div>`}
+      ${S.inp==='piano'?`<div class="g-kbwrap">${keyboard(base)}</div>`:`<div class="g-pads${clickPads?' tap':''}">${pads.map((s,i)=>`<${tag} class="g-pad" data-i="${i}" style="${padStyle(sylOf(s))}"><b>${sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</${tag.split(' ')[0]}>`).join('')}</div>`}
       <p class="muted g-msg" style="text-align:center"></p>`;
     $('#gQuit').onclick=()=>{Learn.cleanup();clearInterval(Game.timer);settings();};
     if(clickPads)$$('.g-pad',host).forEach(p=>p.onclick=()=>{const s=pads[+p.dataset.i];tap(s,sylOf(s),p);});
@@ -7737,7 +7747,7 @@ function gDaily(host){
       if(ds[j])Learn.later(()=>{ds[j].style.background='var(--royal)';ds[j].style.borderColor='var(--royal)';Learn.later(()=>{ds[j].style.background='';ds[j].style.borderColor='';},Math.max(330,P.ring*900));},(at-c.currentTime)*1000);
       t+=gap;});
     Learn.later(done,(t-c.currentTime+0.3)*1000);}
-  const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(run.base+s,run.base,run.keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`;
+  const padsHTML=()=>`<div class="g-pads tap" style="margin:0">${run.pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="${padStyle(N.sylOf(s))}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(run.base+s,run.base,run.keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`;
   function wirePads(fn){$$('.g-pad',host).forEach(p=>p.onclick=()=>{if(run.lock||run.doneItem)return;const s=run.pads[+p.dataset.i];actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.01,0.8,0.85);fn(s);});}
   function replayBtn(fn){$('.g-msg',host).innerHTML=`<button class="btn quiet" type="button" id="gRe">↻ Hear it again</button>`;$('#gRe').onclick=()=>{if(run.doneItem||(!beginner&&run.replayed))return;run.replayed=true;const b=$('#gRe');if(b)b.disabled=true;fn(()=>{const b2=$('#gRe');if(b2&&beginner&&!run.doneItem)b2.disabled=false;});};}
   function item(){if(!run||run.over)return;const it=run.items[run.i];run.chosen=null;run.lock=true;run.doneItem=false;run.replayed=false;
@@ -7820,7 +7830,7 @@ function gRush(host){
     actx();try{await REC.load(PIANO_ALL());}catch(e){}
     const clickPads=S.inp==='syl';
     host.innerHTML=`<div class="card g-hud"><div class="row"><span class="g-clock num">${S.dur}</span><span class="pill royal">do = ${keyName} · ${S.scale}</span><span class="pill g-score">Score 0</span><span class="pill g-streak">Streak 0</span><span class="pill g-lives" title="Lives left"></span><span class="pill g-tempo" title="How fast the notes are coming">Andante</span><span class="grow"></span><button class="btn quiet" type="button" id="gDo">🔊 Hear do</button><button class="btn quiet" type="button" id="gQuit">Quit</button></div><div class="g-timebar" aria-hidden="true"><i></i></div></div>
-      ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base,keyName,S.scale)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`}
+      ${S.inp==='piano'?`<div class="g-kbwrap">${nKeyboard(base,keyName,S.scale)}</div>`:`<div class="g-pads tap">${pads.map((s,i)=>`<button type="button" class="g-pad" data-i="${i}" style="${padStyle(N.sylOf(s))}"><b>${N.sylOf(s)}</b>${isInst()?`<small>${keyNoteName(base+s,base,keyName,S.scale)}</small>`:''}</button>`).join('')}</div>`}
       <p class="muted g-msg" style="text-align:center">Listen, then tap the note you heard…</p>`;
     $('#gQuit').onclick=()=>{clearInterval(Game.timer);if(run)run.over=true;settings();};
     $('#gDo').onclick=()=>{actx();pianoHit(base,Engine.ctx.currentTime+0.03,1.1,0.9);};
@@ -7918,7 +7928,7 @@ function gSink(host){
   const gapT=()=>{const k=Math.min(1,(6.5-travel())/3.9);return 1.15-(1.15-0.55)*k;};
   function spawn(now){let i=rint(run.pads.length);if(i===run.lastI)i=rint(run.pads.length);run.lastI=i;const s=run.pads[i];
     const v=FIELD_H/travel(),need=[0.8,0.8,1.5,1.5,2.2][rint(5)],h=Math.round(need*v);
-    const el=document.createElement('div');el.className='n-tile';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.left=run.laneX[i]+'%';el.style.width=run.tileW+'%';el.style.background=N.COL[i%N.COL.length];
+    const el=document.createElement('div');el.className='n-tile';el.style.height=h+'px';el.style.top=(-h)+'px';el.style.left=run.laneX[i]+'%';el.style.width=run.tileW+'%';{const sc=solCol(N.sylOf(s));el.style.background=sc.c;if(sc.chr)el.style.borderStyle='dashed';}
     el.innerHTML=`<i></i><span class="n-tlab">${N.sylOf(s)}</span>`;
     $('.n-fall',host).appendChild(el);
     run.tiles.push({s,pi:i,need,req:need*0.6,got:0,v,h,tSpawn:now,el,state:'fall',removeAt:0,judged:0,prompted:false});
@@ -8019,7 +8029,7 @@ function gWhack(host){
     const s=run.pads[pi];
     const el=$(`.n-bird[data-n="${nest}"]`,host);if(!el)return;
     const bd={s,pi,li,match,until:now+1600-840*tempo(),el};run.birds.set(nest,bd);run.pops++;
-    el.innerHTML=`<span class="n-syl show">${N.sylOf(run.pads[li])}</span>${BIRD(N.COL[pi%N.COL.length])}`;
+    el.innerHTML=`<span class="n-syl show">${N.sylOf(run.pads[li])}</span>${BIRD(solCol(N.sylOf(run.pads[pi])).c)}`;
     el.classList.remove('good','bad','missdo');el.classList.add('up');
     actx();pianoHit(run.base+s,Engine.ctx.currentTime+0.02,0.7,0.9);
     if(match)run.appeared++;
@@ -9898,7 +9908,7 @@ Modules.daily={id:'daily',title:'Daily Do',
       msg.innerHTML=`${ok?'<b style="color:var(--good)">Correct!</b>':'<b style="color:var(--miss)">Not quite.</b>'} ${esc(asked)}.<br>Your answer: <b>${esc(chosen)}</b> · Correct answer: <b>${esc(answer)}</b>`;
       st.textContent=ok?'Correct':'Not quite';item.chosen=chosen;
       ui.done({score:ok?1:0,summary:`${asked}. Your answer: ${chosen}. Correct answer: ${answer}.`});}
-    const pads=fn=>{ans.innerHTML=`<div class="g-pads tap" style="margin:0">${item.pads.map((x,i)=>`<button type="button" class="g-pad" data-i="${i}" style="--c:${N.COL[i%N.COL.length]}"><b>${syl(x)}</b></button>`).join('')}</div>`;
+    const pads=fn=>{ans.innerHTML=`<div class="g-pads tap" style="margin:0">${item.pads.map((x,i)=>`<button type="button" class="g-pad" data-i="${i}" style="${padStyle(syl(x))}"><b>${syl(x)}</b></button>`).join('')}</div>`;
       $$('.g-pad',ans).forEach(b=>b.onclick=()=>{if(answered)return;const x=item.pads[+b.dataset.i];actx();pianoHit(item.base+x,Engine.ctx.currentTime+0.01,0.8,0.85);fn(x);});};
     const acts=replay=>setActions(ui.actions,[{label:'🔊 Hear do',on:hearDo},...(replay?[{label:'↻ Hear it again',on:()=>{if(answered)return;if(assess&&replays>=1){toast('In an assessment you can hear it again once.');return;}replays++;replay();}}]:[])]);
     async function go(){setActions(ui.actions,[{label:'Playing…',disabled:true}]);actx();try{await REC.load(PIANO_ALL());}catch(e){}
