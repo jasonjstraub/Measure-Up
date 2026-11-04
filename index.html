@@ -461,6 +461,7 @@ table.hist td{padding:10px 12px;border-bottom:1px solid var(--line);white-space:
 .q{font:400 24px/1.2 var(--f-display)}
 .qopts{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .qopt{text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer;color:var(--ink)}
+.hs-tile.sc,.qopt.sc{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 18%,var(--surface))}
 .qopt:hover{border-color:var(--royal)}
 .qopt.good{border-color:var(--good);background:var(--good-bg);color:var(--good)}
 .qopt.miss{border-color:var(--miss);background:var(--miss-bg);color:var(--miss)}
@@ -7227,10 +7228,10 @@ function solCol(syl){const raw=String(syl||''),b=raw.toLowerCase().replace(/[^a-
   if(SOL_PARENT[b])return{c:SOL_COLOR[SOL_PARENT[b]],chr:/^(di|ri|fi|si|li)$/.test(b)};
   return{c:'#64748b',chr:false};}
 /* Every solfege tile in lessons, practice and assessments (.sy boxes, ladder rungs) is tinted by the syllable it
-   shows, so the colors match the games. It reads the visible text, so a hidden syllable ("?") stays plain until it is
-   revealed; hand-sign boxes stay neutral (as students see them). */
-const SOL_TILE_SEL='.sy,.rung';
-function tintSol(el){if(el.classList.contains('hs-chip')||el.classList.contains('gap'))return;
+   shows, so the colors match the games. It reads the visible text, so a hidden syllable ("?"), as in Hand Sign Reading,
+   stays plain until the student sings it and it is revealed. */
+const SOL_TILE_SEL='.sy,.rung,.hs-tile,.hs-card .qopt';
+function tintSol(el){if(el.classList.contains('gap'))return;
   const w=el.querySelector('.w')||el.querySelector('b')||el,raw=(w.textContent||'').trim(),b=raw.toLowerCase().replace(/[^a-z]/g,'');
   const known=(SOL_COLOR[b]&&b!=='hi')||SOL_PARENT[b];
   if(!known){if(el.classList.contains('sc')){el.classList.remove('sc','sc-chr');el.style.removeProperty('--sc');}return;}
@@ -8312,8 +8313,9 @@ function hsBindTiles(host){$$('[data-hs]',host).forEach(b=>b.onclick=()=>hsPlay(
 /* one sign up close, plus every sign learned so far */
 function wHandSign(host,o){
   const k=o.k,lab=hsLab(k),upTo=[...Array(k+1).keys()];
-  host.innerHTML=`<div class="hs-card"><span class="hs-img hs-big hs-${HS_ORDER[k][0]}" role="img" aria-label="Hand sign for ${lab}: ${HS_TIP[HS_ORDER[k][0]]}"></span>
-    <div><div class="hs-name">${lab}</div><p class="muted" style="margin-top:8px;font-size:15px">${o.hold||''}</p>
+  const kc=solCol(HS_ORDER[k][2]==='high'?'do′':HS_ORDER[k][0]).c;
+  host.innerHTML=`<div class="hs-card" style="background:color-mix(in srgb,${kc} 16%,var(--surface-2));border:2px solid ${kc}"><span class="hs-img hs-big hs-${HS_ORDER[k][0]}" role="img" aria-label="Hand sign for ${lab}: ${HS_TIP[HS_ORDER[k][0]]}"></span>
+    <div><div class="hs-name" style="color:${kc}">${lab}</div><p class="muted" style="margin-top:8px;font-size:15px">${o.hold||''}</p>
     <div class="row" style="margin-top:14px"><button class="btn primary" type="button" data-a="note">▶ Hear ${lab}</button>${k?`<button class="btn" type="button" data-a="up">▶ Do up to ${lab}</button>`:''}</div></div></div>
     <p class="muted" style="margin-top:16px">${k?'The signs so far, in order. Click one to hear it, and make each sign as you sing it.':'Click the tile to hear do again, and make the sign as you sing.'}</p>
     <div class="hs-stair">${upTo.map(j=>hsTile(j,j===k?'new':'',`margin-bottom:${j*10}px`)).join('')}</div>`;
