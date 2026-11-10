@@ -1697,7 +1697,7 @@ Modules.solfege={
 };
 function mountSung(item,ui,o){
   const lab=t=>t.hidden&&!t.revealed?'?':t.label;
-  ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">${o.eyebrow}</p><p class="keyline">${o.keyline}</p></div><p class="status" id="st">Press Start. You will hear ${V('do','the tonic')} first.</p></div>${o.extra||''}
+  ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">${o.eyebrow}</p><p class="keyline">${o.keyline}</p></div><p class="status" id="st">Press Start. You will hear ${item.cueText||V('do','the tonic')} first.</p></div>${o.extra||''}
     <div class="syls">${item.targets.map((t,i)=>`<div class="sy${item.signs?' hs-chip':''}" id="sy${i}">${item.signs?`<span class="hs-img fix hs-${t.label}" role="img" aria-label="Hand sign for note ${i+1}"></span>`:''}<span class="w">${lab(t)}</span>${t.deg<0?'<span class="oct" title="low">↓</span>':t.deg>=7?'<span class="oct" title="high">↑</span>':''}<small id="syr${i}">&nbsp;</small></div>`).join('')}</div>
     <div class="canvas-wrap"><canvas id="ladder" aria-label="Solfege ladder with your pitch"></canvas></div>`;
   ui.instr.innerHTML=`<div id="tunerHost"></div><ul class="tips">${(o.tips||['Sing on the syllable, one note at a time.','Hold each note until its box changes color.','↑ means the high octave, ↓ the low one.']).map(x=>`<li>${x}</li>`).join('')}</ul>`;
@@ -1726,15 +1726,15 @@ function pitchControls(item,ui,h,remount){
   const st=()=>$('#st');
   const idle=()=>setActions(ui.actions,[
     {label:'▶ Start',kind:'primary',on:run},
-    {label:V('Hear do','Hear the tonic'),on:()=>Engine.playKey(item.doMidi,item.minor)},
-    ...(ui.mode==='practice'?[{label:'Hear the pattern',on:()=>Engine.playMelody(item.targets)}]:[]),
+    {label:item.cueLabel||V('Hear do','Hear the tonic'),on:()=>item.cue?item.cue():Engine.playKey(item.doMidi,item.minor)},
+    ...(ui.mode==='practice'&&!item.noModel?[{label:'Hear the pattern',on:()=>Engine.playMelody(item.targets)}]:[]),
   ]);
   idle();
   async function run(){
     if(!await ensureMic())return;
     if(!ui.token.alive)return;
     setActions(ui.actions,[{label:'■ Stop',on:()=>{ui.stopListening();remount();}}]);
-    Engine.playKey(item.doMidi,item.minor);let wasBusy=true,curK=0;st().textContent='Listen…';st().classList.remove('live');
+    (item.cue?item.cue():Engine.playKey(item.doMidi,item.minor));let wasBusy=true,curK=0;st().textContent='Listen…';st().classList.remove('live');
     const singLabel=()=>item.prompt?item.prompt(curK):$('#staffHost')?`${V('Sing','Play')} note ${curK+1}`:V('Sing: ','Play: ')+item.targets[curK].label;
     const runner=PitchRun(item.targets,{
       onNote:k=>{curK=k;h.onNote(k);if(!wasBusy){st().textContent=singLabel();}},
@@ -1760,7 +1760,7 @@ Modules.notation={
   mount(item,ui){
     const k=item.key;const sigTxt=k.sig===0?'no sharps or flats':`${Math.abs(k.sig)} ${k.sig>0?'sharp':'flat'}${Math.abs(k.sig)>1?'s':''}`;
     const keyLine=ui.mode==='practice'?keyTitle(item):`Key signature: ${sigTxt}${k.concert?' (concert '+k.concert.n+')':''}`;
-    ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">${V('Sing from the staff','Play from the staff')}</p><p class="keyline">${keyLine}</p></div><p class="status" id="st">Press Start. You will hear ${V('do','the tonic')} first.</p></div>
+    ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">${V('Sing from the staff','Play from the staff')}</p><p class="keyline">${keyLine}</p></div><p class="status" id="st">Press Start. You will hear ${item.cueText||V('do','the tonic')} first.</p></div>
       <div class="scroll-x" id="staffHost"></div>
       ${ui.mode==='practice'?`<label class="toggle"><input type="checkbox" id="showSyl"> ${V('Show solfege under the notes','Show note names under the notes')}</label>`:''}`;
     ui.instr.innerHTML=`<div id="tunerHost"></div><ul class="tips"><li>${V('Find do, then sing each note in order.','Read the key signature, then play each note in order.')}</li><li>Hold each note until it turns color.</li><li>${item.pk.clef==='bass'?'Bass clef lines: Great Big Ducks Fly Away. Spaces: All Cows Eat Grass.':'Treble clef lines: Every Good Boat Does Float. Spaces: FACE is on a space.'}</li></ul>`;
@@ -2372,7 +2372,7 @@ function saveScroll(){const cur=$$('[data-view]').find(x=>!x.hidden);if(!cur)ret
   const m={y:window.scrollY,lists:{}};if(k==='learn')$$('#viewLearn .track').forEach(t=>{const ol=$('.lessons',t);if(ol)m.lists[t.id]=ol.scrollTop;});ScrollMem[k]=m;}
 function restoreScroll(v){const m=ScrollMem[v];if(!m){window.scrollTo(0,0);return;}
   if(v==='learn'){Object.entries(m.lists).forEach(([id,top])=>{if(!id)return;const ol=$('#'+id+' .lessons');if(ol)ol.scrollTop=top;});
-    const b=Learn.lastId&&$(`#viewLearn [data-lesson="${Learn.lastId}"]`);if(b){const ol=b.closest('.lessons'),r=b.getBoundingClientRect(),o=ol.getBoundingClientRect();if(r.top<o.top||r.bottom>o.bottom)ol.scrollTop+=r.top-o.top-8;}}
+    const b=Learn.lastId&&$(`#viewLearn .lessons [data-lesson="${Learn.lastId}"]`);if(b){const ol=b.closest('.lessons'),r=b.getBoundingClientRect(),o=ol.getBoundingClientRect();if(r.top<o.top||r.bottom>o.bottom)ol.scrollTop+=r.top-o.top-8;}}
   window.scrollTo(0,m.y);requestAnimationFrame(()=>window.scrollTo(0,m.y));}
 function showView(v){
   /* Daily Do first: a signed-in student who has not finished today's Daily Do is routed to it before anything else. */
@@ -2852,8 +2852,8 @@ function renderAssess(){
   const a=me.assess;
   v.innerHTML=`<div class="ex-head"><div class="titles"><button class="btn quiet" id="aBack" type="button">← Lessons</button><h2>Find Your Starting Point</h2></div></div>
   <div class="card" id="assessStage">
-    <h3>A five-minute placement check</h3>
-    <p class="muted" style="font-size:14px;margin-top:6px">Four short parts: your <b>background</b>, your comfortable <b>range</b>, <b>matching pitches</b> you hear, and six quick <b>knowledge</b> questions. It recommends a starting level for your exercises and builds a <b>catch-up list</b> of any foundation lessons you have not seen — most useful if you joined this class without singing in the one before it.</p>
+    <h3>A short placement check</h3>
+    <p class="muted" style="font-size:14px;margin-top:6px">Five short parts: your <b>background</b>, your comfortable <b>range</b>, <b>matching pitches</b> you hear, twelve quick <b>listening</b> items, and six <b>knowledge</b> questions. It recommends a starting level, shows which <b>listening skills to practice first</b> and which lessons you could <b>test out of</b>, and builds a <b>catch-up list</b> of any foundation lessons you have not seen — most useful if you joined this class without singing in the one before it.</p>
     <p class="muted" style="font-size:14px;margin-top:8px">Nothing is graded and nothing is recorded. The results live in your profile on this device, and you can retake the check any time from Settings.</p>
     ${a?`<div class="notice" style="margin-top:10px">Last taken ${fmtDate(a.ts)} — pitch matching: <b>${a.pitch==null?'skipped':assessPitchWords(a.pitch)}</b> · knowledge <b>${a.know} of 6</b> · recommended level <b>${a.rec}</b>${a.catchup&&a.catchup.length?` · catch-up list: ${a.catchup.length} lesson${a.catchup.length>1?'s':''}`:''}.</div>`:''}
     <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="aGo">${a?'Retake the check':'Start the check'}</button>${!a&&!me.assessSkip?'<button class="btn quiet" type="button" id="aSkip">Skip for now</button>':''}</div>
@@ -2864,7 +2864,7 @@ function renderAssess(){
 }
 function assessBgStage(stage,state){
   return new Promise(res=>{
-    stage.innerHTML=`<p class="eyebrow">Part 1 of 4 · About you</p><h3>Your singing so far</h3>
+    stage.innerHTML=`<p class="eyebrow">Part 1 of 5 · About you</p><h3>Your singing so far</h3>
     <div class="field" style="margin-top:10px"><span>Have you sung in a choir, or had voice lessons?</span><div class="opts">${[['0','Never — this is new to me'],['1','A little — some choir, under two years'],['2','Yes — two years or more, or lessons']].map(([k,l])=>`<label class="opt"><input type="radio" name="aExp" value="${k}"><span>${l}</span></label>`).join('')}</div></div>
     <div class="field"><span>How is your music reading?</span><div class="opts">${[['0','Not yet'],['1','The basics — I can follow a line'],['2','Comfortable — I can read my part']].map(([k,l])=>`<label class="opt"><input type="radio" name="aRead" value="${k}"><span>${l}</span></label>`).join('')}</div></div>
     <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="aNext1" disabled>Next: your range</button><button class="btn quiet" type="button" id="aNoMic">Skip the singing parts</button></div>`;
@@ -2875,7 +2875,7 @@ function assessBgStage(stage,state){
   });
 }
 async function assessRangeStage(stage,state){
-  stage.innerHTML=`<p class="eyebrow">Part 2 of 4 · Your range</p><h3>Lowest and highest comfortable</h3><p class="muted" style="margin-top:6px">Two short holds. <b>Comfortable</b> is the word — notes you could sing all day, not the extremes you can squeak or growl once.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="aRangeGo">Start</button></div><p class="status" id="aStat" style="margin-top:10px"></p><div class="holdbar" style="margin-top:10px"><i id="aBar"></i></div>`;
+  stage.innerHTML=`<p class="eyebrow">Part 2 of 5 · Your range</p><h3>Lowest and highest comfortable</h3><p class="muted" style="margin-top:6px">Two short holds. <b>Comfortable</b> is the word — notes you could sing all day, not the extremes you can squeak or growl once.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="aRangeGo">Start</button></div><p class="status" id="aStat" style="margin-top:10px"></p><div class="holdbar" style="margin-top:10px"><i id="aBar"></i></div>`;
   await new Promise(r=>{$('#aRangeGo').onclick=r;});
   await Engine.measureNoise();state.gate=Engine.noiseDb+Engine.sens()[0];
   const st=$('#aStat');
@@ -2894,7 +2894,7 @@ async function assessPitchStage(stage,state){
   const scores=[];
   for(let i=0;i<probes.length;i++){
     const p=probes[i];
-    stage.innerHTML=`<p class="eyebrow">Part 3 of 4 · Match the pitch</p><h3>Probe ${i+1} of 4: ${p.label}</h3><p class="muted" style="margin-top:6px">Listen first — then sing it back on “ah”, and hold the last note a moment.${i===0&&state.lo!=null?' These notes sit in the comfortable middle of the range you just sang.':''}</p><p class="status" id="aStat" style="margin-top:10px">Playing…</p><div class="holdbar" style="margin-top:10px"><i id="aBar"></i></div>`;
+    stage.innerHTML=`<p class="eyebrow">Part 3 of 5 · Match the pitch</p><h3>Probe ${i+1} of 4: ${p.label}</h3><p class="muted" style="margin-top:6px">Listen first — then sing it back on “ah”, and hold the last note a moment.${i===0&&state.lo!=null?' These notes sit in the comfortable middle of the range you just sang.':''}</p><p class="status" id="aStat" style="margin-top:10px">Playing…</p><div class="holdbar" style="margin-top:10px"><i id="aBar"></i></div>`;
     p.targets.forEach((t,j)=>Engine.tone(t,Engine.ctx.currentTime+0.15+j*0.85,0.8,0.22));
     await assessWait(p.targets.length*850+800);
     const st=$('#aStat');if(st)st.textContent='Your turn — sing it back…';
@@ -2910,7 +2910,7 @@ async function assessPitchStage(stage,state){
   state.pitch=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
 }
 function assessKnowStage(stage,state){
-  stage.innerHTML=`<p class="eyebrow">Part 4 of 4 · Quick knowledge check</p><h3>Six questions</h3><p class="muted" style="font-size:14px;margin-top:6px">Answer from what you know today. Wrong answers are useful — they decide which foundation lessons land on your list.</p>`
+  stage.innerHTML=`<p class="eyebrow">Part 5 of 5 · Quick knowledge check</p><h3>Six questions</h3><p class="muted" style="font-size:14px;margin-top:6px">Answer from what you know today. Wrong answers are useful — they decide which foundation lessons land on your list.</p>`
     +ASSESS_KNOW.map((q,i)=>`<div class="field" style="margin-top:12px"><span>${i+1}. ${q.q}</span><div class="opts">${q.opts.map((o,j)=>`<label class="opt"><input type="radio" name="ak${i}" value="${j}"><span>${o}</span></label>`).join('')}</div></div>`).join('')
     +`<div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="aFinish" disabled>See my results</button><span class="muted" id="aKnowN">0 of 6 answered</span></div>`;
   const upd=()=>{let n=0;for(let i=0;i<ASSESS_KNOW.length;i++)if($(`input[name="ak${i}"]:checked`,stage))n++;$('#aKnowN').textContent=n+' of 6 answered';$('#aFinish').disabled=n<ASSESS_KNOW.length;};
@@ -3779,13 +3779,13 @@ function wSing(host,o,onPass){
   const chipHtml=it=>it.notes.map((n,j)=>`<span class="sy${o.signs?' hs-chip':''}" data-j="${j}">${o.signs?`<span class="hs-img fix hs-${n[0]}" role="img" aria-label="Hand sign"></span>`:''}<span class="w">${o.signs||it.read||(it.hide&&j>0)?'?':D(n[0],n[1])}</span>${n[2]==='low'?'<span class="oct">↓</span>':n[2]==='high'?'<span class="oct">↑</span>':''}<small>&nbsp;</small></span>`).join('');
   host.innerHTML=`<p class="muted">${o.intro||V('Sing each one on the syllables. Hold every note until its box changes color. Score 75% or better on each, with every note heard, to pass.','Play each one. Hold every note until its box changes color. Note names are your written pitch. Score 75% or better on each, with every note heard, to pass.')}</p>
     ${items.map((it,i)=>`<div class="sing-item" id="si${i}"><div class="row"><b>${it.label}</b><span class="grow"></span><span class="pill w-pill">Not yet</span></div>${o.staffKey?'<div class="scroll-x w-staff"></div>':''}<div class="syls sm w-chips">${chipHtml(it)}</div>
-      <div class="row"><button class="btn primary" type="button" data-sing="${i}">${micIcon} ${V('Sing it','Play it')}</button><button class="btn" type="button" data-do="${i}">${V('Hear do','Hear the tonic')}</button>${it.model?`<button class="btn" type="button" data-model="${i}">Hear it first</button>`:`<span class="muted">${V('No model this time: read it and sing.','No model this time: read it and play.')}</span>`}</div><p class="muted w-msg"></p></div>`).join('')}
+      <div class="row"><button class="btn primary" type="button" data-sing="${i}">${micIcon} ${V('Sing it','Play it')}</button><button class="btn" type="button" data-do="${i}">${it.cue?(it.cueLabel||'Hear the chord'):V('Hear do','Hear the tonic')}</button>${it.model?`<button class="btn" type="button" data-model="${i}">Hear it first</button>`:`<span class="muted">${V('No model this time: read it and sing.','No model this time: read it and play.')}</span>`}</div><p class="muted w-msg"></p></div>`).join('')}
     <div class="row"><span class="pill royal w-total">0 of ${items.length} passed</span><span class="grow"></span><button class="btn quiet" type="button" data-skip>I can’t use a microphone right now</button></div>`;
   let running=-1;const rows=o.staffKey?items.map((it,i)=>singStaff($('#si'+i+' .w-staff',host),it,o.staffKey)):[];
   const card=i=>$('#si'+i,host);
   function reset(i){$('.w-chips',card(i)).innerHTML=chipHtml(items[i]);if(o.staffKey)rows[i]=singStaff($('.w-staff',card(i)),items[i],o.staffKey);}
-  $$('[data-do]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();actx();const it=items[+b.dataset.do];Engine.playKey(it.minor?widgetDo()+3:widgetDo(),!!it.minor);});
-  $$('[data-model]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();actx();const it=items[+b.dataset.model],doM=widgetDo();const t=Engine.playKey(it.minor?doM+3:doM,!!it.minor)+0.2;it.notes.forEach((n,j)=>Engine.tone(doM+n[1],t+j*0.6,0.55,0.2));});
+  $$('[data-do]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();actx();const it=items[+b.dataset.do];if(it.cue){it.cue(widgetDo());return;}Engine.playKey(it.minor?widgetDo()+3:widgetDo(),!!it.minor);});
+  $$('[data-model]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();actx();const it=items[+b.dataset.model],doM=widgetDo();if(it.cueP){it.cueP(doM).then(t=>it.notes.forEach((n,j)=>pianoHit(doM+n[1],t+0.35+j*0.6,0.55,0.9)));return;}const t=Engine.playKey(it.minor?doM+3:doM,!!it.minor)+0.2;it.notes.forEach((n,j)=>Engine.tone(doM+n[1],t+j*0.6,0.55,0.2));});
   $('[data-skip]',host).onclick=()=>{Learn.cleanup();onPass&&onPass('skip');$('.w-total',host).textContent='Skipped for now. The lesson will not be marked Done until you pass this check.';};
   $$('[data-sing]',host).forEach(b=>b.onclick=async()=>{
     const i=+b.dataset.sing;
@@ -3794,7 +3794,7 @@ function wSing(host,o,onPass){
     running=i;b.textContent='■ Stop';reset(i);
     const it=items[i],doM=widgetDo(),c=card(i),chips=$$('.sy',c),msg=$('.w-msg',c);
     const sh=isInst()?cxNow().home:null;const targets=it.notes.map(n=>({midi:doM+n[1],homeMidi:doM,label:D(n[0],n[1]),rel:n[1],minor:!!it.minor,spellHome:sh}));
-    Engine.playKey(it.minor?doM+3:doM,!!it.minor);msg.textContent=V('Listen for do…','Listen for the tonic…');
+    if(it.cue)it.cue(doM);else Engine.playKey(it.minor?doM+3:doM,!!it.minor);msg.textContent=it.cue?'Listen…':V('Listen for do…','Listen for the tonic…');
     const run=PitchRun(targets,{
       onNote:k=>{chips.forEach(x=>x.classList.remove('cur'));chips[k].classList.add('cur');if(rows[i])rows[i].cur(k);},
       onDone:(k,r)=>{if(rows[i]){rows[i].clear();rows[i].mark(k,resultClass(r));}chips[k].classList.remove('cur');chips[k].classList.add(resultClass(r));$('.w',chips[k]).textContent=targets[k].label;$('small',chips[k]).textContent=resultText(r);},
@@ -3807,7 +3807,7 @@ function wSing(host,o,onPass){
         if(passed.size===items.length){$('.w-total',host).className='pill good w-total';onPass&&onPass('pass');}
       }});
     let wasBusy=true;
-    Learn.listen(L=>{const busy=L.t<Engine.busyUntil;if(busy!==wasBusy){wasBusy=busy;msg.textContent=busy?V('Listen for do…','Listen for the tonic…'):V('Sing now','Play now');}run(L);});
+    Learn.listen(L=>{const busy=L.t<Engine.busyUntil;if(busy!==wasBusy){wasBusy=busy;msg.textContent=busy?(it.cue?'Listen…':V('Listen for do…','Listen for the tonic…')):V('Sing now','Play now');}run(L);});
   });
 }
 /* chromatic chart: raised syllables above, lowered below, like a keyboard */
@@ -9079,7 +9079,7 @@ function foundationsHTML(done){
 function assessCardsHTML(){
   const me=Store.me;if(!me||isInst())return'';
   let h='';
-  if(!me.assess&&!me.assessSkip)h+=`<div class="card" style="margin-bottom:18px"><h3>New to this class?</h3><p class="muted" style="font-size:14px;margin-top:6px">Take the five-minute <b>placement check</b>: it recommends a starting level and lists any foundation lessons worth catching up on — especially if you did not sing in the class before this one.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="assessStart">Find my starting point</button><button class="btn quiet" type="button" id="assessSkip">Not now</button></div></div>`;
+  if(!me.assess&&!me.assessSkip)h+=`<div class="card" style="margin-bottom:18px"><h3>New to this class?</h3><p class="muted" style="font-size:14px;margin-top:6px">Take the short <b>placement check</b>: it recommends a starting level, shows which listening skills to practice first and which lessons you could test out of, and lists any foundation lessons worth catching up on — especially if you did not sing in the class before this one.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="assessStart">Find my starting point</button><button class="btn quiet" type="button" id="assessSkip">Not now</button></div></div>`;
   const done=me.lessons||{};const rem=(me.catchup||[]).filter(id=>!done[id]);
   if(rem.length){const t=id=>{const l=LESSONS.find(l=>l.id===id);return l?l.title:id;};
     h+=`<div class="card" style="margin-bottom:18px"><h3>Your catch-up list</h3><p class="muted" style="font-size:14px;margin-top:6px">From your placement check — foundation lessons that fill in ground from earlier classes. This card clears as you finish them.</p><div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">${rem.map(id=>`<button class="btn" type="button" data-lesson="${id}">${t(id)}</button>`).join('')}</div></div>`;}
@@ -9243,10 +9243,10 @@ Object.assign(LESSON_FOCUS,{shs:'signs'});Object.assign(LESSON_FOCUS,{mi1:'round
 })();
 /* vocal lessons by audience: 'ms' (level 1), 'hs' (level 2), 'adv' (level 3). Lessons sharing a fam are cuts of one lesson: each student sees only their class's cut, falling back to a plainer cut when no exact one exists. Lessons without a fam keep the old show/hide rule. */
 const vocalLvl=()=>(Store.me&&Store.me.level)||1;
-const curLessons=()=>{if(isInst())return[...instLessons(),...LESSONS_I];
+const curLessons=()=>{if(isInst()){const bt=(Store.me&&Store.me.blevel)||1;return[...instLessons(),...LESSONS_I.filter(l=>!l.minLvl||bt>=l.minLvl)];}
   const t=vocalLvl(),score=l=>!l.aud?0:l.aud==='ms'?(t<=1?3:-1):l.aud==='hs'?(t===2?3:t>=3?1:-1):l.aud==='adv'?(t>=3?3:-1):0,best={};
   LESSONS.forEach(l=>{if(!l.fam)return;const s=score(l);if(s>=0&&(!best[l.fam]||s>best[l.fam].s))best[l.fam]={l,s};});
-  return LESSONS.filter(l=>l.fam?(best[l.fam]&&best[l.fam].l===l):(!l.aud||(l.aud==='ms')===(t<=1)));};
+  return LESSONS.filter(l=>!l.minLvl||t>=l.minLvl).filter(l=>l.fam?(best[l.fam]&&best[l.fam].l===l):(!l.aud||(l.aud==='ms')===(t<=1)));};
 const TRACK_COLS=[['instrument','voice','solfege','scales','intervals'],['notation','rhythm','dynamics','independence']];
 /* the order (and numbers) of the lesson blocks on the Learn page; two columns read across: 1 2 / 3 4 / 5 6 / 7 */
 const TRACK_ORDER=['instrument','voice','solfege','notation','scales','intervals','rhythm','independence','dynamics'];const TRACKS=TRACK_COLS.flat();
@@ -9592,7 +9592,7 @@ const TRACK_TITLE={dynamics:'Expressive Markings',instrument:'My Instrument',voi
 
 const trackList=()=>{const ids=modList().map(m=>m.id);return TRACKS.filter(t=>t==='instrument'?isInst()&&!!(Store.me&&Store.me.inst):t==='voice'?!isInst():ids.includes(t));};
 const curTools=()=>TOOLS.filter(t=>modList().some(m=>m.id===t.skill)&&!(isInst()&&t.vocalOnly)&&!(t.instOnly&&!(isInst()&&fingData())));
-const gateText=t=>({signQuiz:'Reach the goal to continue.',nquiz:'Reach the goal to continue.',chordBuild:'Reach the goal to continue.',chordName:'Reach the goal to continue.',meterEar:'Reach the score goal to continue.',tsFind:'Reach the goal to continue.',halfFind:'Reach the goal to continue.',chromErr:'Reach the goal to continue.',octMel:'Reach the goal to continue.',ensCheck:'Pass the singing check to continue.',octFind:'Reach the goal to continue.',octPlace:'Reach the goal to continue.',octLeap:V('Pass the singing check to continue.','Pass the playing check to continue.'),melHarmQuiz:'Reach the goal to continue.',octQuiz:'Reach the goal to continue.',propEar:'Reach the goal to continue.',highLow:'Reach the goal to continue.',propVoice:V('Pass the singing check to continue.','Pass the playing check to continue.'),sing:V('Pass the singing check to continue.','Pass the playing check to continue.'),clap:'Pass the rhythm check to continue.',range:'Show a range of at least 10 dB to continue.',drill:'Reach the goal to continue.',staffQuiz:'Reach the goal to continue.',grandQuiz:'Reach the goal to continue.',accQuiz:'Reach the goal to continue.',ivDrill:'Reach the goal to continue.',articQuiz:'Reach the goal to continue.',exWords:'Reach the goal to continue.',tempoQuiz:'Reach the goal to continue.',fPlay:'Pass the playing check to continue.',fQuiz:'Reach the goal to continue.',meterQuiz:'Reach the goal to continue.',pickupQuiz:'Reach the goal to continue.',roadQuiz:'Reach the goal to continue.',findDo:'Reach the goal to continue.'})[t]||'Choose the correct answer to continue.';
+const gateText=t=>({signQuiz:'Reach the goal to continue.',nquiz:'Reach the goal to continue.',chordBuild:'Reach the goal to continue.',chordName:'Reach the goal to continue.',meterEar:'Reach the score goal to continue.',tsFind:'Reach the goal to continue.',halfFind:'Reach the goal to continue.',chromErr:'Reach the goal to continue.',octMel:'Reach the goal to continue.',ensCheck:'Pass the singing check to continue.',octFind:'Reach the goal to continue.',octPlace:'Reach the goal to continue.',octLeap:V('Pass the singing check to continue.','Pass the playing check to continue.'),melHarmQuiz:'Reach the goal to continue.',octQuiz:'Reach the goal to continue.',propEar:'Reach the goal to continue.',highLow:'Reach the goal to continue.',propVoice:V('Pass the singing check to continue.','Pass the playing check to continue.'),sing:V('Pass the singing check to continue.','Pass the playing check to continue.'),clap:'Pass the rhythm check to continue.',range:'Show a range of at least 10 dB to continue.',drill:'Reach the goal to continue.',staffQuiz:'Reach the goal to continue.',grandQuiz:'Reach the goal to continue.',accQuiz:'Reach the goal to continue.',ivDrill:'Reach the goal to continue.',articQuiz:'Reach the goal to continue.',exWords:'Reach the goal to continue.',tempoQuiz:'Reach the goal to continue.',fPlay:'Pass the playing check to continue.',fQuiz:'Reach the goal to continue.',meterQuiz:'Reach the goal to continue.',pickupQuiz:'Reach the goal to continue.',roadQuiz:'Reach the goal to continue.',findDo:'Reach the goal to continue.',hxEar:'Reach the goal to continue.'})[t]||'Choose the correct answer to continue.';
 const bodyOf=st=>typeof st.body==='function'?st.body():st.body;
 /* ---------- pronunciation guide for music terms (shown the first time a term appears in a lesson, and in the charts) ---------- */
 const PRON={
@@ -9683,7 +9683,7 @@ function lessonPass(id){const me=Store.me;if(me){me.lessonPass=me.lessonPass||{}
 function openLesson(id,i){
   if(!TOOLS.some(t=>t.id===id))Learn.lastId=id;
   Learn.cleanup();stopNarrate();Learn.inTool=TOOLS.some(t=>t.id===id);showView('lesson');saveNav('lesson',id,i);
-  const tool=TOOLS.find(t=>t.id===id);const L=tool?{id,skill:tool.skill,title:tool.title,level:null,steps:[{h:tool.title,body:`<p>${tool.desc}</p>`,w:tool.w}],tool:true}:curLessons().find(l=>l.id===id)||LESSONS.find(l=>l.id===id);
+  const tool=TOOLS.find(t=>t.id===id);const L=tool?{id,skill:tool.skill,title:tool.title,level:null,steps:[{h:tool.title,body:`<p>${tool.desc}</p>`,w:tool.w}],tool:true}:curLessons().find(l=>l.id===id)||LESSONS.find(l=>l.id===id)||virtLesson(id);
   const v=$('#viewLesson'),n=L.steps.length,s=L.steps[i],m=Modules[L.skill],last=i===n-1;const PS=pronStep(L,i);
   const pass=L.tool?{}:lessonPass(id);
   /* a step is reachable when every check step before it is passed or skipped */
@@ -9707,8 +9707,8 @@ function openLesson(id,i){
   const pv=$('#lsPrev');if(pv)pv.onclick=()=>openLesson(id,i-1);
   const nx=$('#lsNext');if(nx)nx.onclick=()=>openLesson(id,i+1);
   const allPassed=()=>L.steps.every((x,j)=>!isCheck(x)||pass[j]==='pass');
-  const mark=()=>{const me=Store.me;if(me&&!L.tool&&allPassed()){me.lessons=me.lessons||{};me.lessons[id]=true;Store.save();}};
-  const msg=()=>L.tool?'':!Store.me?'Lesson finished. Sign in to keep track of finished lessons.':allPassed()?'Lesson complete.':'Lesson finished. Pass every check, including the singing check, to mark it Done.';
+  const mark=()=>{const me=Store.me;if(me&&!L.tool&&allPassed()){me.lessons=me.lessons||{};me.lessons[id]=true;if(L.testOutOf){me.testedOut=me.testedOut||{};L.testOutOf.forEach(x=>{me.lessons[x]=true;me.testedOut[x]=Date.now();});delete me.lessons[id];}Store.save();}};
+  const msg=()=>L.tool?'':!Store.me?'Lesson finished. Sign in to keep track of finished lessons.':allPassed()?(L.testOutOf?`Tested out. ${L.testOutOf.length} lesson${L.testOutOf.length>1?'s':''} marked Done.`:'Lesson complete.'):'Lesson finished. Pass every check, including the singing check, to mark it Done.';
   const dn=$('#lsDone');if(dn)dn.onclick=()=>{mark();toast(msg());showView('learn');};
   const pr=$('#lsPractice');if(pr)pr.onclick=()=>{mark();const t=msg();if(t&&!allPassed())toast(t);App.mode='practice';if(L.practice)Session.start(L.practice);else Session.start(L.skill,L.level||undefined,LESSON_FOCUS[L.id]);};
 }
@@ -10266,6 +10266,922 @@ function dictKeep(sess){const it=sess.item;if(!sess.mod||sess.mod.id!=='dictatio
 /* the bar above the exercise: dictation answers are sent, not recorded */
 {const bar=Rec.bar;Rec.bar=function(){bar.call(this);const t=$('#exRecBar');if(!t||!Session.mod||Session.mod.id!=='dictation')return;
   const pill=$('.pill.good',t);if(pill&&Store.me&&Store.me.sync)pill.textContent='✓ Answers go to '+Store.me.sync.cls;const live=$('#exRecLive',t);if(live)live.hidden=true;};}
+
+
+/* ================= Ear Training and Harmony (Nov 2026) =================
+   Two new skills, each with lessons, a Practice room module and assessments:
+   - Ear Training: Hear and Name (one scale degree at a time, your octave and the other
+     octave) and Interval Ear (wide to narrow, public-domain song hooks, top-down lessons,
+     resolving tendencies, an any-direction final).
+   - Harmony: triad and seventh-chord qualities, "vs" comparisons, singing chord tones,
+     inversions through the bass line, cadences, named progressions, real voicings and
+     low-register chords.
+   Also: pentatonic scales, sound-alike ("vs") lessons, a listening part in the placement
+   check (and a listening check for the band path), test-out for every lesson and lesson
+   block, and bookmarks with a review list. All sounds use the recorded piano. */
+
+/* ---------- harmony theory ---------- */
+const HQ={
+  M:{name:'major',cap:'Major',st:[0,4,7],how:'a Major 3rd with a minor 3rd on top (4 + 3 half steps). Bright and settled.',sol:'do – mi – sol'},
+  m:{name:'minor',cap:'Minor',st:[0,3,7],how:'a minor 3rd with a Major 3rd on top (3 + 4). Darker than major.',sol:'re – fa – la, or la – do – mi'},
+  d:{name:'diminished',cap:'Diminished',st:[0,3,6],how:'two minor 3rds (3 + 3). The outside interval is a tritone, so it sounds tight and tense.',sol:'ti – re – fa'},
+  A:{name:'augmented',cap:'Augmented',st:[0,4,8],how:'two Major 3rds (4 + 4). The 5th is raised, so it sounds stretched and unsettled.',sol:'me – sol – ti in harmonic minor'},
+  M7:{name:'Major 7th',cap:'Major 7th',st:[0,4,7,11],how:'a major triad plus a Major 7th. Soft and dreamy: the 7th sits a half step below the octave.',sol:'do – mi – sol – ti (Imaj7) or fa – la – do – mi (IVmaj7)'},
+  D7:{name:'dominant 7th',cap:'Dominant 7th',st:[0,4,7,10],how:'a major triad plus a minor 7th. It pulls hard toward home: the sound of V7.',sol:'sol – ti – re – fa (V7)'},
+  m7:{name:'minor 7th',cap:'Minor 7th',st:[0,3,7,10],how:'a minor triad plus a minor 7th. Mellow and smooth.',sol:'re – fa – la – do (ii7)'},
+  h7:{name:'half-diminished 7th',cap:'Half-diminished 7th',st:[0,3,6,10],how:'a diminished triad plus a minor 7th. Restless, but softer than a full diminished 7th.',sol:'ti – re – fa – la (viiø7)'},
+  o7:{name:'diminished 7th',cap:'Diminished 7th',st:[0,3,6,9],how:'three minor 3rds stacked (3 + 3 + 3). Dramatic and suspenseful.',sol:'ti – re – fa – le (vii°7 in minor)'},
+};
+/* chords by Roman numeral, in semitones from do (do-based minor for the minor-key chords). The first number is the root. */
+const HX_ROMAN={I:[0,4,7],ii:[2,5,9],iii:[4,7,11],IV:[5,9,0],V:[7,11,2],vi:[9,0,4],'vii°':[11,2,5],
+  V7:[7,11,2,5],ii7:[2,5,9,0],IVmaj7:[5,9,0,4],Imaj7:[0,4,7,11],'viiø7':[11,2,5,9],'vii°7':[11,2,5,8],
+  i:[0,3,7],iv:[5,8,0],VI:[8,0,3],III:[3,7,10],VII:[10,2,5],'ii°':[2,5,8],'III+':[3,7,11]};
+const HX_SYLN={0:'do',1:'ra',2:'re',3:'me',4:'mi',5:'fa',6:'fi',7:'sol',8:'le',9:'la',10:'te',11:'ti'};
+const hxSylOf=r=>HX_SYLN[mod(r,12)];
+/* the band path names notes by scale degree instead of solfege */
+const HX_DEGNUM={0:'1',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♯4',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
+const hxLab=r=>isInst()?HX_DEGNUM[mod(r,12)]:hxSylOf(r);
+const HX_DEGTIP_B={'1':'The tonic: home. It sounds finished and at rest.','2':'One step above the tonic. It wants to move, usually back down to 1.','3':'The 3rd. Warm and settled; it makes the key sound major.',
+  '4':'A half step above 3. It leans down to 3.','5':'The 5th. Strong and stable, but not home: it often falls to 1.','6':'One step above 5. It often falls back to 5.','7':'The leading tone, a half step below the tonic. It pulls up to 1.',
+  '♯4':'Raised 4. Bright and tense: it leans up to 5.','♭7':'Lowered 7. Smooth and bluesy: it leans down to 6.','♭3':'Lowered 3. Dark: it makes the key sound minor.','♭6':'Lowered 6. Sad and yearning: it leans down to 5.','♭2':'Lowered 2. Dark and exotic: it leans down to 1.'};
+const hxTip=r=>isInst()?HX_DEGTIP_B[HX_DEGNUM[mod(r,12)]]:HX_DEGTIP[hxSylOf(r)];
+const hxTendLab=T=>`${hxLab(T.a)} → ${hxLab(T.b)}`;
+const hxRomSyl=rom=>(HX_ROMAN[rom]||[]).map(hxSylOf).join(' – ');
+const HX_CAD={
+  auth:{n:'Authentic',rom:['IV','V','I'],bass:[5,7,0],desc:'V moves to I. The strongest ending: it sounds finished, like a period at the end of a sentence.'},
+  plag:{n:'Plagal',rom:['I','IV','I'],bass:[0,5,0],desc:'IV moves to I. A gentle, finished ending: the “Amen” sung at the end of many hymns.'},
+  half:{n:'Half',rom:['I','IV','V'],bass:[0,5,7],desc:'The phrase stops on V. It sounds unfinished, like a comma or a question.'},
+  dec:{n:'Deceptive',rom:['IV','V','vi'],bass:[5,7,9],desc:'V moves to vi instead of I. You expect home, and the music surprises you.'},
+};
+/* named progressions. inv: which chord tone is in the bass (0 root, 1 = 3rd, 2 = 5th) for the "real voicings" version */
+const HX_PROG={
+  p145:{n:'I – IV – V – I',name:'The primary chords',rom:['I','IV','V','I'],real:[['I',0],['IV',2],['I',2],['V',0],['I',0]],hook:'Many hymns and folk songs, including the traditional harmony of “Amazing Grace,” use mostly I, IV and V.'},
+  p4c:{n:'I – V – vi – IV',name:'The four-chord loop',rom:['I','V','vi','IV'],loop:true,real:[['I',0],['V',1],['vi',0],['IV',0]],hook:'The verse of “Let It Be” (the Beatles) uses this loop, and so do hundreds of pop songs.'},
+  p50:{n:'I – vi – IV – V',name:'The 1950s loop',rom:['I','vi','IV','V'],loop:true,real:[['I',0],['vi',0],['IV',0],['V',0]],hook:'“Heart and Soul” is built on it, and so are many doo-wop songs from the 1950s.'},
+  pvi:{n:'vi – IV – I – V',name:'The minor-start loop',rom:['vi','IV','I','V'],loop:true,real:[['vi',0],['IV',0],['I',1],['V',0]],hook:'The same four chords as the four-chord loop, started on vi. Starting on vi makes the loop sound minor.'},
+  ppach:{n:'I – V – vi – iii – IV – I – IV – V',name:'Pachelbel’s Canon',rom:['I','V','vi','iii','IV','I','IV','V'],real:[['I',0],['V',1],['vi',0],['iii',1],['IV',0],['I',1],['IV',0],['V',0]],hook:'Johann Pachelbel’s Canon in D (public domain) repeats these eight chords over and over. With inversions, the bass walks down the scale.'},
+  p251:{n:'ii – V – I',name:'The jazz cadence',rom:['ii7','V7','Imaj7'],real:[['ii7',0],['V7',0],['Imaj7',0]],hook:'The most common progression in jazz. Choirs sing it in jazz and gospel arrangements.'},
+  pmin:{n:'i – iv – V – i',name:'Minor home',minor:true,rom:['i','iv','V','i'],real:[['i',0],['iv',2],['i',2],['V',0],['i',0]],hook:'The minor version of the primary chords. V keeps ti, the raised 7th, so it still pulls home.'},
+  paeol:{n:'i – VI – III – VII',name:'The minor rock loop',minor:true,rom:['i','VI','III','VII'],loop:true,real:[['i',0],['VI',0],['III',0],['VII',0]],hook:'Built only from natural-minor notes, with no leading tone, so it never quite resolves.'},
+  pandal:{n:'i – VII – VI – V',name:'The Andalusian cadence',minor:true,rom:['i','VII','VI','V'],real:[['i',0],['VII',0],['VI',0],['V',0]],hook:'An old Spanish flamenco pattern. The bass walks down do – te – le – sol. “Hit the Road Jack” uses it.'},
+};
+const hxProgBass=(id,real)=>{const P=HX_PROG[id];return real?P.real.map(([r,iv])=>HX_ROMAN[r][iv]):P.rom.map(r=>HX_ROMAN[r][0]);};
+
+/* ---------- ear training data ---------- */
+const HX_DEGTIP={do:'Home. It sounds finished and at rest.',re:'One step above do. It wants to move, usually back down to do.',mi:'The 3rd of the key. Warm and settled; it makes the key sound major.',
+  fa:'A half step above mi. It leans down to mi.',sol:'The 5th. Strong and stable, but not home: it often falls to do.',la:'One step above sol. It often falls back to sol.',
+  ti:'The leading tone, a half step below do. It pulls up to do.',fi:'Raised fa. Bright and tense: it leans up to sol.',te:'Lowered ti. Smooth and bluesy: it leans down to la.',
+  me:'Lowered mi. Dark: it makes the key sound minor.',le:'Lowered la. Sad and yearning: it leans down to sol.',ra:'Lowered re. Dark and exotic: it leans down to do.'};
+const HX_IVN={1:'minor 2nd',2:'Major 2nd',3:'minor 3rd',4:'Major 3rd',5:'Perfect 4th',6:'Tritone',7:'Perfect 5th',8:'minor 6th',9:'Major 6th',10:'minor 7th',11:'Major 7th',12:'Octave'};
+/* song hooks: public-domain songs first; titles of newer songs only as a reference */
+const HX_HOOK={
+  up:{1:'ti → do at the top of a major scale',2:'“Frère Jacques” (Are You Sleeping?): its first two notes',3:'“Greensleeves”: “A-las”',4:'“When the Saints Go Marching In”: “Oh, when”',5:'“Amazing Grace”: “A-maz-”, or “Here Comes the Bride”',6:'“Maria” from West Side Story (reference only)',7:'“Twinkle, Twinkle, Little Star”: the 2nd “twinkle”',8:'Scott Joplin’s “The Entertainer” (public domain): the leap after its first three notes',9:'“My Bonnie Lies Over the Ocean”: “My Bon-”',10:'“Somewhere” from West Side Story (reference only)',11:null,12:'“Take Me Out to the Ball Game”: “Take me”'},
+  down:{1:'Beethoven’s “Für Elise” (public domain): its first two notes',2:'“Mary Had a Little Lamb”: “Ma-ry”',3:'“This Old Man”: “This old”',4:'“Swing Low, Sweet Chariot”: “Swing low”',5:'Mozart’s “Eine kleine Nachtmusik” (public domain): its first two notes',6:null,7:null,8:null,9:'“Nobody Knows the Trouble I’ve Seen”: “No-bo-”',10:null,11:null,12:null}};
+const HX_IVFEEL={1:'tight and tense',2:'a step: the sound of moving along a scale',3:'dark: the bottom of a minor chord',4:'bright: the bottom of a major chord',5:'open and strong, like a call',6:'restless and unstable: it wants to resolve',7:'hollow and powerful, the frame of every major and minor chord',8:'yearning and bittersweet',9:'warm and open',10:'bluesy; it wants to move',11:'sharp and tense, one half step short of an octave',12:'the same note, higher: pure and complete'};
+const HX_TEND=[{a:11,b:12,lab:'ti → do'},{a:5,b:4,lab:'fa → mi'},{a:2,b:0,lab:'re → do'},{a:9,b:7,lab:'la → sol'},{a:6,b:7,lab:'fi → sol'},{a:10,b:9,lab:'te → la'},{a:8,b:7,lab:'le → sol'}];
+const HX_VS={
+  titi:{q:'Did you hear <b>ti</b> or <b>te</b>?',qb:'Did you hear the <b>7th</b> (7) or the <b>lowered 7th</b> (♭7)?',minor:false,
+    a:{id:'ti',label:'ti',pats:[[7,9,11,12],[12,11,9,7],[2,0,11,0],[4,2,11,12]],why:'<b>Ti</b> is a half step below high do and pulls up to it.',labelB:'7',whyB:'<b>7</b>, the leading tone, is a half step below the upper tonic and pulls up to it.'},
+    b:{id:'te',label:'te',pats:[[7,9,10,9],[12,10,9,7],[5,7,10,9],[12,10,7,5]],why:'<b>Te</b> is a whole step below high do. It is relaxed and leans down to la.',labelB:'♭7',whyB:'<b>♭7</b> is a whole step below the upper tonic. It is relaxed and leans down to 6.'}},
+  hm:{q:'Harmonic minor or melodic minor?',minor:true,
+    a:{id:'h',label:'Harmonic minor',pats:[[0,2,3,5,7,8,11,12]],why:'<b>Harmonic minor</b> keeps <b>le</b> and raises only te to <b>ti</b>, so le to ti is a wide, exotic step (an augmented 2nd).',whyB:'<b>Harmonic minor</b> keeps <b>♭6</b> and raises only the 7th, so ♭6 to 7 is a wide, exotic step (an augmented 2nd).'},
+    b:{id:'m',label:'Melodic minor',pats:[[0,2,3,5,7,9,11,12]],why:'<b>Melodic minor</b> raises both: <b>la</b> and <b>ti</b>. Going up, the top half sounds like major, and every step is smooth.',whyB:'<b>Melodic minor</b> raises both the 6th and the 7th going up. The top half sounds like major, and every step is smooth.'}},
+  hmd:{q:'Harmonic minor or melodic minor, going down?',minor:true,
+    a:{id:'h',label:'Harmonic minor',pats:[[12,11,8,7,5,3,2,0]],why:'Going down, <b>harmonic minor</b> still has <b>ti</b>, and the wide ti to le step.',whyB:'Going down, <b>harmonic minor</b> still has the raised 7th, and the wide 7 to ♭6 step.'},
+    b:{id:'m',label:'Melodic minor',pats:[[12,10,8,7,5,3,2,0]],why:'Going down, <b>melodic minor</b> turns back into natural minor: <b>te</b> and <b>le</b>.',whyB:'Going down, <b>melodic minor</b> turns back into natural minor: ♭7 and ♭6.'}},
+  lm:{q:'Lydian or Mixolydian?',minor:false,
+    a:{id:'lyd',label:'Lydian',pats:[[0,2,4,6,7,9,11,12],[12,11,9,7,6,4,2,0]],why:'<b>Lydian</b> is major with a raised 4th: <b>fi</b>. It sounds bright, floating and a little magical.',whyB:'<b>Lydian</b> is major with a raised 4th (♯4). It sounds bright, floating and a little magical.'},
+    b:{id:'mix',label:'Mixolydian',pats:[[0,2,4,5,7,9,10,12],[12,10,9,7,5,4,2,0]],why:'<b>Mixolydian</b> is major with a lowered 7th: <b>te</b>. It sounds bluesy, folky and laid-back.',whyB:'<b>Mixolydian</b> is major with a lowered 7th (♭7). It sounds bluesy, folky and laid-back.'}},
+  penta:{q:'Pentatonic or major scale?',minor:false,
+    a:{id:'pen',label:'Major pentatonic',pats:[[0,2,4,7,9,12],[12,9,7,4,2,0]],why:'The <b>pentatonic</b> scale has only five notes: no fa and no ti, so there are no half steps.',whyB:'The <b>pentatonic</b> scale has only five notes, 1 2 3 5 6: no 4 and no 7, so there are no half steps.'},
+    b:{id:'maj',label:'Major scale',pats:[[0,2,4,5,7,9,11,12],[12,11,9,7,5,4,2,0]],why:'The <b>major scale</b> has all seven notes, including the half steps mi–fa and ti–do.',whyB:'The <b>major scale</b> has all seven notes, including the half steps 3–4 and 7–1.'}},
+};
+
+/* ---------- sound: the recorded piano ---------- */
+const hxLoad=async midis=>{try{await REC.load(midis.map(m=>({inst:'piano',midi:m})));}catch(e){}};
+const hxBusy=end=>{Engine.busyUntil=Math.max(Engine.busyUntil||0,end+0.28);};
+/* the "other octave": tenors and basses hear the treble octave; sopranos and altos hear the bass octave */
+const hxOther=()=>{const v=Store.me&&Store.me.voice;if(isInst()){const c=voiceClef&&voiceClef();return c==='bass'?12:-12;}return v==='T'||v==='B'?12:-12;};
+/* voice-led four-part chords: bass plus three upper voices, each moving as little as possible */
+function hxVoice(list,doM,o={}){
+  const out=[];let prevB=null,prevU=null;const lo=doM-1,hi=doM+17,blo=doM-20,bhi=doM-5,shift=o.low?-12:0;
+  for(const item of list){const [rom,inv]=Array.isArray(item)?item:[item,0];const ch=HX_ROMAN[rom];
+    const bpc=ch[inv||0];let bass=null;
+    for(let m=blo;m<=bhi;m++)if(mod(m-doM,12)===mod(bpc,12)){const c=prevB==null?Math.abs(m-(doM-12+3)):Math.abs(m-prevB);if(bass==null||c<bass.c)bass={m,c};}
+    const cands=[];for(let m=lo;m<=hi;m++)if(ch.some(p=>mod(m-doM,12)===mod(p,12)))cands.push(m);
+    const need=ch.length===3?ch:[ch[1],ch[3]];let best=null;
+    for(let a=0;a<cands.length;a++)for(let b=a+1;b<cands.length;b++)for(let c=b+1;c<cands.length;c++){
+      const u=[cands[a],cands[b],cands[c]];if(u[1]-u[0]>12||u[2]-u[1]>12||u[0]<=bass.m)continue;
+      const pcs=u.map(x=>mod(x-doM,12));if(!need.every(p=>pcs.includes(mod(p,12))))continue;
+      if(ch.length===4&&!pcs.every(p=>ch.some(q=>mod(q,12)===p)))continue;
+      const cost=prevU?u.reduce((s,x,i)=>s+Math.abs(x-prevU[i]),0):(u[2]-u[0])+Math.abs((u[0]+u[2])/2-(doM+7))*0.6;
+      if(!best||cost<best.cost)best={u,cost};}
+    const u=best?best.u:ch.map(p=>doM+mod(p,12));
+    out.push([bass.m,...u].map(x=>x+shift));prevB=bass.m;prevU=u;}
+  return out;
+}
+/* simple close-position chord on a root */
+const hxChord=(q,root)=>HQ[q].st.map(x=>root+x);
+function hxPlayBlock(chords,t,dur,vol=0.75){chords.forEach((ch,i)=>ch.forEach(m=>pianoHit(m,t+i*dur,dur*1.05,vol)));return t+chords.length*dur;}
+function hxPlayNotes(ms,t,dur,vol=0.9){ms.forEach((m,i)=>pianoHit(m,t+i*dur,dur*0.95,vol));return t+ms.length*dur;}
+function hxPlayChordQ(ms,t,mode){let e=t;if(mode!=='block'){e=hxPlayNotes(ms,t,0.42)+0.12;}if(mode!=='broken'){ms.forEach(m=>pianoHit(m,e,1.6,0.72));e+=1.6;}return e;}
+/* the key: I – IV – V7 – I, then a short breath */
+function hxKeyCtx(doM,t,minor){const ch=hxVoice(minor?['i','iv','V7','i']:['I','IV','V7','I'],doM);return hxPlayBlock(ch,t,0.5,0.62)+0.45;}
+const hxNow=()=>{actx();return Engine.ctx.currentTime+0.08;};
+/* play a description of a sound; returns the end time on the audio clock */
+/* chords always sound in the piano's middle register (do between G3 and F#4); single notes stay in the student's octave */
+const hxNorm=m=>{while(m<55)m+=12;while(m>66)m-=12;return m;};
+async function hxPlaySpec(s,doM){
+  doM=doM==null?widgetDo():doM;const voM=doM;doM=hxNorm(doM);const pre=[];
+  if(s.k==='prog'||s.k==='cad'||s.k==='ctx'||s.k==='deg'||s.k==='seq'||s.k==='tend')pre.push(...hxVoice(['I','IV','V7','I','i','iv','VI','III','VII'],doM).flat());
+  const t0=()=>hxNow();
+  if(s.k==='chord'){const root=s.root!=null?s.root:(s.low?doM-17:doM)+(s.rel||0);const ms=hxChord(s.q,root);await hxLoad(ms);return hxPlayChordQ(ms,t0(),s.mode||'both');}
+  if(s.k==='rom'){const ch=hxVoice([[s.rom,s.inv||0]],doM,{low:s.low});await hxLoad(ch.flat());const t=t0();if(s.mode==='broken')return hxPlayNotes(ch[0],t,0.45);return hxPlayBlock(ch,t,s.dur||1.8);}
+  await hxLoad(pre);
+  if(s.k==='ctx')return hxKeyCtx(doM,t0(),s.minor);
+  if(s.k==='deg'){let t=s.noCtx?t0():hxKeyCtx(doM,t0(),false);const m=voM+s.rel+(s.other?hxOther():0);await hxLoad([m]);pianoHit(m,t,1.3,0.95);return t+1.3;}
+  if(s.k==='seq'){let t=s.noCtx?t0():hxKeyCtx(doM,t0(),s.minor);const ms=s.rels.map(r=>voM+r);await hxLoad(ms);return hxPlayNotes(ms,t,s.dur||0.55);}
+  if(s.k==='iv'){const lo=voM-5+(s.off||0),ms=s.dir==='down'?[lo+s.st,lo]:[lo,lo+s.st];await hxLoad(ms);const t=t0();if(s.dir==='both'){ms.forEach(m=>pianoHit(m,t,1.6,0.8));return t+1.6;}
+    pianoHit(ms[0],t,0.75,0.9);pianoHit(ms[1],t+0.8,1.1,0.9);if(s.lesson){ms.forEach(m=>pianoHit(m,t+2.1,1.4,0.75));return t+3.5;}return t+1.9;}
+  if(s.k==='tend'){let t=s.noCtx?t0():hxKeyCtx(doM,t0(),false);const ms=[voM+s.a,voM+s.b];await hxLoad(ms);return hxPlayNotes(ms,t,0.8);}
+  if(s.k==='cad'){const C=HX_CAD[s.id],ch=hxVoice(C.rom,doM,{low:s.low});await hxLoad(ch.flat());const t=t0();const e=hxPlayBlock(ch.slice(0,-1),t,0.85);ch[ch.length-1].forEach(m=>pianoHit(m,e,1.7,0.75));return e+1.7;}
+  if(s.k==='romseq'){const ch=hxVoice(s.seq,doM,{low:s.low});await hxLoad(ch.flat());const t=t0(),e=hxPlayBlock(ch.slice(0,-1),t,0.9);ch[ch.length-1].forEach(m=>pianoHit(m,e,1.6,0.75));return e+1.6;}
+  if(s.k==='prog'){const P=HX_PROG[s.id],seq=s.real?P.real:P.rom;const ch=hxVoice(seq,doM,{low:s.low});await hxLoad(ch.flat());const reps=s.reps||(P.loop?2:1);const all=[];for(let r=0;r<reps;r++)all.push(...ch);
+    const t=t0(),e=hxPlayBlock(all.slice(0,-1),t,s.dur||0.8);all[all.length-1].forEach(m=>pianoHit(m,e,1.5,0.75));return e+1.5;}
+  return t0();
+}
+/* a sung check: play this first, then listen (used by Sing steps and Practice room items) */
+function hxCueP(s){return async doM=>{actx();Engine.busyUntil=Engine.ctx.currentTime+8;const e=await hxPlaySpec(s,doM);Engine.busyUntil=e+0.28;return e;};}
+function hxCue(s){const p=hxCueP(s);return doM=>{actx();const guess=Engine.ctx.currentTime+6;p(doM);return guess;};}
+/* fields for a wSing item that plays a chord, cadence or progression instead of "Hear do" */
+const hxCueFields=(s,label)=>({cue:hxCue(s),cueP:hxCueP(s),cueLabel:label||'Hear the chord'});
+
+/* ---------- listening quizzes: one widget, many kinds ----------
+   o.kind: deg | iv | quality | inv | cad | prog | vs | tend
+   o.goal: streak to pass (lessons) · o.exam {n, need}: a fixed-length test · o.onResult: one item (Practice room, placement) */
+const HXK={
+  deg:{
+    make(o){const rel=pick(o.set),other=o.oct==='other'||(o.oct==='both'&&Math.random()<0.5);return{rel,other,doM:widgetDo()+pick([-2,-1,0,1,2]),ans:String(rel)};},
+    opts:o=>o.set.map(r=>({id:String(r),label:hxLab(r),syl:true})),
+    q:(ex,o)=>`The chords set the key. Name the note that comes after them${isInst()?' by its scale degree':''}.${o.oct==='both'?' It may be in <b>the other octave</b>.':''}`,
+    spec:ex=>({k:'deg',rel:ex.rel,other:ex.other}),
+    why(ex){return`That was <b>${hxLab(ex.rel)}</b>${ex.other?', in the other octave':''}. ${hxTip(ex.rel)||''}`;},
+  },
+  iv:{
+    make(o){const st=pick(o.set),dir=o.dir==='any'?pick(['up','down','both']):o.dir==='mix'?pick(['up','down']):(o.dir||'up');return{st,dir,off:rint(8),ans:String(st)};},
+    opts:o=>o.set.slice().sort((a,b)=>a-b).map(s=>({id:String(s),label:HX_IVN[s]})),
+    q:(ex,o)=>o.dir==='up'?'Name the interval going up.':o.dir==='down'?'Name the interval going down.':ex.dir==='both'?'Both notes sound together. Name the interval.':`Name the interval. It goes <b>${ex.dir}</b>.`,
+    spec:ex=>({k:'iv',st:ex.st,dir:ex.dir,off:ex.off}),
+    why(ex){const h=ex.dir==='both'?null:HX_HOOK[ex.dir][ex.st];const sy=ex.dir==='down'?`high do → ${hxSylOf(12-ex.st)}`:`do → ${ex.st===12?'high do':hxSylOf(ex.st)}`;
+      return`<b>${HX_IVN[ex.st]}</b>, ${ex.st} half step${ex.st>1?'s':''}${ex.dir==='both'?', both notes together':', going '+ex.dir}. It sounds ${HX_IVFEEL[ex.st]}.${isInst()?'':` In solfege: ${sy}.`}${h?` Song hook: ${h}.`:''}`;},
+  },
+  quality:{
+    make(o){const q=pick(o.set),root=o.low?40+rint(7):hxNorm(widgetDo())-4+rint(9);return{q,root,ans:q};},
+    opts:o=>o.set.map(q=>({id:q,label:HQ[q].cap})),
+    q:(ex,o)=>o.low?'A chord in the low register. What kind is it?':(o.mode==='block'?'The chord is played all together. What kind is it?':'The chord is played one note at a time, then together. What kind is it?'),
+    spec:(ex,o)=>({k:'chord',q:ex.q,root:ex.root,mode:o.mode||'both'}),
+    why(ex){return`<b>${HQ[ex.q].cap}</b>: ${HQ[ex.q].how}${isInst()?'':` In a key: ${HQ[ex.q].sol}.`}`;},
+  },
+  inv:{
+    make(o){const q=pick(['M','m']),inv=pick(o.set),root=hxNorm(widgetDo())-3+rint(7);return{q,inv,root,ans:String(inv)};},
+    opts:o=>o.set.map(i=>({id:String(i),label:['The root: root position','The 3rd: 1st inversion','The 5th: 2nd inversion'][i]})),
+    q:()=>'Listen to the lowest note. Which chord tone is in the bass?',
+    play(ex){const st=HQ[ex.q].st,bass=ex.root+st[ex.inv]-12,up=st.map(x=>ex.root+x);return(async()=>{await hxLoad([bass,...up]);const t=hxNow();pianoHit(bass,t,2.2,0.95);up.forEach(m=>pianoHit(m,t,2.2,0.62));pianoHit(bass,t+2.4,1.2,0.95);return t+3.6;})();},
+    why(ex){const nm=['root','3rd','5th'][ex.inv];return`The <b>${nm}</b> was in the bass, so this is <b>${['root position','1st inversion','2nd inversion'][ex.inv]}</b> of a ${HQ[ex.q].name} chord. The bass line changes, but the chord is the same.`;},
+  },
+  cad:{
+    make(o){const id=pick(o.set);return{id,doM:widgetDo()+pick([-2,-1,0,1,2]),ans:id};},
+    opts:o=>o.set.map(id=>({id,label:HX_CAD[id].n+' cadence'})),
+    q:()=>'Listen to how the phrase ends. Which cadence is it?',
+    spec:(ex,o)=>({k:'cad',id:ex.id,low:o.low}),
+    why(ex){const C=HX_CAD[ex.id];return`<b>${C.n} cadence</b> (${C.rom.join(' – ')}). ${C.desc} Bass line: ${C.bass.map(hxLab).join(' – ')}.`;},
+  },
+  prog:{
+    make(o){const id=pick(o.set);return{id,doM:widgetDo()+pick([-2,-1,0,1]),ans:id};},
+    opts:o=>o.set.map(id=>({id,label:`${HX_PROG[id].n} <small class="muted" style="font-weight:600">· ${HX_PROG[id].name}</small>`})),
+    q:(ex,o)=>o.real?'Listen to the chords and the bass line. Which progression is it?':'Which progression is it?',
+    spec:(ex,o)=>({k:'prog',id:ex.id,real:o.real,low:o.low}),
+    why(ex,o){const P=HX_PROG[ex.id];return`<b>${P.n}</b>, ${P.name}. Bass: ${hxProgBass(ex.id,o.real).map(hxLab).join(' – ')}. ${P.hook}`;},
+  },
+  vs:{
+    make(o){const V=HX_VS[o.pair],side=Math.random()<0.5?'a':'b',pat=pick(V[side].pats);return{side,pat,doM:widgetDo()+pick([-2,-1,0,1,2]),ans:V[side].id};},
+    opts:o=>{const V=HX_VS[o.pair];return[V.a,V.b].map(x=>({id:x.id,label:isInst()&&x.labelB?x.labelB:x.label,syl:o.pair==='titi'}));},
+    q:(ex,o)=>isInst()&&HX_VS[o.pair].qb?HX_VS[o.pair].qb:HX_VS[o.pair].q,
+    spec:(ex,o)=>({k:'seq',rels:ex.pat,minor:HX_VS[o.pair].minor,noCtx:o.pair==='lm'||o.pair==='penta'||o.pair==='hm'||o.pair==='hmd',dur:o.pair==='titi'?0.6:0.42}),
+    why(ex,o){const V=HX_VS[o.pair];return isInst()&&V[ex.side].whyB?V[ex.side].whyB:V[ex.side].why;},
+  },
+  tend:{
+    make(o){const i=pick(o.set),T=HX_TEND[i];return{T,doM:widgetDo()+pick([-2,-1,0,1,2]),ans:String(i)};},
+    opts:o=>o.set.map(i=>({id:String(i),label:hxTendLab(HX_TEND[i])})),
+    q:()=>'After the key, you hear a tendency tone and where it goes. Which pair was it?',
+    spec:ex=>({k:'tend',a:ex.T.a,b:ex.T.b}),
+    why(ex){return`<b>${hxTendLab(ex.T)}</b>. ${hxTip(ex.T.a)||''}`;},
+  },
+};
+function wHxEar(host,o={},onPass){
+  const K=HXK[o.kind],practice=!!o.onResult,exam=o.exam,goal=o.goal||5;
+  let ex=null,right=0,total=0,streak=0,met=false,answered=true,heard=false;
+  host.innerHTML=`<div class="row"><span class="pill royal num w-score">0 / 0</span><span class="pill w-streak">${exam?`Goal: ${exam.need} of ${exam.n}`:`Streak 0 · goal ${goal}`}</span><span class="grow"></span>
+    <button class="btn primary" type="button" data-play>▶ Play</button><button class="btn" type="button" data-again disabled>Play again</button></div>
+    <p class="q hx-q" style="font-size:20px;margin-top:12px">Press <b>Play</b> to start.</p><div class="hx-opts" style="margin-top:10px"></div><p class="why hx-why" hidden></p>`;
+  if(practice)$$('.w-score,.w-streak',host).forEach(e=>e.hidden=true);
+  const optsHTML=()=>{const os=K.opts(o,ex);return os.some(x=>x.syl)?`<div class="syls">${os.map(x=>`<button type="button" class="sy hx-o" data-a="${x.id}" style="cursor:pointer;font:inherit" disabled><span class="w">${x.label}</span></button>`).join('')}</div>`
+    :`<div class="qopts">${os.map(x=>`<button type="button" class="qopt hx-o" data-a="${x.id}" disabled>${x.label}</button>`).join('')}</div>`;};
+  const play=async()=>{Learn.cleanup();actx();heard=true;$$('.hx-o',host).forEach(b=>{if(!answered)b.disabled=false;});$('[data-again]',host).disabled=false;
+    if(K.play)return K.play(ex,o);return hxPlaySpec(K.spec(ex,o),ex.doM);};
+  function fresh(){ex=K.make(o);answered=false;heard=false;$('.hx-opts',host).innerHTML=optsHTML();$('.hx-q',host).innerHTML=K.q(ex,o);$('.hx-why',host).hidden=true;
+    $$('.hx-o',host).forEach(b=>b.onclick=()=>answer(b));$('[data-play]',host).textContent='▶ Play';}
+  function answer(b){if(answered||!heard)return;answered=true;total++;const ok=b.dataset.a===ex.ans;if(ok){right++;streak++;}else streak=0;
+    b.classList.add(ok?'good':'miss');const g=$(`.hx-o[data-a="${CSS.escape(ex.ans)}"]`,host);if(g)g.classList.add('good');$$('.hx-o',host).forEach(x=>x.disabled=true);
+    const w=$('.hx-why',host);w.hidden=false;const txt=K.why(ex,o);w.innerHTML=(ok?'Correct. ':'Not quite. ')+txt;
+    if(practice){$('[data-play]',host).disabled=true;o.onResult({score:ok?1:0,summary:(ok?'Correct. ':'Not quite. ')+w.textContent.replace(/^(Correct|Not quite)\.\s*/,''),chosen:b.textContent.trim(),ans:ex.ans});return;}
+    $('.w-score',host).textContent=`${right} / ${total}`;
+    if(exam){if(total>=exam.n){const pass=right>=exam.need;$('.w-streak',host).className='pill w-streak '+(pass?'good':'miss');$('.w-streak',host).textContent=pass?`Passed: ${right} of ${exam.n}`:`${right} of ${exam.n}: try again`;
+        w.innerHTML+=pass?` <b>${right} of ${exam.n}. You passed.</b>`:` <b>${right} of ${exam.n}. You need ${exam.need}. Press Start over to try again.</b>`;
+        if(pass&&!met){met=true;onPass&&onPass('pass');}
+        $('[data-play]',host).textContent=pass?'▶ Keep practicing':'↺ Start over';if(!pass){right=0;total=0;}}
+      else $('.w-streak',host).textContent=`${right} of ${total} · goal ${exam.need} of ${exam.n}`;}
+    else{$('.w-streak',host).textContent=`Streak ${streak} · goal ${goal}`;if(!met&&streak>=goal){met=true;$('.w-streak',host).className='pill good w-streak';w.innerHTML+=` <b>${goal} in a row. Goal reached.</b>`;onPass&&onPass('pass');}}
+    if(!exam||total<exam.n||met)$('[data-play]',host).textContent='▶ Next';}
+  $('[data-play]',host).onclick=()=>{if(answered){if(exam&&total===0&&!met){$('.w-score',host).textContent='0 / 0';$('.w-streak',host).className='pill w-streak';$('.w-streak',host).textContent=`Goal: ${exam.need} of ${exam.n}`;}fresh();}play();};
+  $('[data-again]',host).onclick=()=>{if(ex)play();};
+  fresh();
+}
+
+/* ---------- explore: cards of sounds to play, compare and read about ---------- */
+function wHxExplore(host,o={}){
+  const items=o.items||[];
+  host.innerHTML=`<div class="sp-grid">${items.map((it,i)=>`<div class="sp-card"><div class="row"><b style="font-size:16px">${it.label}</b><span class="grow"></span>${it.tag?`<span class="pill royal">${it.tag}</span>`:''}</div>${it.desc?`<small class="muted" style="font-size:13.5px">${it.desc}</small>`:''}
+    <div class="row"><button class="btn${i===0?' primary':''}" type="button" data-x="${i}">▶ ${it.btn||'Play'}</button>${it.alt?`<button class="btn" type="button" data-y="${i}">▶ ${it.alt.btn}</button>`:''}</div></div>`).join('')}</div>
+    ${o.note?`<p class="muted" style="margin-top:10px">${o.note}</p>`:''}`;
+  const doM=()=>widgetDo();
+  $$('[data-x]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();hxPlaySpec(items[+b.dataset.x].spec,doM());});
+  $$('[data-y]',host).forEach(b=>b.onclick=()=>{Learn.cleanup();hxPlaySpec(items[+b.dataset.y].alt.spec,doM());});
+}
+WIDGETS.hxEar=wHxEar;WIDGETS.hxExplore=wHxExplore;
+CHECKS.push('hxEar');
+
+/* ---------- lessons: Ear Training ---------- */
+const hxDeg=(rel,label,desc,other)=>({label,desc,spec:{k:'deg',rel,other},btn:'Key, then '+label.toLowerCase()});
+const hxIvCard=(st,dir,extra)=>({label:HX_IVN[st]+(dir==='down'?' down':' up'),tag:st+' half step'+(st>1?'s':''),desc:(HX_HOOK[dir][st]?'Hook: '+HX_HOOK[dir][st]+'. ':'')+'Sounds '+HX_IVFEEL[st]+'.'+(extra||''),spec:{k:'iv',st,dir,lesson:true},btn:'Hear it'});
+const HX_EAR_LESSONS=[
+ {id:'ear1',skill:'ear',level:1,title:'Hear and Name: Do and Sol',steps:[
+  {h:'Naming Notes by Ear',body:'<p>Every note of a key has its own feeling. <b>Do</b> feels like home. <b>Ti</b> leans toward home. <b>Sol</b> feels strong but not finished. Once you know those feelings, you can name a note just by hearing it, the same way you recognize a friend’s voice.</p><p>In this unit you meet the notes <b>one at a time</b>. Each round first plays four chords to set the key (I – IV – V – I). Then you hear one note, and you name it.</p><p>Press <b>Play</b> to hear the four key chords. Notice how the last chord sounds like home.</p>',w:['hxExplore',{items:[{label:'Set the key',desc:'I – IV – V – I in a major key. Home is the last chord.',spec:{k:'ctx'},btn:'Hear the key'}]}]},
+  {h:'Do: Home',body:'<p><b>Do</b> is the home note. After the key chords, do sounds finished and at rest, as if nothing more needs to happen.</p><p>High do is the same note an octave higher. It has the same feeling: home.</p>',w:['hxExplore',{items:[hxDeg(0,'Do','Home: finished and at rest.'),hxDeg(12,'High do','The same home feeling, an octave higher.')]}]},
+  {h:'Sol: The Strong Fifth',body:'<p><b>Sol</b> is the 5th note of the scale. It sounds strong and stable, but not home: it often wants to fall back down to do.</p><p>Play the key, then sol. Then play the key, then do. Listen for the difference: sol is bright and open; do is settled.</p>',w:['hxExplore',{items:[hxDeg(7,'Sol','Strong and stable, but not home.'),hxDeg(0,'Do','Home.')]}]},
+  {h:'Practice: Do or Sol?',body:'<p>Listen to the key, then name the note. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,7],goal:6}]},
+  {h:'Show what you know',body:'<p>Now sing them. Hear the key, then sing the notes on their syllables.</p>',w:['sing',{items:[{label:'Sing do, then sol',notes:[['do',0,''],['sol',7,'']],model:true},{label:'Sing sol, then do',notes:[['sol',7,''],['do',0,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'After the key chords, a note sounds finished and at rest. It is most likely…',opts:['sol','do','ti','re'],a:1,why:'<b>Do</b> is home: it sounds finished. Sol is strong, but it still wants to move.'}]},
+ ]},
+ {id:'ear2',skill:'ear',level:1,title:'Hear and Name: Add Mi',steps:[
+  {h:'Mi: The Warm Third',body:'<p><b>Mi</b> is the 3rd note of the scale. It is warm and settled, and it is the note that makes a key sound <b>major</b>.</p><p>Do, mi and sol together make the home chord, the <b>tonic chord</b>.</p>',w:['hxExplore',{items:[hxDeg(4,'Mi','Warm and settled. The major 3rd.'),{label:'Do – mi – sol',desc:'The tonic chord, one note at a time.',spec:{k:'seq',rels:[0,4,7,4,0]},btn:'Hear it'}]}]},
+  {h:'Three Notes to Compare',body:'<p>Play each one and listen to its feeling: <b>do</b> rests, <b>mi</b> glows, <b>sol</b> stands strong.</p>',w:['hxExplore',{items:[hxDeg(0,'Do','Home.'),hxDeg(4,'Mi','Warm.'),hxDeg(7,'Sol','Strong.')]}]},
+  {h:'Practice: Do, Mi or Sol?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,4,7],goal:6}]},
+  {h:'Show what you know',body:'<p>Sing the tonic chord and back.</p>',w:['sing',{items:[{label:'Sing do – mi – sol',notes:[['do',0,''],['mi',4,''],['sol',7,'']],model:true},{label:'Sing sol – mi – do',notes:[['sol',7,''],['mi',4,''],['do',0,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which note makes a key sound major?',opts:['do','mi','sol','high do'],a:1,why:'<b>Mi</b>, the Major 3rd above do, gives a key its major sound. In minor, it is lowered to <b>me</b>.'}]},
+ ]},
+ {id:'ear3',skill:'ear',level:1,title:'Hear and Name: Re and La (Pentatonic)',steps:[
+  {h:'Re and La',body:'<p><b>Re</b> sits one step above do. It wants to move, usually back down to do.</p><p><b>La</b> sits one step above sol. It often falls back to sol.</p><p>Add them to do, mi and sol and you have the five notes of the <b>pentatonic scale</b>: <b>do re mi sol la</b>. Many folk songs use only these five notes.</p>',w:['hxExplore',{items:[hxDeg(2,'Re','A step above do. It wants to move.'),hxDeg(9,'La','A step above sol. It falls back to sol.'),{label:'The pentatonic scale',desc:'do re mi sol la do',spec:{k:'seq',rels:[0,2,4,7,9,12]},btn:'Hear it'}]}]},
+  {h:'Practice: Re or La?',body:'<p>Start with just the two new notes, plus do. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,9],goal:5}]},
+  {h:'Practice: All Five',body:'<p>Now all five pentatonic notes. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,7,9],goal:6}]},
+  {h:'Show what you know',body:'<p>Sing the pentatonic scale up and back down.</p>',w:['sing',{items:[{label:'Sing do re mi sol la',notes:[['do',0,''],['re',2,''],['mi',4,''],['sol',7,''],['la',9,'']],model:true},{label:'Sing la sol mi re do',notes:[['la',9,''],['sol',7,''],['mi',4,''],['re',2,''],['do',0,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which notes make the major pentatonic scale?',opts:['do re mi fa sol','do re mi sol la','do mi sol ti','re fa la do'],a:1,why:'<b>Do re mi sol la</b>: no fa and no ti, so the scale has no half steps.'}]},
+ ]},
+ {id:'ear4',skill:'ear',level:2,title:'Hear and Name: Fa and Ti',steps:[
+  {h:'The Two Leaning Notes',body:'<p><b>Fa</b> and <b>ti</b> are the notes that lean. Each is a <b>half step</b> from a stable note:</p><ul><li><b>Fa</b> leans down to <b>mi</b>.</li><li><b>Ti</b>, the <b>leading tone</b>, pulls up to <b>do</b>.</li></ul><p>Because they lean, they are easy to recognize once you feel the pull.</p>',w:['hxExplore',{items:[hxDeg(5,'Fa','Leans down to mi.'),hxDeg(11,'Ti','Pulls up to do.'),{label:'Fa → mi',desc:'The pull resolves.',spec:{k:'tend',a:5,b:4},btn:'Hear it'},{label:'Ti → do',desc:'The strongest pull in music.',spec:{k:'tend',a:11,b:12},btn:'Hear it'}]}]},
+  {h:'Practice: All Seven',body:'<p>Every note of the major scale. Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,5,7,9,11],goal:7}]},
+  {h:'Show what you know',body:'<p>Sing each leaning note and let it resolve.</p>',w:['sing',{items:[{label:'Sing ti, then do',notes:[['ti',-1,'low'],['do',0,'']],model:true},{label:'Sing fa, then mi',notes:[['fa',5,''],['mi',4,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which note is called the leading tone?',opts:['fa','sol','ti','re'],a:2,why:'<b>Ti</b> leads up to do, a half step away.'}]},
+ ]},
+ {id:'ear5',skill:'ear',level:2,title:'Your Octave and the Other Octave',steps:[
+  {h:'The Same Note in Two Octaves',body:'<p>In a choir you constantly hear notes in an octave that is not yours. Tenors read treble clef and sing it an octave lower. Basses match a pitch a soprano gives. Everyone finds a starting note from the piano.</p><p>A note keeps its name in every octave. <b>Sol</b> is sol, high or low. In this lesson you name notes in <b>your octave</b> and in <b>the other octave</b>: one octave up for tenors and basses, one octave down for sopranos and altos.</p>',w:['hxExplore',{items:[hxDeg(7,'Sol, your octave','Where you sing it.'),hxDeg(7,'Sol, the other octave','The same note, an octave away.',true),hxDeg(4,'Mi, your octave',''),hxDeg(4,'Mi, the other octave','',true)]}]},
+  {h:'Practice: Any Octave',body:'<p>Each note is in your octave or the other one. Name the syllable. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,5,7,9,11],oct:'both',goal:6}]},
+  {h:'Find Your Do',body:'<p>Press <b>Hear do</b>: you hear do in the other octave. Sing it back in <b>your</b> octave, where it is comfortable. The app accepts any octave, so sing where your voice sits.</p>',w:['sing',{items:[{label:'Hear do in the other octave, then sing it',notes:[['do',0,'']],...hxCueFields({k:'deg',rel:0,other:true,noCtx:true},'Hear do')},{label:'Hear sol in the other octave, then sing it',notes:[['sol',7,'']],...hxCueFields({k:'deg',rel:7,other:true},'Hear the key and sol')}]}]},
+  {h:'Check yourself',w:['quiz',{q:'A soprano sings sol. A bass sings the same note an octave lower. What is the bass’s note called?',opts:['do','sol','re','It has no name'],a:1,why:'A note keeps its name in every octave: it is still <b>sol</b>.'}]},
+ ]},
+ {id:'ear6',skill:'ear',level:3,title:'Chromatic Colors',steps:[
+  {h:'Notes Outside the Scale',body:'<p>Chromatic notes add color. Each has its own feeling:</p><ul><li><b>fi</b> (raised fa): bright and tense; it leans up to sol.</li><li><b>te</b> (lowered ti): smooth and bluesy; it leans down to la.</li><li><b>me</b> (lowered mi): dark; it makes a key sound minor.</li><li><b>le</b> (lowered la): sad and yearning; it leans down to sol.</li><li><b>ra</b> (lowered re): dark and exotic; it leans down to do.</li></ul><p>Notice that <b>me, le and te</b> are the notes of do-based minor.</p>',w:['hxExplore',{items:[hxDeg(6,'Fi','Bright and tense.'),hxDeg(10,'Te','Smooth and bluesy.'),hxDeg(3,'Me','Dark: the minor 3rd.'),hxDeg(8,'Le','Sad and yearning.'),hxDeg(1,'Ra','Dark and exotic.')]}]},
+  {h:'Practice: Fi and Te',body:'<p>Start with the two most common. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,6,7,10],goal:5}]},
+  {h:'Practice: Me, Le and Te',body:'<p>The three minor notes. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[3,4,8,9,10,11],goal:5}]},
+  {h:'Practice: All the Colors',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,1,3,4,6,7,8,10],goal:6}]},
+  {h:'Check yourself',w:['quiz',{q:'Which three chromatic syllables are the notes of do-based minor?',opts:['fi, si, di','me, le, te','ra, se, fi','di, ri, li'],a:1,why:'Do-based minor is do re <b>me</b> fa sol <b>le</b> <b>te</b> do.'}]},
+ ]},
+ {id:'ear7',skill:'ear',level:1,title:'Interval Ear: The Perfect Anchors',steps:[
+  {h:'Start With the Widest',body:'<p>The <b>octave</b>, <b>5th</b> and <b>4th</b> are called <b>perfect</b> intervals. They are the most stable sounds in music, so they are the easiest to recognize by ear. That is why this path starts wide and works toward the small intervals.</p><p>Each interval below plays its two notes one after the other, then together. Every one has a <b>song hook</b>: a famous tune that starts with that interval.</p>',w:['hxExplore',{items:[hxIvCard(12,'up'),hxIvCard(7,'up'),hxIvCard(5,'up')]}]},
+  {h:'Practice: Octave or 5th?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[7,12],dir:'up',goal:5}]},
+  {h:'Practice: All Three Anchors',body:'<p>Octave, 5th or 4th? Hum the song hook in your head if you need it. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'up',goal:6}]},
+  {h:'Show what you know',body:'<p>Hear do, then sing each interval up.</p>',w:['sing',{items:[{label:'Do up to sol: a Perfect 5th',notes:[['do',0,''],['sol',7,'']],model:true},{label:'Do up to fa: a Perfect 4th',notes:[['do',0,''],['fa',5,'']]},{label:'Do up to high do: an octave',notes:[['do',0,''],['do',12,'high']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'“Twinkle, Twinkle, Little Star” leaps up on the second “twinkle.” What interval is it?',opts:['Perfect 4th','Perfect 5th','Octave','Major 3rd'],a:1,why:'Do up to sol: a <b>Perfect 5th</b>, 7 half steps.'}]},
+ ]},
+ {id:'ear8',skill:'ear',level:2,title:'Anchors Going Down',steps:[
+  {h:'Top Down',body:'<p>An interval sounds different going <b>down</b>. Singers need to know both: descending intervals are where pitch most often sags flat.</p><p>Going down from high do: an octave lands on do, a 5th lands on <b>fa</b>, and a 4th lands on <b>sol</b>.</p>',w:['hxExplore',{items:[hxIvCard(12,'down'),hxIvCard(7,'down'),hxIvCard(5,'down')]}]},
+  {h:'Practice: Going Down',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'down',goal:6}]},
+  {h:'Practice: Up or Down',body:'<p>Now the direction changes. Name the size. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'mix',goal:6}]},
+  {h:'Show what you know',body:'<p>Sing down from high do. Keep the lower note bright so it does not go flat.</p>',w:['sing',{items:[{label:'High do down to sol: a Perfect 4th',notes:[['do',12,'high'],['sol',7,'']],model:true},{label:'High do down to fa: a Perfect 5th',notes:[['do',12,'high'],['fa',5,'']]},{label:'High do down to do: an octave',notes:[['do',12,'high'],['do',0,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Going down a Perfect 4th from high do, you land on…',opts:['fa','sol','mi','la'],a:1,why:'High do down 5 half steps is <b>sol</b>.'}]},
+ ]},
+ {id:'ear9',skill:'ear',level:2,title:'Interval Ear: Thirds',steps:[
+  {h:'Major and Minor Thirds',body:'<p>The <b>3rds</b> build every chord. A <b>Major 3rd</b> (4 half steps) is bright: it is the bottom of a major chord. A <b>minor 3rd</b> (3 half steps) is darker: it is the bottom of a minor chord.</p><p>Bright and dark is a better way to hear them than happy and sad: plenty of music in minor is not sad at all.</p>',w:['hxExplore',{items:[hxIvCard(4,'up'),hxIvCard(3,'up'),hxIvCard(4,'down'),hxIvCard(3,'down')]}]},
+  {h:'Practice: Bright or Dark?',body:'<p>Major 3rd or minor 3rd, going up or down. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[3,4],dir:'mix',goal:6}]},
+  {h:'Practice: Thirds and Anchors',body:'<p>Everything so far. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[3,4,5,7,12],dir:'mix',goal:6}]},
+  {h:'Show what you know',body:'<p>Sing a Major 3rd and a minor 3rd.</p>',w:['sing',{items:[{label:'Do up to mi: a Major 3rd',notes:[['do',0,''],['mi',4,'']],model:true},{label:'Mi up to sol: a minor 3rd',notes:[['mi',4,''],['sol',7,'']]},{label:'Sol down to mi: a minor 3rd down',notes:[['sol',7,''],['mi',4,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which 3rd is at the bottom of a major chord?',opts:['minor 3rd','Major 3rd','Both','Neither'],a:1,why:'A major chord starts with a <b>Major 3rd</b> (do to mi), then adds a minor 3rd on top.'}]},
+ ]},
+ {id:'ear10',skill:'ear',level:2,title:'Interval Ear: Steps',steps:[
+  {h:'Whole Steps and Half Steps',body:'<p>A <b>Major 2nd</b> is a whole step (2 half steps): do to re. A <b>minor 2nd</b> is a half step: ti to do, or mi to fa. Melodies move mostly by these steps, so they come up in almost every phrase you sing.</p>',w:['hxExplore',{items:[hxIvCard(2,'up'),hxIvCard(1,'up'),hxIvCard(2,'down'),hxIvCard(1,'down')]}]},
+  {h:'Steps and Leaps',body:'<p>Telling a <b>step</b> from a <b>leap</b> is the first reading skill: a 2nd is a step; a 3rd or larger is a leap. Name each interval. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4],dir:'mix',goal:6}]},
+  {h:'Practice: Everything So Far',body:'<p>Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,7,12],dir:'mix',goal:7}]},
+  {h:'Show what you know',body:'<p>Tune the half steps carefully: they are easy to sing too wide.</p>',w:['sing',{items:[{label:'Mi up to fa: a half step',notes:[['mi',4,''],['fa',5,'']],model:true},{label:'Ti up to do: a half step',notes:[['ti',-1,'low'],['do',0,'']]},{label:'Do up to re and back',notes:[['do',0,''],['re',2,''],['do',0,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which pair is a half step apart?',opts:['do – re','mi – fa','sol – la','re – mi'],a:1,why:'<b>Mi – fa</b> and <b>ti – do</b> are the half steps of the major scale.'}]},
+ ]},
+ {id:'ear11',skill:'ear',level:3,title:'Interval Ear: Sixths and Sevenths',steps:[
+  {h:'The Wide Ones',body:'<p>6ths and 7ths are wide leaps. A <b>Major 6th</b> (do to la) is warm and open. A <b>minor 6th</b> (do to le) is bittersweet. A <b>minor 7th</b> (do to te) is bluesy. A <b>Major 7th</b> (do to ti) is sharp and tense: one half step short of an octave. 7th leaps are rare in choral parts, but they matter in Master Singers repertoire.</p>',w:['hxExplore',{items:[hxIvCard(9,'up'),hxIvCard(8,'up'),hxIvCard(10,'up'),hxIvCard(11,'up',' Think of the octave, then come down a half step.'),hxIvCard(9,'down')]}]},
+  {h:'Practice: 6ths',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[8,9],dir:'mix',goal:5}]},
+  {h:'Practice: 6ths and 7ths',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[8,9,10,11,12],dir:'up',goal:6}]},
+  {h:'Check yourself',w:['quiz',{q:'Which interval is one half step short of an octave?',opts:['minor 7th','Major 6th','Major 7th','Perfect 5th'],a:2,why:'A <b>Major 7th</b> is 11 half steps, one short of the octave’s 12.'}]},
+ ]},
+ {id:'ear12',skill:'ear',level:2,title:'Resolving Tendencies',steps:[
+  {h:'Notes That Want to Move',body:'<p>Some notes lean so strongly that the ear expects them to move to a neighbor. Choirs tune these moves all the time:</p><ul><li><b>ti → do</b> and <b>fa → mi</b>: the two half steps.</li><li><b>re → do</b> and <b>la → sol</b>: whole steps down to stable notes.</li><li>Chromatic notes lean too: <b>fi → sol</b>, <b>te → la</b>, <b>le → sol</b>.</li></ul><p>When you sing a leading note, aim it <b>toward</b> its resolution: sing ti a little high, and fa a little low.</p>',w:['hxExplore',{items:HX_TEND.map(T=>({label:T.lab,desc:HX_DEGTIP[hxSylOf(T.a)],spec:{k:'tend',a:T.a,b:T.b},btn:'Hear it'}))}]},
+  {h:'Practice: Which Resolution?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'tend',set:[0,1,2,3],goal:5}]},
+  {h:'Practice: With Chromatic Notes',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'tend',set:[0,1,2,3,4,5,6],goal:5}]},
+  {h:'Show what you know',body:'<p>Sing each tendency tone and resolve it. The app checks the tuning of both notes.</p>',w:['sing',{items:[{label:'Ti resolves up to do',notes:[['ti',11,''],['do',12,'high']],model:true},{label:'Fa resolves down to mi',notes:[['fa',5,''],['mi',4,'']]},{label:'Fi resolves up to sol',notes:[['fi',6,''],['sol',7,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Where does fa usually resolve?',opts:['Up to sol','Down to mi','Up to la','Down to do'],a:1,why:'<b>Fa</b> is a half step above <b>mi</b>, and it leans down to it.'}]},
+ ]},
+ {id:'ear13',skill:'ear',level:3,title:'The Tritone and All Twelve',steps:[
+  {h:'The Tritone',body:'<p>The <b>tritone</b> is 6 half steps: exactly half an octave. It sits between the 4th and the 5th, and it sounds restless and unstable. In a major key it is <b>fa to ti</b>, the two leaning notes, which is why V7 pulls so hard toward home. From do, it is <b>do to fi</b>.</p><p>It was saved for last because it is the hardest to sing in tune.</p>',w:['hxExplore',{items:[hxIvCard(6,'up'),{label:'Fa and ti together',desc:'The tritone inside V7.',spec:{k:'seq',rels:[5,11],dur:0.8},btn:'Hear it'},hxIvCard(5,'up'),hxIvCard(7,'up')]}]},
+  {h:'Practice: 4th, Tritone or 5th?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,6,7],dir:'mix',goal:6}]},
+  {h:'Practice: All Twelve, Going Up',body:'<p>Every interval in the octave. Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'up',goal:7}]},
+  {h:'Check yourself',w:['quiz',{q:'In a major key, which two syllables make a tritone?',opts:['do and sol','fa and ti','mi and la','re and fa'],a:1,why:'<b>Fa to ti</b> is 6 half steps: the tritone.'}]},
+ ]},
+ {id:'ear14',skill:'ear',level:3,title:'Interval Final: Any Interval, Any Direction',steps:[
+  {h:'The Final',body:'<p>Twelve intervals, in any direction: up, down, or both notes together. Get <b>10 of 12</b> right to pass. If you miss, start over and try again.</p><p>Take your time. Use <b>Play again</b> as often as you like.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'any',exam:{n:12,need:10}}]},
+ ]},
+];
+
+/* ---------- lessons: Harmony ---------- */
+const hxQCard=(q,root,mode)=>({label:HQ[q].cap,desc:HQ[q].how,spec:{k:'chord',q,rel:root||0,mode:mode||'both'},btn:'Hear it'});
+const hxRomCard=(rom,label,desc,inv)=>({label,desc,spec:{k:'rom',rom,inv:inv||0},btn:'Hear it',alt:{btn:'One at a time',spec:{k:'rom',rom,inv:inv||0,mode:'broken'}}});
+const HX_HAR_LESSONS=[
+ {id:'hm1',skill:'harmony',level:1,minLvl:1,title:'Four Kinds of Triads',steps:[
+  {h:'Triads, Revisited',body:'<p>A <b>triad</b> is three notes stacked in 3rds: a <b>root</b>, a <b>3rd</b> and a <b>5th</b>. You already know two kinds: <b>major</b> and <b>minor</b>. Two more come from changing the size of the 3rds:</p><ul><li><b>Major</b>: Major 3rd + minor 3rd. Bright.</li><li><b>Minor</b>: minor 3rd + Major 3rd. Darker.</li><li><b>Diminished</b>: two minor 3rds. Tight and tense.</li><li><b>Augmented</b>: two Major 3rds. Stretched and unsettled.</li></ul><p>Play all four on the same root and listen to what changes.</p>',w:['hxExplore',{items:[hxQCard('M'),hxQCard('m'),hxQCard('d'),hxQCard('A')]}]},
+  {h:'Diminished: Ti – Re – Fa',body:'<p>The diminished triad lives in every major key on <b>ti</b>: <b>ti – re – fa</b>, the vii° chord. Its outside notes, ti and fa, make a tritone, so it wants to move on, usually to I.</p><p>In choral music you hear it on its way to a cadence.</p>',w:['hxExplore',{items:[hxRomCard('vii°','vii°: ti – re – fa','The diminished chord in a major key.'),{label:'vii° → I',desc:'The tension resolves home.',spec:{k:'romseq',seq:['vii°','I']},btn:'Hear it'}]}]},
+  {h:'Augmented: Rare and Stretched',body:'<p>The augmented triad is rare. You find it in <b>harmonic minor</b>, built on me: <b>me – sol – ti</b>. Composers also use it for a moment of suspense: raise the 5th of a major chord and it pushes upward.</p>',w:['hxExplore',{items:[hxRomCard('III+','III+: me – sol – ti','The augmented chord in harmonic minor.'),hxQCard('M',0),hxQCard('A',0)]}]},
+  {h:'Practice: Major or Augmented?',body:'<p>Only the 5th is different. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','A'],goal:4}]},
+  {h:'Practice: Minor or Diminished?',body:'<p>Only the 5th is different again. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['m','d'],goal:4}]},
+  {h:'Practice: All Four',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','m','d','A'],goal:6}]},
+  {h:'Show what you know',body:'<p>Press <b>Hear the chord</b>, then sing the chord from its root up: root, 3rd, 5th.</p>',w:['sing',{items:[
+    {label:'Major (I): sing do – mi – sol',notes:[['do',0,''],['mi',4,''],['sol',7,'']],model:true,...hxCueFields({k:'rom',rom:'I'})},
+    {label:'Minor (ii): sing re – fa – la',notes:[['re',2,''],['fa',5,''],['la',9,'']],...hxCueFields({k:'rom',rom:'ii'})},
+    {label:'Diminished (vii°): sing ti – re – fa',notes:[['ti',-1,'low'],['re',2,''],['fa',5,'']],...hxCueFields({k:'rom',rom:'vii°'})}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which triad is built from two minor 3rds?',opts:['Major','Minor','Diminished','Augmented'],a:2,why:'<b>Diminished</b> = minor 3rd + minor 3rd. Augmented is two Major 3rds.'}]},
+ ]},
+ {id:'hm2',skill:'harmony',level:2,minLvl:2,title:'Find Your Note in the Chord',steps:[
+  {h:'Every Part Has a Job',body:'<p>In a choir, each section sings one note of the chord. Knowing <b>which</b> note you have tells you how to tune it:</p><ul><li><b>Root</b>: the foundation. Sing it solid and in tune with the bass.</li><li><b>3rd</b>: the color. In a major chord, sing it slightly low so the chord rings.</li><li><b>5th</b>: the frame. Sing it pure and steady.</li><li><b>7th</b>: the tension. It usually resolves down by step.</li></ul><p>Play a chord, then pick out each note by itself.</p>',w:['hxExplore',{items:[hxRomCard('I','I: do – mi – sol','Root do, 3rd mi, 5th sol.'),hxRomCard('IV','IV: fa – la – do','Root fa, 3rd la, 5th do.'),hxRomCard('V','V: sol – ti – re','Root sol, 3rd ti, 5th re.'),hxRomCard('V7','V7: sol – ti – re – fa','Its 7th is fa, which resolves down to mi.')]}]},
+  {h:'Sing the Root',body:'<p>Press <b>Hear the chord</b>. Then sing only its <b>root</b>.</p>',w:['sing',{items:[{label:'IV chord: sing the root (fa)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'IV'})},{label:'V chord: sing the root (sol)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'V'})}]}]},
+  {h:'Sing the 3rd',body:'<p>Now the 3rd: the note that decides major or minor.</p>',w:['sing',{items:[{label:'I chord: sing the 3rd (mi)',notes:[['mi',4,'']],model:true,...hxCueFields({k:'rom',rom:'I'})},{label:'vi chord: sing the 3rd (do)',notes:[['do',0,'']],...hxCueFields({k:'rom',rom:'vi'})},{label:'V chord: sing the 3rd (ti)',notes:[['ti',-1,'low']],...hxCueFields({k:'rom',rom:'V'})}]}]},
+  {h:'Sing the 5th and the 7th',body:'<p>The 5th, then the 7th of V7.</p>',w:['sing',{items:[{label:'IV chord: sing the 5th (do)',notes:[['do',0,'']],model:true,...hxCueFields({k:'rom',rom:'IV'})},{label:'V7 chord: sing the 7th (fa)',notes:[['fa',5,'']],...hxCueFields({k:'rom',rom:'V7'})}]}]},
+  {h:'Check yourself',w:['quiz',{q:'In a V7 chord, the 7th is fa. Where does it usually go next?',opts:['Up to sol','Down to mi','It stays','Up to la'],a:1,why:'The 7th of V7 resolves <b>down by step</b>: fa to <b>mi</b>, the 3rd of I.'}]},
+ ]},
+ {id:'hm3',skill:'harmony',level:3,minLvl:2,title:'Seventh Chords',steps:[
+  {h:'Add One More 3rd',body:'<p>Stack one more 3rd on a triad and you get a <b>seventh chord</b>: root, 3rd, 5th and 7th. Five kinds come up most often:</p><ul><li><b>Major 7th</b>: major triad + Major 7th. Imaj7 is do – mi – sol – <b>ti</b>.</li><li><b>Dominant 7th</b>: major triad + minor 7th. V7 is sol – ti – re – <b>fa</b>.</li><li><b>Minor 7th</b>: minor triad + minor 7th. ii7 is re – fa – la – <b>do</b>.</li><li><b>Half-diminished 7th</b>: diminished triad + minor 7th. viiø7 is ti – re – fa – <b>la</b>.</li><li><b>Diminished 7th</b>: three minor 3rds. In minor, vii°7 is ti – re – fa – <b>le</b>.</li></ul>',w:['hxExplore',{items:[hxQCard('M7'),hxQCard('D7'),hxQCard('m7'),hxQCard('h7'),hxQCard('o7')]}]},
+  {h:'Major 7th vs Dominant 7th',body:'<p>These two share the same triad. Only the 7th changes: <b>ti</b> (Major 7th) or <b>te</b> (minor 7th). Ti is a half step below the octave and sounds dreamy. Te is a whole step below and sounds like it wants to move. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M7','D7'],goal:4}]},
+  {h:'Dominant 7th vs Minor 7th',body:'<p>Now the 7th stays and the <b>3rd</b> changes: mi (dominant 7th) or me (minor 7th). Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['D7','m7'],goal:4}]},
+  {h:'Half-Diminished vs Diminished 7th',body:'<p>Both start with a diminished triad. The half-diminished has a minor 7th; the diminished 7th’s top note is one half step lower, so every 3rd is minor. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['h7','o7'],goal:4}]},
+  {h:'Practice: All Five',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M7','D7','m7','h7','o7'],goal:6}]},
+  {h:'Show what you know: Sing the 7th',body:'<p>Hear each chord, then sing its 7th. Listen for the note that is a step below the octave.</p>',w:['sing',{items:[
+    {label:'V7: sing the 7th (fa)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'V7'})},
+    {label:'ii7: sing the 7th (do)',notes:[['do',12,'high']],...hxCueFields({k:'rom',rom:'ii7'})},
+    {label:'IVmaj7: sing the 7th (mi)',notes:[['mi',4,'']],...hxCueFields({k:'rom',rom:'IVmaj7'})}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Sol – ti – re – fa is which kind of seventh chord?',opts:['Major 7th','Dominant 7th','Minor 7th','Half-diminished 7th'],a:1,why:'V7 is a <b>dominant 7th</b>: a major triad (sol – ti – re) plus a minor 7th (fa).'}]},
+ ]},
+ {id:'hm4',skill:'harmony',level:2,minLvl:2,title:'Inversions and the Bass Line',steps:[
+  {h:'Same Chord, Different Bass',body:'<p>A chord does not have to have its root on the bottom. The note in the <b>bass</b> names the position:</p><ul><li><b>Root position</b>: the root is in the bass.</li><li><b>1st inversion</b>: the 3rd is in the bass.</li><li><b>2nd inversion</b>: the 5th is in the bass.</li></ul><p>In choral music the bass is often <b>not</b> on the root. Inversions let the bass line move smoothly by step.</p>',w:['hxExplore',{items:[hxRomCard('I','I, root position','Do in the bass.',0),hxRomCard('I','I, 1st inversion','Mi in the bass.',1),hxRomCard('I','I, 2nd inversion','Sol in the bass.',2)]}]},
+  {h:'Practice: Root or 3rd?',body:'<p>Listen to the lowest note. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'inv',set:[0,1],goal:5}]},
+  {h:'Practice: Root, 3rd or 5th?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'inv',set:[0,1,2],goal:6}]},
+  {h:'Show what you know: Sing the Lowest Note',body:'<p>Press <b>Hear the chord</b>, then sing the <b>lowest note you hear</b>. Sing it in your own octave: any octave counts.</p>',w:['sing',{items:[
+    {label:'I in 1st inversion: sing the bass (mi)',notes:[['mi',4,'']],model:true,...hxCueFields({k:'rom',rom:'I',inv:1})},
+    {label:'I in 2nd inversion: sing the bass (sol)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'I',inv:2})},
+    {label:'IV in 1st inversion: sing the bass (la)',notes:[['la',9,'']],...hxCueFields({k:'rom',rom:'IV',inv:1})}]}]},
+  {h:'Check yourself',w:['quiz',{q:'A C major chord has E in the bass. What position is it in?',opts:['Root position','1st inversion','2nd inversion','It is a different chord'],a:1,why:'E is the 3rd of C major, so the chord is in <b>1st inversion</b>.'}]},
+ ]},
+ {id:'hm5',skill:'harmony',level:1,minLvl:1,title:'Cadences: Authentic and Plagal',steps:[
+  {h:'How Phrases End',body:'<p>A <b>cadence</b> is the chord pattern at the end of a phrase. It works like punctuation. Two cadences sound <b>finished</b>:</p><ul><li><b>Authentic</b>: V to I. The strongest ending, like a period.</li><li><b>Plagal</b>: IV to I. Gentle: it is the “Amen” sung at the end of many hymns.</li></ul>',w:['hxExplore',{items:[{label:'Authentic cadence',tag:'V → I',desc:HX_CAD.auth.desc,spec:{k:'cad',id:'auth'},btn:'Hear it'},{label:'Plagal cadence',tag:'IV → I',desc:HX_CAD.plag.desc,spec:{k:'cad',id:'plag'},btn:'Hear it'}]}]},
+  {h:'Practice: Which Ending?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag'],goal:5}]},
+  {h:'Show what you know: Sing the Bass Line',body:'<p>Press <b>Hear the cadence</b>, then sing its bass line on the syllables. Basses and tenors: this is your part. Everyone else: sing it in your octave.</p>',w:['sing',{items:[
+    {label:'Authentic: fa – sol – do',notes:[['fa',5,''],['sol',7,''],['do',0,'']],model:true,...hxCueFields({k:'cad',id:'auth'},'Hear the cadence')},
+    {label:'Plagal: do – fa – do',notes:[['do',0,''],['fa',5,''],['do',0,'']],...hxCueFields({k:'cad',id:'plag'},'Hear the cadence')}]}]},
+  {h:'Check yourself',w:['quiz',{q:'The “Amen” at the end of a hymn is usually which cadence?',opts:['Authentic','Plagal','Half','Deceptive'],a:1,why:'IV to I: the <b>plagal</b> or “Amen” cadence.'}]},
+ ]},
+ {id:'hm6',skill:'harmony',level:2,minLvl:2,title:'Cadences: Half and Deceptive',steps:[
+  {h:'Endings That Keep Going',body:'<p>Two more cadences leave the music unfinished:</p><ul><li><b>Half</b>: the phrase stops on V. It sounds like a comma or a question.</li><li><b>Deceptive</b>: V goes to vi instead of I. You expect home, and the music surprises you.</li></ul>',w:['hxExplore',{items:[{label:'Half cadence',tag:'… → V',desc:HX_CAD.half.desc,spec:{k:'cad',id:'half'},btn:'Hear it'},{label:'Deceptive cadence',tag:'V → vi',desc:HX_CAD.dec.desc,spec:{k:'cad',id:'dec'},btn:'Hear it'},{label:'Authentic cadence',tag:'V → I',desc:'For comparison.',spec:{k:'cad',id:'auth'},btn:'Hear it'}]}]},
+  {h:'Practice: Authentic or Deceptive?',body:'<p>Both start the same way. Listen to the last chord. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','dec'],goal:4}]},
+  {h:'Practice: All Four Cadences',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag','half','dec'],goal:6}]},
+  {h:'Show what you know: Sing the Bass Line',body:'<p>Hear the cadence, then sing its bass line.</p>',w:['sing',{items:[
+    {label:'Half: do – fa – sol',notes:[['do',0,''],['fa',5,''],['sol',7,'']],model:true,...hxCueFields({k:'cad',id:'half'},'Hear the cadence')},
+    {label:'Deceptive: fa – sol – la',notes:[['fa',5,''],['sol',7,''],['la',9,'']],...hxCueFields({k:'cad',id:'dec'},'Hear the cadence')}]}]},
+  {h:'Check yourself',w:['quiz',{q:'V moves to vi instead of I. Which cadence is that?',opts:['Plagal','Half','Deceptive','Authentic'],a:2,why:'A <b>deceptive</b> cadence: you expect I, and vi arrives instead.'}]},
+ ]},
+ {id:'hm7',skill:'harmony',level:3,minLvl:3,title:'Chord Progressions',steps:[
+  {h:'Patterns of Chords',body:'<p>A <b>progression</b> is a series of chords. A few patterns show up again and again in every style, from hymns to pop. Recognize them and you can follow the harmony under any melody.</p>',w:['hxExplore',{items:['p145','p4c','p50','pvi'].map(id=>({label:HX_PROG[id].name,tag:HX_PROG[id].n,desc:HX_PROG[id].hook,spec:{k:'prog',id},btn:'Hear it'}))}]},
+  {h:'More Progressions',body:'<p>Four more, including three in minor (do-based: do is the minor home).</p>',w:['hxExplore',{items:['ppach','p251','pmin','paeol','pandal'].map(id=>({label:HX_PROG[id].name,tag:HX_PROG[id].n,desc:HX_PROG[id].hook,spec:{k:'prog',id},btn:'Hear it'}))}]},
+  {h:'Practice: Four Loops',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p145','p4c','p50','pvi'],goal:5}]},
+  {h:'Practice: Same Chords, New Start',body:'<p>The four-chord loop and the minor-start loop use the same four chords. Listen for where the loop begins. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p4c','pvi'],goal:4}]},
+  {h:'Practice: All Nine',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:Object.keys(HX_PROG),goal:6}]},
+  {h:'Show what you know: Sing the Bass Roots',body:'<p>Hear the progression, then sing the root of each chord: the bass line.</p>',w:['sing',{items:[
+    {label:'I – IV – V – I: do – fa – sol – do',notes:[['do',0,''],['fa',5,''],['sol',7,''],['do',0,'']],model:true,...hxCueFields({k:'prog',id:'p145'},'Hear the progression')},
+    {label:'I – V – vi – IV: do – sol – la – fa',notes:[['do',0,''],['sol',7,''],['la',9,''],['fa',5,'']],...hxCueFields({k:'prog',id:'p4c',reps:1},'Hear the progression')}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which progression is the same four chords as I – V – vi – IV, started on vi?',opts:['I – vi – IV – V','vi – IV – I – V','ii – V – I','i – VII – VI – V'],a:1,why:'<b>vi – IV – I – V</b> is the four-chord loop starting on vi, which makes it sound minor.'}]},
+ ]},
+ {id:'hm8',skill:'harmony',level:3,minLvl:3,title:'Real Voicings: Progressions With Inversions',steps:[
+  {h:'Smooth Bass Lines',body:'<p>Real music rarely keeps every chord in root position. Composers use <b>inversions</b> so the bass can move by step. Listen to Pachelbel’s Canon with inversions: the bass walks straight down the scale, <b>do – ti – la – sol – fa – mi</b>, then <b>fa – sol</b>.</p>',w:['hxExplore',{items:[{label:'Pachelbel, root position',desc:'Every chord on its root: the bass leaps.',spec:{k:'prog',id:'ppach'},btn:'Hear it'},{label:'Pachelbel, real voicing',desc:'With inversions: the bass walks down by step.',spec:{k:'prog',id:'ppach',real:true},btn:'Hear it'},{label:'Four-chord loop, real voicing',desc:'V in 1st inversion: the bass goes do – ti – la – fa.',spec:{k:'prog',id:'p4c',real:true},btn:'Hear it'}]}]},
+  {h:'Practice: Real Voicings',body:'<p>The same progressions, now with inversions. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p145','p4c','p50','pvi','ppach'],real:true,goal:5}]},
+  {h:'Show what you know: Sing the Bass Line',body:'<p>Hear the progression, then sing its bass line.</p>',w:['sing',{items:[
+    {label:'Four-chord loop: do – ti – la – fa',notes:[['do',0,''],['ti',-1,'low'],['la',-3,'low'],['fa',-7,'low']],model:true,...hxCueFields({k:'prog',id:'p4c',real:true,reps:1},'Hear the progression')},
+    {label:'Pachelbel: do – ti – la – sol',notes:[['do',12,'high'],['ti',11,''],['la',9,''],['sol',7,'']],...hxCueFields({k:'prog',id:'ppach',real:true},'Hear the progression')}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Why do composers put chords in inversion?',opts:['To make every chord louder','So the bass line can move smoothly by step','Because root position is not allowed','To change the key'],a:1,why:'Inversions let the <b>bass line move by step</b> while the chords stay the same.'}]},
+ ]},
+ {id:'hm9',skill:'harmony',level:4,minLvl:3,title:'Chords in the Low Register',steps:[
+  {h:'Why Low Chords Are Harder',body:'<p>Low chords sound muddier: the notes are close together in pitch, and their overtones crowd each other. That is why composers spread low chords out, and why basses and tenors need to hear the <b>root</b> clearly and tune to it.</p>',w:['hxExplore',{items:[{label:'Major, middle',desc:'Clear.',spec:{k:'chord',q:'M',mode:'block'},btn:'Hear it'},{label:'Major, low',desc:'Thicker and muddier.',spec:{k:'chord',q:'M',low:true,mode:'block'},btn:'Hear it'},{label:'Minor, low',desc:'Listen past the rumble for the 3rd.',spec:{k:'chord',q:'m',low:true,mode:'block'},btn:'Hear it'}]}]},
+  {h:'Practice: Low Triads',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','m','d'],low:true,mode:'block',goal:5}]},
+  {h:'Practice: Low Cadences',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag','half','dec'],low:true,goal:5}]},
+  {h:'Show what you know: Find the Root',body:'<p>Hear a low chord, then sing its root in your octave.</p>',w:['sing',{items:[
+    {label:'Low IV chord: sing the root (fa)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'IV',low:true})},
+    {label:'Low V chord: sing the root (sol)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'V',low:true})}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Why are low chords often spread out?',opts:['To use more singers','Because close low notes sound muddy','Because basses cannot sing 3rds','To make them quieter'],a:1,why:'Low notes close together sound <b>muddy</b>, so composers space them out.'}]},
+ ]},
+];
+
+/* ---------- lessons: pentatonic scales and sound-alikes ---------- */
+const HX_OTHER_LESSONS=[
+ {id:'ssp',skill:'scales',level:1,title:'Pentatonic Scales',after:'ss1',steps:[
+  {h:'Five Notes',body:'<p><b>Penta</b> means five. A <b>pentatonic scale</b> has five notes instead of seven. The <b>major pentatonic</b> is <b>do re mi sol la</b>: the major scale without fa and ti. With no half steps, it is easy to sing and nothing clashes.</p><p>“Amazing Grace,” “Auld Lang Syne” and “Swing Low, Sweet Chariot” (all public domain) use only these five notes in their melodies.</p>',w:['hxExplore',{items:[{label:'Major pentatonic',desc:'do re mi sol la do',spec:{k:'seq',rels:[0,2,4,7,9,12,9,7,4,2,0],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Major scale',desc:'do re mi fa sol la ti do, for comparison',spec:{k:'seq',rels:[0,2,4,5,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'The Minor Pentatonic',body:'<p>Use the <b>same five notes</b> but make <b>la</b> home, and the scale sounds minor: <b>la do re mi sol la</b>. That is the <b>minor pentatonic</b>.</p><p>This is a bridge to la-based minor: same notes as the major pentatonic, with home moved to la. In do-based minor, the same scale is <b>do me fa sol te do</b>.</p>',w:['hxExplore',{items:[{label:'Minor pentatonic (la-based)',desc:'la do re mi sol la',spec:{k:'seq',rels:[-3,0,2,4,7,9],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Minor pentatonic (do-based)',desc:'do me fa sol te do',spec:{k:'seq',rels:[0,3,5,7,10,12],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Pentatonic or Major?',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'penta',goal:4}]},
+  {h:'Show what you know',body:'<p>Sing both pentatonic scales.</p>',w:['sing',{items:[{label:'Major pentatonic: do re mi sol la do',notes:[['do',0,''],['re',2,''],['mi',4,''],['sol',7,''],['la',9,''],['do',12,'high']],model:true},{label:'Minor pentatonic (do-based): do me fa sol te do',notes:[['do',0,''],['me',3,''],['fa',5,''],['sol',7,''],['te',10,''],['do',12,'high']],minor:true}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which two notes of the major scale does the major pentatonic leave out?',opts:['re and la','fa and ti','mi and sol','do and sol'],a:1,why:'It leaves out <b>fa</b> and <b>ti</b>, so the scale has no half steps.'}]},
+ ]},
+ {id:'vs1',skill:'solfege',level:3,title:'Sound-Alikes: Ti or Te?',after:'s6',steps:[
+  {h:'Two Notes Below High Do',body:'<p><b>Ti</b> and <b>te</b> are easy to mix up. Both sit just below high do:</p><ul><li><b>Ti</b> is a <b>half step</b> below high do. It is the leading tone and pulls up to do.</li><li><b>Te</b> is a <b>whole step</b> below high do. It is relaxed and leans down to la. It gives Mixolydian, the blues and V7 of IV their color.</li></ul>',w:['hxExplore',{items:[{label:'Sol – la – ti – do',desc:'Ti pulls up to do.',spec:{k:'seq',rels:[7,9,11,12]},btn:'Hear it'},{label:'Sol – la – te – la',desc:'Te leans back down to la.',spec:{k:'seq',rels:[7,9,10,9]},btn:'Hear it'}]}]},
+  {h:'Practice: Ti or Te?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'titi',goal:6}]},
+  {h:'Show what you know',body:'<p>Sing each one and tune it toward where it wants to go.</p>',w:['sing',{items:[{label:'Sol – la – ti – do',notes:[['sol',7,''],['la',9,''],['ti',11,''],['do',12,'high']],model:true},{label:'Do – te – la – sol',notes:[['do',12,'high'],['te',10,''],['la',9,''],['sol',7,'']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which note is a whole step below high do?',opts:['ti','te','la','sol'],a:1,why:'<b>Te</b> is a whole step below high do. Ti is a half step below.'}]},
+ ]},
+ {id:'vs2',skill:'scales',level:3,title:'Sound-Alikes: Harmonic or Melodic Minor?',after:'ss5',steps:[
+  {h:'Listen to the Top Half',body:'<p>Harmonic and melodic minor share their bottom five notes: <b>do re me fa sol</b>. The difference is on top:</p><ul><li><b>Harmonic minor</b>: <b>le – ti – do</b>. Le to ti is a wide step (an augmented 2nd) that sounds exotic.</li><li><b>Melodic minor</b>, going up: <b>la – ti – do</b>. Smooth, like major.</li><li>Going <b>down</b>, melodic minor turns back into natural minor: <b>do – te – le – sol</b>.</li></ul>',w:['hxExplore',{items:[{label:'Harmonic minor, up',desc:'Listen for the wide le → ti.',spec:{k:'seq',rels:[0,2,3,5,7,8,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Melodic minor, up',desc:'La and ti: smooth.',spec:{k:'seq',rels:[0,2,3,5,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Melodic minor, down',desc:'Te and le: natural minor.',spec:{k:'seq',rels:[12,10,8,7,5,3,2,0],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Going Up',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'hm',goal:4}]},
+  {h:'Practice: Going Down',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'hmd',goal:4}]},
+  {h:'Check yourself',w:['quiz',{q:'Going down, melodic minor sounds like…',opts:['harmonic minor','natural minor','major','the chromatic scale'],a:1,why:'Melodic minor comes down as <b>natural minor</b>: te and le.'}]},
+ ]},
+ {id:'vs3',skill:'scales',level:3,title:'Sound-Alikes: Lydian or Mixolydian?',after:'sc7',steps:[
+  {h:'One Note Each Way',body:'<p>Lydian and Mixolydian are both major scales with <b>one changed note</b>, in opposite directions:</p><ul><li><b>Lydian</b> raises the 4th: <b>fi</b>. Bright and floating.</li><li><b>Mixolydian</b> lowers the 7th: <b>te</b>. Bluesy and folky.</li></ul><p>Listen to the 4th and the 7th of each scale.</p>',w:['hxExplore',{items:[{label:'Lydian',desc:'do re mi fi sol la ti do',spec:{k:'seq',rels:[0,2,4,6,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Mixolydian',desc:'do re mi fa sol la te do',spec:{k:'seq',rels:[0,2,4,5,7,9,10,12],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Lydian or Mixolydian?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'lm',goal:5}]},
+  {h:'Show what you know',body:'<p>Sing both. Raise fa to fi for Lydian; lower ti to te for Mixolydian.</p>',w:['sing',{items:[{label:'Lydian: do re mi fi sol',notes:[['do',0,''],['re',2,''],['mi',4,''],['fi',6,''],['sol',7,'']],model:true},{label:'Mixolydian: sol la te do',notes:[['sol',7,''],['la',9,''],['te',10,''],['do',12,'high']]}]}]},
+  {h:'Check yourself',w:['quiz',{q:'Which mode is major with a raised 4th?',opts:['Mixolydian','Dorian','Lydian','Phrygian'],a:2,why:'<b>Lydian</b> raises fa to <b>fi</b>.'}]},
+ ]},
+];
+
+/* ---------- install the lessons ---------- */
+(function(){
+  const at=(id,...ls)=>{const i=LESSONS.findIndex(l=>l.id===id);LESSONS.splice(i<0?LESSONS.length:i+1,0,...ls);};
+  LESSONS.push(...HX_EAR_LESSONS,...HX_HAR_LESSONS);
+  HX_OTHER_LESSONS.forEach(L=>at(L.after,L));
+  Object.assign(LESSON_FOCUS,{ear1:'deg',ear2:'deg',ear3:'deg',ear4:'deg',ear5:'degOct',ear6:'degChrom',ear7:'ivUp',ear8:'ivDown',ear9:'ivAny',ear10:'ivAny',ear11:'ivAny',ear12:'tend',ear13:'ivAny',ear14:'ivAny',
+    hm1:'triads',hm2:'singTone',hm3:'sevenths',hm4:'inv',hm5:'cad',hm6:'cad',hm7:'prog',hm8:'prog',hm9:'low',ssp:'pentaMaj',vs1:'chrom',vs2:'harmonic',vs3:'modes'});
+  TRACK_TITLE.ear='Ear Training';TRACK_TITLE.harmony='Harmony';
+  TRACK_COLS[0].push('ear','harmony');TRACK_ORDER.splice(TRACK_ORDER.indexOf('intervals')+1,0,'ear','harmony');TRACKS.splice(0,TRACKS.length,...TRACK_COLS.flat());
+  MOD_ORDER.splice(MOD_ORDER.indexOf('intervals')+1,0,'ear','harmony');
+  ICONS.ear='<svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M10 13a8 8 0 1 1 13.5 5.8c-2 1.8-3 3-3 5.7a4 4 0 0 1-7.6 1.7"/><path d="M14 13.5a3.5 3.5 0 1 1 6 2.5c-1 1-1.7 1.6-1.7 3"/></svg>';
+  ICONS.harmony='<svg viewBox="0 0 34 34" fill="currentColor"><ellipse cx="14" cy="27" rx="5" ry="3.6" transform="rotate(-22 14 27)"/><ellipse cx="14" cy="19" rx="5" ry="3.6" transform="rotate(-22 14 19)"/><ellipse cx="14" cy="11" rx="5" ry="3.6" transform="rotate(-22 14 11)"/><path d="M18.4 26V4" stroke="currentColor" stroke-width="2"/></svg>';
+  TOOLS.push(
+    {id:'t-chords',skill:'harmony',title:'Chord player',desc:'Every triad and seventh-chord quality, one note at a time or all together.',w:['hxExplore',{items:['M','m','d','A','M7','D7','m7','h7','o7'].map(q=>hxQCard(q))}]},
+    {id:'t-progs',skill:'harmony',title:'Cadences and progressions',desc:'The four cadences and nine common progressions, with and without inversions.',w:['hxExplore',{items:[...Object.keys(HX_CAD).map(id=>({label:HX_CAD[id].n+' cadence',tag:HX_CAD[id].rom.join(' – '),desc:HX_CAD[id].desc,spec:{k:'cad',id},btn:'Hear it'})),...Object.keys(HX_PROG).map(id=>({label:HX_PROG[id].name,tag:HX_PROG[id].n,desc:HX_PROG[id].hook,spec:{k:'prog',id},btn:'Hear it',alt:{btn:'Real voicing',spec:{k:'prog',id,real:true}}}))]}]},
+    {id:'t-hearname',skill:'ear',title:'Hear and Name drill',desc:'The key, then one note: name the syllable. Every note of the scale, in either octave.',w:['hxEar',{kind:'deg',set:[0,2,4,5,7,9,11],oct:'both',goal:10}]},
+    {id:'t-ivear',skill:'ear',title:'Interval ear drill',desc:'All twelve intervals, up, down or together, with a song hook for each.',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'any',goal:10}]});
+  SCALES.pentaMaj={name:'major pentatonic scale',minor:false,up:[0,2,4,7,9,12]};
+  SCALES.pentaMin={name:'minor pentatonic scale',minor:true,up:[0,3,5,7,10,12]};
+})();
+
+/* ---------- Practice room: Ear Training and Harmony ---------- */
+const HX_ITEM=(hx,o,title)=>({hx,o,title});
+const HX_SUNG=['singTone','bass','cadSing','progSing','tendSing'];
+function hxSungItem(level,voice,rels,labels,title,spec,o={}){
+  return fitMake(()=>{const key=makeKey(level,keysFor(level));const it=buildSungItem(key,voice,rels,labels,!!o.minor,UP_SYL);it.title=title;
+    if(spec){it.cue=()=>hxCue(spec)(it.homeMidi);it.cueLabel=o.cueLabel||'Hear the chord';it.cueText=o.cueText||'the chord';it.noModel=true;}
+    it.tone=o.tone;return it;});
+}
+const HX_TONE_CH=[['I',[0,4,7]],['IV',[5,9,12]],['V',[7,11,14]],['vi',[9,12,16]],['ii',[2,5,9]]];
+function hxEarMake(level,focus){
+  const L=level;
+  switch(focus){
+    case 'deg':return HX_ITEM('deg',{set:L===1?[0,4,7]:L===2?[0,2,4,7,9]:[0,2,4,5,7,9,11]},'Hear and name');
+    case 'degOct':return HX_ITEM('deg',{set:L<=2?[0,2,4,7,9]:[0,2,4,5,7,9,11],oct:'both'},'Hear and name: any octave');
+    case 'degChrom':return HX_ITEM('deg',{set:L<=3?[0,3,6,7,10]:[0,1,3,4,6,7,8,10,11]},'Hear and name: chromatic');
+    case 'ivUp':return HX_ITEM('iv',{set:L===1?[5,7,12]:L===2?[2,3,4,5,7,12]:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'up'},'Name the interval (up)');
+    case 'ivDown':return HX_ITEM('iv',{set:L===1?[5,7,12]:L===2?[2,3,4,5,7,12]:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'down'},'Name the interval (down)');
+    case 'ivAny':return HX_ITEM('iv',{set:L===1?[3,4,5,7,12]:L===2?[1,2,3,4,5,7,12]:[1,2,3,4,5,6,7,8,9,10,11,12],dir:L>=4?'any':'mix'},'Name the interval');
+    case 'tend':return HX_ITEM('tend',{set:L<=2?[0,1,2,3]:[0,1,2,3,4,5,6]},'Which resolution?');
+    case 'tendSing':{const T=pick(L<=2?HX_TEND.slice(0,4):HX_TEND);return hxSungItem(level,partKey(),[T.a,T.b],[hxSylOf(T.a),hxSylOf(T.b)],`Resolve ${hxTendLab(T)}`,null);}
+    case 'chordQ':return hxHarMake(level,'triads');
+    case 'cad':return hxHarMake(level,'cad');
+  }
+  return hxEarMake(level,'deg');
+}
+function hxHarMake(level,focus){
+  const L=level,v=partKey();
+  switch(focus){
+    case 'triads':return HX_ITEM('quality',{set:L===1?['M','m']:['M','m','d','A']},'Chord quality');
+    case 'sevenths':return HX_ITEM('quality',{set:L<=2?['M7','D7']:L===3?['M7','D7','m7']:['M7','D7','m7','h7','o7']},'Seventh chords');
+    case 'vs':{const P=pick([['M7','D7'],['D7','m7'],['h7','o7'],['M','A'],['m','d']]);return HX_ITEM('quality',{set:P},`${HQ[P[0]].cap} or ${HQ[P[1]].name}?`);}
+    case 'low':return HX_ITEM('quality',{set:L<=3?['M','m','d']:['M','m','d','A','D7'],low:true,mode:'block'},'Low register');
+    case 'inv':return HX_ITEM('inv',{set:L<=2?[0,1]:[0,1,2]},'Which note is in the bass?');
+    case 'cad':return HX_ITEM('cad',{set:L===1?['auth','plag']:['auth','plag','half','dec'],low:L>=4&&Math.random()<0.3},'Name the cadence');
+    case 'prog':return HX_ITEM('prog',{set:L<=2?['p145','p4c','p50','pvi']:L===3?['p145','p4c','p50','pvi','p251','pmin']:Object.keys(HX_PROG),real:L>=4&&Math.random()<0.5},'Name the progression');
+    case 'singTone':{const [rom,ch]=pick(L===1?HX_TONE_CH.slice(0,3):HX_TONE_CH);const k=L===1?pick([0,1]):rint(3),nm=['root','3rd','5th'][k];
+      return hxSungItem(level,v,[ch[k]],[hxSylOf(ch[k])],`${rom} chord: ${V('sing','play')} the ${nm}`,{k:'rom',rom},{tone:nm});}
+    case 'bass':{const [rom,ch]=pick(HX_TONE_CH.slice(0,4)),inv=L<=2?pick([0,1]):rint(3),r=HX_ROMAN[rom][inv];
+      return hxSungItem(level,v,[mod(r,12)],[hxSylOf(r)],`${rom} chord${inv?` in ${inv===1?'1st':'2nd'} inversion`:''}: ${V('sing','play')} the lowest note`,{k:'rom',rom,inv},{tone:'lowest note'});}
+    case 'cadSing':{const id=pick(L===1?['auth','plag']:['auth','plag','half','dec']),C=HX_CAD[id];
+      return hxSungItem(level,v,C.bass,C.bass.map(hxSylOf),`${C.n} cadence: ${V('sing','play')} the bass line`,{k:'cad',id},{cueLabel:'Hear the cadence',cueText:'the cadence',tone:'bass line'});}
+    case 'progSing':{const id=pick(L<=3?['p145','p4c','p50','pvi']:['p145','p4c','p50','pvi','ppach']),real=L>=4&&id!=='p145',bs=hxProgBass(id,real).map(r=>mod(r,12));
+      return hxSungItem(level,v,bs,bs.map(hxSylOf),`${HX_PROG[id].n}: ${V('sing','play')} the bass line`,{k:'prog',id,real,reps:1},{cueLabel:'Hear the progression',cueText:'the progression',tone:'bass line'});}
+  }
+  return hxHarMake(level,'triads');
+}
+function hxMount(mod,item,ui){
+  if(item.hx){
+    ui.stage.innerHTML=`<div class="stage-top"><div><p class="eyebrow">${mod.title}</p><p class="keyline">${item.title}</p></div></div><div class="hx-host"></div>`;
+    ui.instr.innerHTML=`<ul class="tips"><li>Press Play. Play it again as often as you like.</li><li>${item.hx==='deg'?'Feel where the note sits in the key: does it rest, or lean?':item.hx==='iv'?'Hum the song hook in your head.':item.hx==='prog'||item.hx==='cad'?'Follow the bass line and the last chord.':'Listen to the 3rd and the top note.'}</li><li>Headphones help you hear the low notes.</li></ul>`;
+    setActions(ui.actions,[]);ui.onCleanup(()=>Learn.cleanup());
+    wHxEar($('.hx-host',ui.stage),{kind:item.hx,...item.o,onResult:r=>ui.done(r)});return;}
+  try{REC.load(PIANO_ALL()).catch(()=>{});}catch(e){}
+  const hide=ui.mode==='assess'&&item.tone;item.targets.forEach(t=>{t.hidden=!!hide;});
+  if(hide)item.prompt=k=>item.targets.length>1?`${V('Sing','Play')} note ${k+1} of the ${item.tone}`:`${V('Sing','Play')} the ${item.tone}`;
+  mountSung(item,ui,{eyebrow:item.cue?V('Hear it, then sing','Hear it, then play'):V('Sing it','Play it'),keyline:item.title+(item.key.concert?` · concert ${item.key.concert.n} · your key: ${item.key.n}`:` · do = ${item.key.n}`),remount:()=>hxMount(mod,item,ui),
+    tips:item.cue?['Press Start: the chords play first, then the app listens.',V('Sing in your own octave: any octave counts.','Play in any comfortable octave: any octave counts. Note names are your written pitch.'),'Hold each note until its box changes color.']:(isInst()?['Play each note and hold it until its box changes color.','Note names are your written pitch.']:null)});
+}
+Modules.ear={
+  id:'ear',title:'Ear Training',blurb:'Hear a note, an interval or a resolution and name it. Notes one at a time, wide to narrow intervals.',listens:'Your ears',
+  learn:`<p><b>Hear and Name.</b> The app plays I – IV – V – I to set the key, then one note. Name its syllable by its feeling: do rests, sol stands strong, ti pulls up to do, fa leans down to mi.</p>
+  <p><b>Intervals</b> start wide (octave, 5th, 4th) and work toward the small steps. Each has a song hook. Descending intervals get their own practice: they are where pitch sags flat.</p>
+  <p><b>Resolving tendencies</b>: ti → do, fa → mi, re → do, la → sol, and the chromatic fi → sol, te → la, le → sol.</p>`,
+  make(level,voice,focus){let f=focus&&focus!=='mix'?focus:pick(level===1?['deg','deg','ivUp']:level===2?['deg','degOct','ivUp','ivDown','tend','tendSing']:['deg','degOct','degChrom','ivAny','ivDown','tend','tendSing']);
+    return hxEarMake(level,f);},
+  mount(item,ui){hxMount(Modules.ear,item,ui);},
+};
+Modules.harmony={
+  id:'harmony',title:'Harmony',blurb:'Hear chord qualities, inversions, cadences and progressions, and sing the notes inside them.',listens:'Your ears · pitch ±25 cents',
+  learn:`<p><b>Triads:</b> major (4 + 3 half steps), minor (3 + 4), diminished (3 + 3), augmented (4 + 4). <b>Seventh chords:</b> Major 7th, dominant 7th (V7: sol – ti – re – fa), minor 7th (ii7), half-diminished (viiø7) and diminished 7th.</p>
+  <p><b>Inversions:</b> the note in the bass names the position: root, 3rd (1st inversion) or 5th (2nd inversion).</p>
+  <p><b>Cadences:</b> authentic (V – I), plagal (IV – I, “Amen”), half (ends on V), deceptive (V – vi).</p>
+  <p><b>Singing:</b> hear the chord, then sing the note asked for. Any octave counts. In an assessment, the syllable stays hidden until you sing it.</p>`,
+  make(level,voice,focus){let f=focus&&focus!=='mix'?focus:pick(level===1?['triads','cad','singTone']:level===2?['triads','cad','singTone','inv','bass','cadSing']:level===3?['triads','sevenths','vs','cad','inv','bass','cadSing','prog','progSing','singTone']:['sevenths','vs','low','inv','bass','cad','cadSing','prog','progSing']);
+    return hxHarMake(level,f);},
+  mount(item,ui){hxMount(Modules.harmony,item,ui);},
+};
+{const fl=focusList;focusList=function(mod){
+  const F={
+    ear:[MIX,{id:'deg',label:'Hear and name',desc:V('The key, then one note: name its syllable.','The key, then one note: name its scale degree.')},{id:'degOct',label:'Any octave',desc:'Notes in your octave and the other octave.'},{id:'degChrom',label:'Chromatic colors',desc:V('Fi, te, me, le and ra by ear.','♯4, ♭7, ♭3, ♭6 and ♭2 by ear.')},
+      {id:'ivUp',label:'Intervals going up',desc:'Wide to narrow, with song hooks.'},{id:'ivDown',label:'Intervals going down',desc:V('Top down: where pitch sags flat.','Top down, from the upper note.')},{id:'ivAny',label:'Intervals, any direction',desc:'Up, down or together.'},
+      {id:'tend',label:'Resolving tendencies (ear)',desc:V('Ti → do, fa → mi and more.','7 → 1, 4 → 3 and more.')},{id:'tendSing',label:V('Resolving tendencies (sing)','Resolving tendencies (play)'),desc:V('Sing a leaning note and resolve it in tune.','Play a leaning note and resolve it in tune.')}],
+    harmony:[MIX,{id:'triads',label:'Triad qualities',desc:'Major, minor, diminished, augmented.'},{id:'sevenths',label:'Seventh chords',desc:'Major 7th, dominant 7th, minor 7th, half-diminished, diminished 7th.'},{id:'vs',label:'Sound-alike chords',desc:'Maj7 vs dom7, dom7 vs min7, major vs augmented and more.'},
+      {id:'inv',label:'Inversions (ear)',desc:'Which note is in the bass?'},{id:'cad',label:'Cadences (ear)',desc:'Authentic, plagal, half, deceptive.'},{id:'prog',label:'Progressions (ear)',desc:'Nine common progressions.'},{id:'low',label:'Low register',desc:'Chords voiced low.'},
+      {id:'singTone',label:V('Sing a chord tone','Play a chord tone'),desc:V('Hear a chord, sing its root, 3rd or 5th.','Hear a chord, play its root, 3rd or 5th.')},{id:'bass',label:V('Sing the bass note','Play the bass note'),desc:V('Hear a chord, sing the lowest note.','Hear a chord, play the lowest note.')},{id:'cadSing',label:V('Sing a cadence bass line','Play a cadence bass line'),desc:V('Hear a cadence, sing its bass.','Hear a cadence, play its bass.')},{id:'progSing',label:V('Sing a progression bass line','Play a progression bass line'),desc:V('Hear a progression, sing its roots.','Hear a progression, play its roots.')}],
+  };
+  if(F[mod])return F[mod].map(x=>({...x,label:titleCase(x.label)}));
+  const r=fl(mod);
+  if(mod==='scales'){const i=r.findIndex(x=>x.id==='penta');r.splice(i+1,0,{id:'pentaMaj',label:titleCase('Major pentatonic'),desc:V('Do re mi sol la.','1 2 3 5 6.')},{id:'pentaMin',label:titleCase('Minor pentatonic'),desc:V('Do me fa sol te (do-based).','1 ♭3 4 5 ♭7.')});}
+  if(mod==='mixed'){const e=r.find(x=>x.id==='ear');if(e)e.desc='Notes, intervals, chords, cadences and meter by ear.';}
+  return r;};}
+/* Mixed Practice, listening only: add Ear Training and Harmony listening items */
+{const mx=Modules.mixed.make;Modules.mixed.make=function(level,voice,focus){
+  if(focus==='ear'&&Math.random()<0.5){const sub=Math.random()<0.5?'ear':'harmony';const f=sub==='ear'?pick(['deg','ivAny','tend']):pick(['triads','cad','inv']);return{sub,it:sub==='ear'?hxEarMake(level,f):hxHarMake(level,f)};}
+  return mx.call(this,level,voice,focus);};}
+
+/* ---------- band path: Ear Training, Harmony, pentatonic and sound-alike lessons in band wording ----------
+   Notes are named by scale degree (1 2 3 4 5 6 7, ♭3, ♯4…). Played notes show your written pitch; sounds are in concert pitch. */
+const hxDegB=(rel,label,desc,other)=>({label,desc,spec:{k:'deg',rel,other},btn:'Key, then '+HX_DEGNUM[mod(rel,12)]});
+const hxIvCardB=(...a)=>{const c=hxIvCard(...a);c.desc=c.desc.replace('ti → do','7 → 1');return c;};
+const hxDN=r=>HX_DEGNUM[mod(r,12)];
+const HX_BAND_LESSONS=[
+ {id:'bear1',skill:'ear',level:1,title:'Hear and Name: 1 and 5',steps:[
+  {h:'Naming Notes by Ear',body:'<p>Every note of a key has its own feeling. The <b>tonic</b>, scale degree <b>1</b>, feels like home. Degree <b>7</b> leans toward home. Degree <b>5</b> feels strong but not finished. Once you know those feelings, you can name a note just by hearing it. That is what lets you play by ear and fix a wrong note before anyone else hears it.</p><p>In this unit you meet the scale degrees <b>one at a time</b>. Each round plays four chords to set the key (I – IV – V – I), then one note. You name its scale degree.</p>',w:['hxExplore',{items:[{label:'Set the key',desc:'I – IV – V – I in a major key. Home is the last chord.',spec:{k:'ctx'},btn:'Hear the key'}]}]},
+  {h:'1: The Tonic',body:'<p>Scale degree <b>1</b>, the <b>tonic</b>, is home. After the key chords, it sounds finished and at rest.</p><p>The tonic an octave higher has the same feeling.</p>',w:['hxExplore',{items:[hxDegB(0,'1 (tonic)','Home: finished and at rest.'),hxDegB(12,'1, an octave up','The same home feeling, an octave higher.')]}]},
+  {h:'5: The Dominant',body:'<p>Scale degree <b>5</b>, the <b>dominant</b>, is strong and stable, but not home: it often wants to fall back to 1. Bass lines jump between 1 and 5 all the time.</p>',w:['hxExplore',{items:[hxDegB(7,'5 (dominant)','Strong and stable, but not home.'),hxDegB(0,'1 (tonic)','Home.')]}]},
+  {h:'Practice: 1 or 5?',body:'<p>Listen to the key, then name the scale degree. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,7],goal:6}]},
+  {h:'Show What You Know',body:'<p>Now play them. Hear the tonic, then play each pair. Note names are your written pitch.</p>',w:['sing',{items:[{label:'Play 1, then 5',notes:[['do',0,''],['sol',7,'']],model:true},{label:'Play 5, then 1',notes:[['sol',7,''],['do',0,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'After the key chords, a note sounds finished and at rest. It is most likely scale degree…',opts:['5','1','7','2'],a:1,why:'Scale degree <b>1</b>, the tonic, is home. 5 is strong, but it still wants to move.'}]},
+ ]},
+ {id:'bear2',skill:'ear',level:1,title:'Hear and Name: Add 3',steps:[
+  {h:'3: The Warm Third',body:'<p>Scale degree <b>3</b> is warm and settled. It is the note that makes a key sound <b>major</b>.</p><p>Degrees 1, 3 and 5 together make the <b>tonic chord</b>: the home chord of the key.</p>',w:['hxExplore',{items:[hxDegB(4,'3','Warm and settled. The major 3rd.'),{label:'1 – 3 – 5',desc:'The tonic chord, one note at a time.',spec:{k:'seq',rels:[0,4,7,4,0]},btn:'Hear it'}]}]},
+  {h:'Three Notes to Compare',body:'<p>Play each one and listen to its feeling: <b>1</b> rests, <b>3</b> glows, <b>5</b> stands strong.</p>',w:['hxExplore',{items:[hxDegB(0,'1','Home.'),hxDegB(4,'3','Warm.'),hxDegB(7,'5','Strong.')]}]},
+  {h:'Practice: 1, 3 or 5?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,4,7],goal:6}]},
+  {h:'Show What You Know',body:'<p>Play the tonic chord up and back down.</p>',w:['sing',{items:[{label:'Play 1 – 3 – 5',notes:[['do',0,''],['mi',4,''],['sol',7,'']],model:true},{label:'Play 5 – 3 – 1',notes:[['sol',7,''],['mi',4,''],['do',0,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which scale degree makes a key sound major?',opts:['1','3','5','the octave'],a:1,why:'Degree <b>3</b>, a Major 3rd above the tonic, gives a key its major sound. In minor it is lowered to ♭3.'}]},
+ ]},
+ {id:'bear3',skill:'ear',level:1,title:'Hear and Name: 2 and 6 (Pentatonic)',steps:[
+  {h:'2 and 6',body:'<p>Degree <b>2</b> sits one step above the tonic. It wants to move, usually back down to 1. Degree <b>6</b> sits one step above 5 and often falls back to 5.</p><p>Add them to 1, 3 and 5 and you have the five notes of the <b>pentatonic scale</b>: <b>1 2 3 5 6</b>. Many folk tunes use only these five notes.</p>',w:['hxExplore',{items:[hxDegB(2,'2','A step above 1. It wants to move.'),hxDegB(9,'6','A step above 5. It falls back to 5.'),{label:'The pentatonic scale',desc:'1 2 3 5 6 1',spec:{k:'seq',rels:[0,2,4,7,9,12]},btn:'Hear it'}]}]},
+  {h:'Practice: 2 or 6?',body:'<p>Start with the two new notes, plus 1. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,9],goal:5}]},
+  {h:'Practice: All Five',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,7,9],goal:6}]},
+  {h:'Show What You Know',body:'<p>Play the pentatonic scale up and back down.</p>',w:['sing',{items:[{label:'Play 1 2 3 5 6',notes:[['do',0,''],['re',2,''],['mi',4,''],['sol',7,''],['la',9,'']],model:true},{label:'Play 6 5 3 2 1',notes:[['la',9,''],['sol',7,''],['mi',4,''],['re',2,''],['do',0,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which scale degrees make the major pentatonic scale?',opts:['1 2 3 4 5','1 2 3 5 6','1 3 5 7','2 4 6 1'],a:1,why:'<b>1 2 3 5 6</b>: no 4 and no 7, so the scale has no half steps.'}]},
+ ]},
+ {id:'bear4',skill:'ear',level:2,title:'Hear and Name: 4 and 7',steps:[
+  {h:'The Two Leaning Notes',body:'<p>Degrees <b>4</b> and <b>7</b> are the notes that lean. Each is a <b>half step</b> from a stable note:</p><ul><li><b>4</b> leans down to <b>3</b>.</li><li><b>7</b>, the <b>leading tone</b>, pulls up to <b>1</b>.</li></ul><p>On most instruments these two need special care: a leading tone that is even a little flat sounds wrong to everyone.</p>',w:['hxExplore',{items:[hxDegB(5,'4','Leans down to 3.'),hxDegB(11,'7','Pulls up to 1.'),{label:'4 → 3',desc:'The pull resolves.',spec:{k:'tend',a:5,b:4},btn:'Hear it'},{label:'7 → 1',desc:'The strongest pull in music.',spec:{k:'tend',a:11,b:12},btn:'Hear it'}]}]},
+  {h:'Practice: All Seven',body:'<p>Every degree of the major scale. Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,5,7,9,11],goal:7}]},
+  {h:'Show What You Know',body:'<p>Play each leaning note and let it resolve. Keep 7 high enough.</p>',w:['sing',{items:[{label:'Play 7, then 1',notes:[['ti',-1,'low'],['do',0,'']],model:true},{label:'Play 4, then 3',notes:[['fa',5,''],['mi',4,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which scale degree is called the leading tone?',opts:['4','5','7','2'],a:2,why:'Degree <b>7</b> leads up to the tonic, a half step away.'}]},
+ ]},
+ {id:'bear5',skill:'ear',level:2,title:'Same Note, Different Octave',steps:[
+  {h:'Hearing Across Octaves',body:'<p>In band you constantly hear notes in an octave that is not yours. Tubas and flutes play the same melody four octaves apart. You tune to a concert B♭ that may be far above or below your instrument.</p><p>A note keeps its scale degree in every octave. Here you name degrees in <b>your</b> register and in <b>the other octave</b>.</p>',w:['hxExplore',{items:[hxDegB(7,'5, your octave','Where you play it.'),hxDegB(7,'5, the other octave','The same note, an octave away.',true),hxDegB(4,'3, your octave',''),hxDegB(4,'3, the other octave','',true)]}]},
+  {h:'Practice: Any Octave',body:'<p>Each note is in your octave or the other one. Name the scale degree. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,2,4,5,7,9,11],oct:'both',goal:6}]},
+  {h:'Find the Tonic',body:'<p>Press <b>Hear the tonic</b>: you hear it in another octave. Play it back in a comfortable octave on your instrument. Any octave counts.</p>',w:['sing',{items:[{label:'Hear the tonic in another octave, then play it',notes:[['do',0,'']],...hxCueFields({k:'deg',rel:0,other:true,noCtx:true},'Hear the tonic')},{label:'Hear the key and 5, then play 5',notes:[['sol',7,'']],...hxCueFields({k:'deg',rel:7,other:true},'Hear the key and 5')}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'A flute plays scale degree 5. A tuba plays the same note three octaves lower. What scale degree is the tuba’s note?',opts:['1','5','It depends on the octave','It has no degree'],a:1,why:'A note keeps its scale degree in every octave: it is still <b>5</b>.'}]},
+ ]},
+ {id:'bear6',skill:'ear',level:3,title:'Chromatic Colors',steps:[
+  {h:'Notes Outside the Scale',body:'<p>Chromatic notes add color. Each has its own feeling:</p><ul><li><b>♯4</b>: bright and tense; it leans up to 5.</li><li><b>♭7</b>: smooth and bluesy; it leans down to 6.</li><li><b>♭3</b>: dark; it makes a key sound minor.</li><li><b>♭6</b>: sad and yearning; it leans down to 5.</li><li><b>♭2</b>: dark and exotic; it leans down to 1.</li></ul><p>Notice that <b>♭3, ♭6 and ♭7</b> are the notes of natural minor.</p>',w:['hxExplore',{items:[hxDegB(6,'♯4','Bright and tense.'),hxDegB(10,'♭7','Smooth and bluesy.'),hxDegB(3,'♭3','Dark: the minor 3rd.'),hxDegB(8,'♭6','Sad and yearning.'),hxDegB(1,'♭2','Dark and exotic.')]}]},
+  {h:'Practice: ♯4 and ♭7',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,6,7,10],goal:5}]},
+  {h:'Practice: ♭3, ♭6 and ♭7',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[3,4,8,9,10,11],goal:5}]},
+  {h:'Practice: All the Colors',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'deg',set:[0,1,3,4,6,7,8,10],goal:6}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which three lowered scale degrees turn a major scale into natural minor?',opts:['♯4, ♯5, ♯1','♭3, ♭6, ♭7','♭2, ♭5, ♯4','♭2, ♭3, ♭4'],a:1,why:'Natural minor is 1 2 <b>♭3</b> 4 5 <b>♭6</b> <b>♭7</b> 1.'}]},
+ ]},
+ {id:'bear7',skill:'ear',level:1,title:'Interval Ear: The Perfect Anchors',steps:[
+  {h:'Start With the Widest',body:'<p>The <b>octave</b>, <b>5th</b> and <b>4th</b> are called <b>perfect</b> intervals. They are the most stable sounds in music and the easiest to recognize. They are also the intervals you hear when you tune with the band: octaves and 5ths either lock in or <b>beat</b>.</p><p>Each interval plays its two notes one after the other, then together. Every one has a <b>song hook</b>.</p>',w:['hxExplore',{items:[hxIvCardB(12,'up'),hxIvCardB(7,'up'),hxIvCardB(5,'up')]}]},
+  {h:'Practice: Octave or 5th?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[7,12],dir:'up',goal:5}]},
+  {h:'Practice: All Three Anchors',body:'<p>Octave, 5th or 4th? Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'up',goal:6}]},
+  {h:'Show What You Know',body:'<p>Hear the tonic, then play each interval up.</p>',w:['sing',{items:[{label:'1 up to 5: a Perfect 5th',notes:[['do',0,''],['sol',7,'']],model:true},{label:'1 up to 4: a Perfect 4th',notes:[['do',0,''],['fa',5,'']]},{label:'1 up to 1: an octave',notes:[['do',0,''],['do',12,'high']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'“Twinkle, Twinkle, Little Star” leaps up on the second “twinkle.” What interval is it?',opts:['Perfect 4th','Perfect 5th','Octave','Major 3rd'],a:1,why:'1 up to 5: a <b>Perfect 5th</b>, 7 half steps.'}]},
+ ]},
+ {id:'bear8',skill:'ear',level:2,title:'Anchors Going Down',steps:[
+  {h:'Top Down',body:'<p>An interval sounds different going <b>down</b>, and you need to hear both directions. From the upper tonic: an octave down lands on 1, a 5th down lands on <b>4</b>, and a 4th down lands on <b>5</b>.</p>',w:['hxExplore',{items:[hxIvCardB(12,'down'),hxIvCardB(7,'down'),hxIvCardB(5,'down')]}]},
+  {h:'Practice: Going Down',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'down',goal:6}]},
+  {h:'Practice: Up or Down',body:'<p>Now the direction changes. Name the size. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,7,12],dir:'mix',goal:6}]},
+  {h:'Show What You Know',body:'<p>Play down from the upper tonic.</p>',w:['sing',{items:[{label:'Upper 1 down to 5: a Perfect 4th',notes:[['do',12,'high'],['sol',7,'']],model:true},{label:'Upper 1 down to 4: a Perfect 5th',notes:[['do',12,'high'],['fa',5,'']]},{label:'Upper 1 down to 1: an octave',notes:[['do',12,'high'],['do',0,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Going down a Perfect 4th from the upper tonic, you land on degree…',opts:['4','5','3','6'],a:1,why:'Down 5 half steps from the upper tonic is degree <b>5</b>.'}]},
+ ]},
+ {id:'bear9',skill:'ear',level:2,title:'Interval Ear: Thirds',steps:[
+  {h:'Major and Minor Thirds',body:'<p>The <b>3rds</b> build every chord. A <b>Major 3rd</b> (4 half steps) is bright: the bottom of a major chord. A <b>minor 3rd</b> (3 half steps) is darker: the bottom of a minor chord.</p><p>Bright and dark is a better way to hear them than happy and sad: plenty of minor music is not sad at all.</p>',w:['hxExplore',{items:[hxIvCardB(4,'up'),hxIvCardB(3,'up'),hxIvCardB(4,'down'),hxIvCardB(3,'down')]}]},
+  {h:'Practice: Bright or Dark?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[3,4],dir:'mix',goal:6}]},
+  {h:'Practice: Thirds and Anchors',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[3,4,5,7,12],dir:'mix',goal:6}]},
+  {h:'Show What You Know',body:'<p>Play a Major 3rd and a minor 3rd.</p>',w:['sing',{items:[{label:'1 up to 3: a Major 3rd',notes:[['do',0,''],['mi',4,'']],model:true},{label:'3 up to 5: a minor 3rd',notes:[['mi',4,''],['sol',7,'']]},{label:'5 down to 3: a minor 3rd down',notes:[['sol',7,''],['mi',4,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which 3rd is at the bottom of a major chord?',opts:['minor 3rd','Major 3rd','Both','Neither'],a:1,why:'A major chord starts with a <b>Major 3rd</b> (1 to 3), then adds a minor 3rd on top.'}]},
+ ]},
+ {id:'bear10',skill:'ear',level:2,title:'Interval Ear: Steps',steps:[
+  {h:'Whole Steps and Half Steps',body:'<p>A <b>Major 2nd</b> is a whole step (2 half steps): 1 to 2. A <b>minor 2nd</b> is a half step: 7 to 1, or 3 to 4. On most instruments a half step is just one fingering or slide position away, so it is easy to play the right fingering and still miss the pitch.</p>',w:['hxExplore',{items:[hxIvCardB(2,'up'),hxIvCardB(1,'up'),hxIvCardB(2,'down'),hxIvCardB(1,'down')]}]},
+  {h:'Steps and Leaps',body:'<p>A 2nd is a <b>step</b>; a 3rd or larger is a <b>leap</b>. Name each interval. Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4],dir:'mix',goal:6}]},
+  {h:'Practice: Everything So Far',body:'<p>Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,7,12],dir:'mix',goal:7}]},
+  {h:'Show What You Know',body:'<p>Tune the half steps carefully.</p>',w:['sing',{items:[{label:'3 up to 4: a half step',notes:[['mi',4,''],['fa',5,'']],model:true},{label:'7 up to 1: a half step',notes:[['ti',-1,'low'],['do',0,'']]},{label:'1 up to 2 and back',notes:[['do',0,''],['re',2,''],['do',0,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which pair of scale degrees is a half step apart?',opts:['1 – 2','3 – 4','5 – 6','2 – 3'],a:1,why:'<b>3 – 4</b> and <b>7 – 1</b> are the half steps of the major scale.'}]},
+ ]},
+ {id:'bear11',skill:'ear',level:3,title:'Interval Ear: Sixths and Sevenths',steps:[
+  {h:'The Wide Ones',body:'<p>6ths and 7ths are wide leaps. A <b>Major 6th</b> (1 to 6) is warm and open. A <b>minor 6th</b> (1 to ♭6) is bittersweet. A <b>minor 7th</b> (1 to ♭7) is bluesy. A <b>Major 7th</b> (1 to 7) is sharp and tense: one half step short of an octave.</p>',w:['hxExplore',{items:[hxIvCardB(9,'up'),hxIvCardB(8,'up'),hxIvCardB(10,'up'),hxIvCardB(11,'up',' Think of the octave, then come down a half step.'),hxIvCardB(9,'down')]}]},
+  {h:'Practice: 6ths',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[8,9],dir:'mix',goal:5}]},
+  {h:'Practice: 6ths and 7ths',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[8,9,10,11,12],dir:'up',goal:6}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which interval is one half step short of an octave?',opts:['minor 7th','Major 6th','Major 7th','Perfect 5th'],a:2,why:'A <b>Major 7th</b> is 11 half steps, one short of the octave’s 12.'}]},
+ ]},
+ {id:'bear12',skill:'ear',level:2,title:'Resolving Tendencies',steps:[
+  {h:'Notes That Want to Move',body:'<p>Some notes lean so strongly that the ear expects them to move to a neighbor:</p><ul><li><b>7 → 1</b> and <b>4 → 3</b>: the two half steps.</li><li><b>2 → 1</b> and <b>6 → 5</b>: whole steps down to stable notes.</li><li>Chromatic notes lean too: <b>♯4 → 5</b>, <b>♭7 → 6</b>, <b>♭6 → 5</b>.</li></ul><p>When you play a leading note in a chord, aim it <b>toward</b> its resolution: the leading tone a little high, 4 a little low.</p>',w:['hxExplore',{items:HX_TEND.map(T=>({label:hxDN(T.a)+' → '+hxDN(T.b),desc:HX_DEGTIP_B[hxDN(T.a)],spec:{k:'tend',a:T.a,b:T.b},btn:'Hear it'}))}]},
+  {h:'Practice: Which Resolution?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'tend',set:[0,1,2,3],goal:5}]},
+  {h:'Practice: With Chromatic Notes',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'tend',set:[0,1,2,3,4,5,6],goal:5}]},
+  {h:'Show What You Know',body:'<p>Play each tendency tone and resolve it. The app checks the tuning of both notes.</p>',w:['sing',{items:[{label:'7 resolves up to 1',notes:[['ti',11,''],['do',12,'high']],model:true},{label:'4 resolves down to 3',notes:[['fa',5,''],['mi',4,'']]},{label:'♯4 resolves up to 5',notes:[['fi',6,''],['sol',7,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Where does scale degree 4 usually resolve?',opts:['Up to 5','Down to 3','Up to 6','Down to 1'],a:1,why:'<b>4</b> is a half step above <b>3</b>, and it leans down to it.'}]},
+ ]},
+ {id:'bear13',skill:'ear',level:3,title:'The Tritone and All Twelve',steps:[
+  {h:'The Tritone',body:'<p>The <b>tritone</b> is 6 half steps: exactly half an octave. It sounds restless and unstable. In a major key it is <b>4 to 7</b>, the two leaning notes, which is why the V7 chord pulls so hard toward home. From the tonic it is <b>1 to ♯4</b>.</p>',w:['hxExplore',{items:[hxIvCardB(6,'up'),{label:'4 and 7',desc:'The tritone inside V7.',spec:{k:'seq',rels:[5,11],dur:0.8},btn:'Hear it'},hxIvCardB(5,'up'),hxIvCardB(7,'up')]}]},
+  {h:'Practice: 4th, Tritone or 5th?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[5,6,7],dir:'mix',goal:6}]},
+  {h:'Practice: All Twelve, Going Up',body:'<p>Get <b>7 in a row</b> to continue.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'up',goal:7}]},
+  {h:'Check Yourself',w:['quiz',{q:'In a major key, which two scale degrees make a tritone?',opts:['1 and 5','4 and 7','3 and 6','2 and 4'],a:1,why:'<b>4 to 7</b> is 6 half steps: the tritone.'}]},
+ ]},
+ {id:'bear14',skill:'ear',level:3,title:'Interval Final: Any Interval, Any Direction',steps:[
+  {h:'The Final',body:'<p>Twelve intervals, in any direction: up, down, or both notes together. Get <b>10 of 12</b> right to pass. If you miss, start over and try again. Use <b>Play again</b> as often as you like.</p>',w:['hxEar',{kind:'iv',set:[1,2,3,4,5,6,7,8,9,10,11,12],dir:'any',exam:{n:12,need:10}}]},
+ ]},
+ /* Harmony */
+ {id:'bhm1',skill:'harmony',level:1,minLvl:1,title:'Four Kinds of Triads',steps:[
+  {h:'Triads, Revisited',body:'<p>A <b>triad</b> is three notes stacked in 3rds: a <b>root</b>, a <b>3rd</b> and a <b>5th</b>. You already know <b>major</b> and <b>minor</b>. Two more come from changing the size of the 3rds:</p><ul><li><b>Major</b>: Major 3rd + minor 3rd. Bright.</li><li><b>Minor</b>: minor 3rd + Major 3rd. Darker.</li><li><b>Diminished</b>: two minor 3rds. Tight and tense.</li><li><b>Augmented</b>: two Major 3rds. Stretched and unsettled.</li></ul><p>In band, every chord is split across sections. Knowing the quality tells you what the chord should sound like when it is in tune.</p>',w:['hxExplore',{items:[hxQCard('M'),hxQCard('m'),hxQCard('d'),hxQCard('A')]}]},
+  {h:'Diminished: vii°',body:'<p>Every major key has a diminished triad on scale degree <b>7</b>: <b>7 – 2 – 4</b>, the vii° chord. Its outside notes make a tritone, so it wants to move on, usually to I.</p>',w:['hxExplore',{items:[hxRomCard('vii°','vii°: 7 – 2 – 4','The diminished chord in a major key.'),{label:'vii° → I',desc:'The tension resolves home.',spec:{k:'romseq',seq:['vii°','I']},btn:'Hear it'}]}]},
+  {h:'Augmented: Rare and Stretched',body:'<p>The augmented triad is rare. You find it in <b>harmonic minor</b>, built on ♭3: <b>♭3 – 5 – 7</b>. Composers also use it for a moment of suspense: raise the 5th of a major chord and it pushes upward.</p>',w:['hxExplore',{items:[hxRomCard('III+','III+: ♭3 – 5 – 7','The augmented chord in harmonic minor.'),hxQCard('M',0),hxQCard('A',0)]}]},
+  {h:'Practice: Major or Augmented?',body:'<p>Only the 5th is different. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','A'],goal:4}]},
+  {h:'Practice: Minor or Diminished?',body:'<p>Only the 5th is different again. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['m','d'],goal:4}]},
+  {h:'Practice: All Four',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','m','d','A'],goal:6}]},
+  {h:'Show What You Know',body:'<p>Press <b>Hear the chord</b>, then play the chord from its root up: root, 3rd, 5th. Note names are your written pitch.</p>',w:['sing',{items:[
+    {label:'Major (I): play 1 – 3 – 5',notes:[['do',0,''],['mi',4,''],['sol',7,'']],model:true,...hxCueFields({k:'rom',rom:'I'})},
+    {label:'Minor (ii): play 2 – 4 – 6',notes:[['re',2,''],['fa',5,''],['la',9,'']],...hxCueFields({k:'rom',rom:'ii'})},
+    {label:'Diminished (vii°): play 7 – 2 – 4',notes:[['ti',-1,'low'],['re',2,''],['fa',5,'']],...hxCueFields({k:'rom',rom:'vii°'})}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which triad is built from two minor 3rds?',opts:['Major','Minor','Diminished','Augmented'],a:2,why:'<b>Diminished</b> = minor 3rd + minor 3rd. Augmented is two Major 3rds.'}]},
+ ]},
+ {id:'bhm2',skill:'harmony',level:2,minLvl:2,title:'Find Your Note in the Chord',steps:[
+  {h:'Every Part Has a Job',body:'<p>In band, each section plays one note of the chord, and that note’s job tells you how to tune it:</p><ul><li><b>Root</b>: the foundation. Low brass and low reeds usually have it. Play it solid and centered.</li><li><b>3rd</b>: the color. In a major chord, the 3rd sounds best slightly low so the chord rings.</li><li><b>5th</b>: the frame. Lock it in with the root.</li><li><b>7th</b>: the tension. It usually resolves down by step.</li></ul>',w:['hxExplore',{items:[hxRomCard('I','I: 1 – 3 – 5','Root 1, 3rd 3, 5th 5.'),hxRomCard('IV','IV: 4 – 6 – 1','Root 4, 3rd 6, 5th 1.'),hxRomCard('V','V: 5 – 7 – 2','Root 5, 3rd 7, 5th 2.'),hxRomCard('V7','V7: 5 – 7 – 2 – 4','Its 7th is 4, which resolves down to 3.')]}]},
+  {h:'Play the Root',body:'<p>Press <b>Hear the chord</b>. Then play only its <b>root</b>.</p>',w:['sing',{items:[{label:'IV chord: play the root (4)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'IV'})},{label:'V chord: play the root (5)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'V'})}]}]},
+  {h:'Play the 3rd',body:'<p>Now the 3rd: the note that decides major or minor.</p>',w:['sing',{items:[{label:'I chord: play the 3rd (3)',notes:[['mi',4,'']],model:true,...hxCueFields({k:'rom',rom:'I'})},{label:'vi chord: play the 3rd (1)',notes:[['do',0,'']],...hxCueFields({k:'rom',rom:'vi'})},{label:'V chord: play the 3rd (7)',notes:[['ti',-1,'low']],...hxCueFields({k:'rom',rom:'V'})}]}]},
+  {h:'Play the 5th and the 7th',body:'<p>The 5th, then the 7th of V7.</p>',w:['sing',{items:[{label:'IV chord: play the 5th (1)',notes:[['do',0,'']],model:true,...hxCueFields({k:'rom',rom:'IV'})},{label:'V7 chord: play the 7th (4)',notes:[['fa',5,'']],...hxCueFields({k:'rom',rom:'V7'})}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'In a V7 chord, the 7th is scale degree 4. Where does it usually go next?',opts:['Up to 5','Down to 3','It stays','Up to 6'],a:1,why:'The 7th of V7 resolves <b>down by step</b>: 4 to <b>3</b>, the 3rd of I.'}]},
+ ]},
+ {id:'bhm3',skill:'harmony',level:3,minLvl:2,title:'Seventh Chords',steps:[
+  {h:'Add One More 3rd',body:'<p>Stack one more 3rd on a triad and you get a <b>seventh chord</b>. Five kinds come up most often:</p><ul><li><b>Major 7th</b>: major triad + Major 7th. Imaj7 is 1 – 3 – 5 – <b>7</b>.</li><li><b>Dominant 7th</b>: major triad + minor 7th. V7 is 5 – 7 – 2 – <b>4</b>.</li><li><b>Minor 7th</b>: minor triad + minor 7th. ii7 is 2 – 4 – 6 – <b>1</b>.</li><li><b>Half-diminished 7th</b>: diminished triad + minor 7th. viiø7 is 7 – 2 – 4 – <b>6</b>.</li><li><b>Diminished 7th</b>: three minor 3rds. In minor, vii°7 is 7 – 2 – 4 – <b>♭6</b>.</li></ul>',w:['hxExplore',{items:[hxQCard('M7'),hxQCard('D7'),hxQCard('m7'),hxQCard('h7'),hxQCard('o7')]}]},
+  {h:'Major 7th vs Dominant 7th',body:'<p>These two share the same triad. Only the 7th changes: a <b>Major 7th</b> (a half step below the octave) sounds dreamy; a <b>minor 7th</b> (a whole step below) wants to move. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M7','D7'],goal:4}]},
+  {h:'Dominant 7th vs Minor 7th',body:'<p>Now the 7th stays and the <b>3rd</b> changes: major 3rd (dominant 7th) or minor 3rd (minor 7th). Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['D7','m7'],goal:4}]},
+  {h:'Half-Diminished vs Diminished 7th',body:'<p>Both start with a diminished triad. The diminished 7th’s top note is one half step lower, so every 3rd is minor. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['h7','o7'],goal:4}]},
+  {h:'Practice: All Five',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M7','D7','m7','h7','o7'],goal:6}]},
+  {h:'Show What You Know: Play the 7th',body:'<p>Hear each chord, then play its 7th.</p>',w:['sing',{items:[
+    {label:'V7: play the 7th (4)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'V7'})},
+    {label:'ii7: play the 7th (1)',notes:[['do',12,'high']],...hxCueFields({k:'rom',rom:'ii7'})},
+    {label:'IVmaj7: play the 7th (3)',notes:[['mi',4,'']],...hxCueFields({k:'rom',rom:'IVmaj7'})}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Scale degrees 5 – 7 – 2 – 4 make which kind of seventh chord?',opts:['Major 7th','Dominant 7th','Minor 7th','Half-diminished 7th'],a:1,why:'V7 is a <b>dominant 7th</b>: a major triad (5 – 7 – 2) plus a minor 7th (4).'}]},
+ ]},
+ {id:'bhm4',skill:'harmony',level:2,minLvl:2,title:'Inversions and the Bass Line',steps:[
+  {h:'Same Chord, Different Bass',body:'<p>A chord does not have to have its root on the bottom. The note in the <b>bass</b> names the position:</p><ul><li><b>Root position</b>: the root is in the bass.</li><li><b>1st inversion</b>: the 3rd is in the bass.</li><li><b>2nd inversion</b>: the 5th is in the bass.</li></ul><p>Tubas, bari sax and bass clarinet decide the inversion: whatever they play is the bass.</p>',w:['hxExplore',{items:[hxRomCard('I','I, root position','1 in the bass.',0),hxRomCard('I','I, 1st inversion','3 in the bass.',1),hxRomCard('I','I, 2nd inversion','5 in the bass.',2)]}]},
+  {h:'Practice: Root or 3rd?',body:'<p>Listen to the lowest note. Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'inv',set:[0,1],goal:5}]},
+  {h:'Practice: Root, 3rd or 5th?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'inv',set:[0,1,2],goal:6}]},
+  {h:'Show What You Know: Play the Lowest Note',body:'<p>Press <b>Hear the chord</b>, then play the <b>lowest note you hear</b>, in any comfortable octave.</p>',w:['sing',{items:[
+    {label:'I in 1st inversion: play the bass (3)',notes:[['mi',4,'']],model:true,...hxCueFields({k:'rom',rom:'I',inv:1})},
+    {label:'I in 2nd inversion: play the bass (5)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'I',inv:2})},
+    {label:'IV in 1st inversion: play the bass (6)',notes:[['la',9,'']],...hxCueFields({k:'rom',rom:'IV',inv:1})}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'A concert B♭ major chord has D in the bass. What position is it in?',opts:['Root position','1st inversion','2nd inversion','It is a different chord'],a:1,why:'D is the 3rd of B♭ major, so the chord is in <b>1st inversion</b>.'}]},
+ ]},
+ {id:'bhm5',skill:'harmony',level:1,minLvl:1,title:'Cadences: Authentic and Plagal',steps:[
+  {h:'How Phrases End',body:'<p>A <b>cadence</b> is the chord pattern at the end of a phrase. It works like punctuation. Two cadences sound <b>finished</b>:</p><ul><li><b>Authentic</b>: V to I. The strongest ending, like a period.</li><li><b>Plagal</b>: IV to I. Gentle: the “Amen” ending of many hymns and chorales.</li></ul><p>Hearing a cadence coming tells you where to breathe and where the phrase ends.</p>',w:['hxExplore',{items:[{label:'Authentic cadence',tag:'V → I',desc:HX_CAD.auth.desc,spec:{k:'cad',id:'auth'},btn:'Hear it'},{label:'Plagal cadence',tag:'IV → I',desc:HX_CAD.plag.desc,spec:{k:'cad',id:'plag'},btn:'Hear it'}]}]},
+  {h:'Practice: Which Ending?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag'],goal:5}]},
+  {h:'Show What You Know: Play the Bass Line',body:'<p>Press <b>Hear the cadence</b>, then play its bass line.</p>',w:['sing',{items:[
+    {label:'Authentic: 4 – 5 – 1',notes:[['fa',5,''],['sol',7,''],['do',0,'']],model:true,...hxCueFields({k:'cad',id:'auth'},'Hear the cadence')},
+    {label:'Plagal: 1 – 4 – 1',notes:[['do',0,''],['fa',5,''],['do',0,'']],...hxCueFields({k:'cad',id:'plag'},'Hear the cadence')}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'The “Amen” ending of a hymn is usually which cadence?',opts:['Authentic','Plagal','Half','Deceptive'],a:1,why:'IV to I: the <b>plagal</b> or “Amen” cadence.'}]},
+ ]},
+ {id:'bhm6',skill:'harmony',level:2,minLvl:2,title:'Cadences: Half and Deceptive',steps:[
+  {h:'Endings That Keep Going',body:'<p>Two more cadences leave the music unfinished:</p><ul><li><b>Half</b>: the phrase stops on V. It sounds like a comma or a question.</li><li><b>Deceptive</b>: V goes to vi instead of I. You expect home, and the music surprises you.</li></ul>',w:['hxExplore',{items:[{label:'Half cadence',tag:'… → V',desc:HX_CAD.half.desc,spec:{k:'cad',id:'half'},btn:'Hear it'},{label:'Deceptive cadence',tag:'V → vi',desc:HX_CAD.dec.desc,spec:{k:'cad',id:'dec'},btn:'Hear it'},{label:'Authentic cadence',tag:'V → I',desc:'For comparison.',spec:{k:'cad',id:'auth'},btn:'Hear it'}]}]},
+  {h:'Practice: Authentic or Deceptive?',body:'<p>Both start the same way. Listen to the last chord. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','dec'],goal:4}]},
+  {h:'Practice: All Four Cadences',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag','half','dec'],goal:6}]},
+  {h:'Show What You Know: Play the Bass Line',body:'<p>Hear the cadence, then play its bass line.</p>',w:['sing',{items:[
+    {label:'Half: 1 – 4 – 5',notes:[['do',0,''],['fa',5,''],['sol',7,'']],model:true,...hxCueFields({k:'cad',id:'half'},'Hear the cadence')},
+    {label:'Deceptive: 4 – 5 – 6',notes:[['fa',5,''],['sol',7,''],['la',9,'']],...hxCueFields({k:'cad',id:'dec'},'Hear the cadence')}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'V moves to vi instead of I. Which cadence is that?',opts:['Plagal','Half','Deceptive','Authentic'],a:2,why:'A <b>deceptive</b> cadence: you expect I, and vi arrives instead.'}]},
+ ]},
+ {id:'bhm7',skill:'harmony',level:3,minLvl:3,title:'Chord Progressions',steps:[
+  {h:'Patterns of Chords',body:'<p>A <b>progression</b> is a series of chords. A few patterns show up again and again, from marches and chorales to pop charts your band plays. Recognize them and you can follow the harmony under any melody.</p>',w:['hxExplore',{items:['p145','p4c','p50','pvi'].map(id=>({label:HX_PROG[id].name,tag:HX_PROG[id].n,desc:HX_PROG[id].hook,spec:{k:'prog',id},btn:'Hear it'}))}]},
+  {h:'More Progressions',body:'<p>Five more, including three in minor.</p>',w:['hxExplore',{items:['ppach','p251','pmin','paeol','pandal'].map(id=>({label:HX_PROG[id].name,tag:HX_PROG[id].n,desc:HX_PROG[id].hook,spec:{k:'prog',id},btn:'Hear it'}))}]},
+  {h:'Practice: Four Loops',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p145','p4c','p50','pvi'],goal:5}]},
+  {h:'Practice: Same Chords, New Start',body:'<p>The four-chord loop and the minor-start loop use the same four chords. Listen for where the loop begins. Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p4c','pvi'],goal:4}]},
+  {h:'Practice: All Nine',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:Object.keys(HX_PROG),goal:6}]},
+  {h:'Show What You Know: Play the Bass Roots',body:'<p>Hear the progression, then play the root of each chord: the bass line.</p>',w:['sing',{items:[
+    {label:'I – IV – V – I: 1 – 4 – 5 – 1',notes:[['do',0,''],['fa',5,''],['sol',7,''],['do',0,'']],model:true,...hxCueFields({k:'prog',id:'p145'},'Hear the progression')},
+    {label:'I – V – vi – IV: 1 – 5 – 6 – 4',notes:[['do',0,''],['sol',7,''],['la',9,''],['fa',5,'']],...hxCueFields({k:'prog',id:'p4c',reps:1},'Hear the progression')}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which progression is the same four chords as I – V – vi – IV, started on vi?',opts:['I – vi – IV – V','vi – IV – I – V','ii – V – I','i – VII – VI – V'],a:1,why:'<b>vi – IV – I – V</b> is the four-chord loop starting on vi, which makes it sound minor.'}]},
+ ]},
+ {id:'bhm8',skill:'harmony',level:3,minLvl:3,title:'Real Voicings: Progressions With Inversions',steps:[
+  {h:'Smooth Bass Lines',body:'<p>Arrangers rarely keep every chord in root position. They use <b>inversions</b> so the bass line can move by step. Listen to Pachelbel’s Canon with inversions: the bass walks straight down the scale, <b>1 – 7 – 6 – 5 – 4 – 3</b>, then <b>4 – 5</b>.</p>',w:['hxExplore',{items:[{label:'Pachelbel, root position',desc:'Every chord on its root: the bass leaps.',spec:{k:'prog',id:'ppach'},btn:'Hear it'},{label:'Pachelbel, real voicing',desc:'With inversions: the bass walks down by step.',spec:{k:'prog',id:'ppach',real:true},btn:'Hear it'},{label:'Four-chord loop, real voicing',desc:'V in 1st inversion: the bass goes 1 – 7 – 6 – 4.',spec:{k:'prog',id:'p4c',real:true},btn:'Hear it'}]}]},
+  {h:'Practice: Real Voicings',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'prog',set:['p145','p4c','p50','pvi','ppach'],real:true,goal:5}]},
+  {h:'Show What You Know: Play the Bass Line',body:'<p>Hear the progression, then play its bass line.</p>',w:['sing',{items:[
+    {label:'Four-chord loop: 1 – 7 – 6 – 4',notes:[['do',0,''],['ti',-1,'low'],['la',-3,'low'],['fa',-7,'low']],model:true,...hxCueFields({k:'prog',id:'p4c',real:true,reps:1},'Hear the progression')},
+    {label:'Pachelbel: 1 – 7 – 6 – 5',notes:[['do',12,'high'],['ti',11,''],['la',9,''],['sol',7,'']],...hxCueFields({k:'prog',id:'ppach',real:true},'Hear the progression')}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Why do arrangers put chords in inversion?',opts:['To make every chord louder','So the bass line can move smoothly by step','Because root position is not allowed','To change the key'],a:1,why:'Inversions let the <b>bass line move by step</b> while the chords stay the same.'}]},
+ ]},
+ {id:'bhm9',skill:'harmony',level:4,minLvl:3,title:'Chords in the Low Register',steps:[
+  {h:'Why Low Chords Are Harder',body:'<p>Low chords sound muddier: the notes are close together and their overtones crowd each other. That is why arrangers spread low chords out, and why low brass and low reeds need to hear the <b>root</b> clearly and tune to it.</p>',w:['hxExplore',{items:[{label:'Major, middle',desc:'Clear.',spec:{k:'chord',q:'M',mode:'block'},btn:'Hear it'},{label:'Major, low',desc:'Thicker and muddier.',spec:{k:'chord',q:'M',low:true,mode:'block'},btn:'Hear it'},{label:'Minor, low',desc:'Listen past the rumble for the 3rd.',spec:{k:'chord',q:'m',low:true,mode:'block'},btn:'Hear it'}]}]},
+  {h:'Practice: Low Triads',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'quality',set:['M','m','d'],low:true,mode:'block',goal:5}]},
+  {h:'Practice: Low Cadences',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'cad',set:['auth','plag','half','dec'],low:true,goal:5}]},
+  {h:'Show What You Know: Find the Root',body:'<p>Hear a low chord, then play its root in any comfortable octave.</p>',w:['sing',{items:[
+    {label:'Low IV chord: play the root (4)',notes:[['fa',5,'']],model:true,...hxCueFields({k:'rom',rom:'IV',low:true})},
+    {label:'Low V chord: play the root (5)',notes:[['sol',7,'']],...hxCueFields({k:'rom',rom:'V',low:true})}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Why are low chords often spread out?',opts:['To use more players','Because close low notes sound muddy','Because low instruments cannot play 3rds','To make them quieter'],a:1,why:'Low notes close together sound <b>muddy</b>, so arrangers space them out.'}]},
+ ]},
+ /* pentatonic and sound-alikes */
+ {id:'bssp',skill:'scales',level:1,title:'Pentatonic Scales',after:'bs1',steps:[
+  {h:'Five Notes',body:'<p><b>Penta</b> means five. A <b>pentatonic scale</b> has five notes instead of seven. The <b>major pentatonic</b> is scale degrees <b>1 2 3 5 6</b>: the major scale without 4 and 7. With no half steps, nothing clashes, which is why it is the first scale many players improvise with.</p><p>“Amazing Grace,” “Auld Lang Syne” and “Swing Low, Sweet Chariot” (all public domain) use only these five notes in their melodies.</p>',w:['hxExplore',{items:[{label:'Major pentatonic',desc:'1 2 3 5 6 1',spec:{k:'seq',rels:[0,2,4,7,9,12,9,7,4,2,0],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Major scale',desc:'1 2 3 4 5 6 7 1, for comparison',spec:{k:'seq',rels:[0,2,4,5,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'The Minor Pentatonic',body:'<p>The <b>minor pentatonic</b> is <b>1 ♭3 4 5 ♭7</b>. It uses the same five notes as a major pentatonic that starts on its ♭3: concert G minor pentatonic has the same notes as concert B♭ major pentatonic. It is the sound of blues and rock solos.</p>',w:['hxExplore',{items:[{label:'Minor pentatonic',desc:'1 ♭3 4 5 ♭7 1',spec:{k:'seq',rels:[0,3,5,7,10,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Relative major pentatonic',desc:'The same notes, starting on ♭3',spec:{k:'seq',rels:[3,5,7,10,12,15],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Pentatonic or Major?',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'penta',goal:4}]},
+  {h:'Show What You Know',body:'<p>Play both pentatonic scales. Note names are your written pitch.</p>',w:['sing',{items:[{label:'Major pentatonic: 1 2 3 5 6 1',notes:[['do',0,''],['re',2,''],['mi',4,''],['sol',7,''],['la',9,''],['do',12,'high']],model:true},{label:'Minor pentatonic: 1 ♭3 4 5 ♭7 1',notes:[['do',0,''],['me',3,''],['fa',5,''],['sol',7,''],['te',10,''],['do',12,'high']],minor:true}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which two degrees of the major scale does the major pentatonic leave out?',opts:['2 and 6','4 and 7','3 and 5','1 and 5'],a:1,why:'It leaves out <b>4</b> and <b>7</b>, so the scale has no half steps.'}]},
+ ]},
+ {id:'bvs1',skill:'solfege',level:3,title:'Sound-Alikes: 7 or ♭7?',after:'bt4',steps:[
+  {h:'Two Notes Below the Tonic',body:'<p>The <b>7th</b> and the <b>lowered 7th</b> are easy to mix up. Both sit just below the upper tonic:</p><ul><li><b>7</b> is a <b>half step</b> below. It is the leading tone and pulls up to 1.</li><li><b>♭7</b> is a <b>whole step</b> below. It is relaxed and leans down to 6. It gives Mixolydian, the blues and many fanfares their color.</li></ul>',w:['hxExplore',{items:[{label:'5 – 6 – 7 – 1',desc:'7 pulls up to 1.',spec:{k:'seq',rels:[7,9,11,12]},btn:'Hear it'},{label:'5 – 6 – ♭7 – 6',desc:'♭7 leans back down to 6.',spec:{k:'seq',rels:[7,9,10,9]},btn:'Hear it'}]}]},
+  {h:'Practice: 7 or ♭7?',body:'<p>Get <b>6 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'titi',goal:6}]},
+  {h:'Show What You Know',body:'<p>Play each one and tune it toward where it wants to go.</p>',w:['sing',{items:[{label:'5 – 6 – 7 – 1',notes:[['sol',7,''],['la',9,''],['ti',11,''],['do',12,'high']],model:true},{label:'1 – ♭7 – 6 – 5',notes:[['do',12,'high'],['te',10,''],['la',9,''],['sol',7,'']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which note is a whole step below the upper tonic?',opts:['7','♭7','6','5'],a:1,why:'<b>♭7</b> is a whole step below. 7 is a half step below.'}]},
+ ]},
+ {id:'bvs2',skill:'scales',level:3,title:'Sound-Alikes: Harmonic or Melodic Minor?',after:'bs3',steps:[
+  {h:'Listen to the Top Half',body:'<p>Harmonic and melodic minor share their bottom five notes: <b>1 2 ♭3 4 5</b>. The difference is on top:</p><ul><li><b>Harmonic minor</b>: <b>♭6 – 7 – 1</b>. ♭6 to 7 is a wide step (an augmented 2nd) that sounds exotic.</li><li><b>Melodic minor</b>, going up: <b>6 – 7 – 1</b>. Smooth, like major.</li><li>Going <b>down</b>, melodic minor turns back into natural minor: <b>1 – ♭7 – ♭6 – 5</b>.</li></ul>',w:['hxExplore',{items:[{label:'Harmonic minor, up',desc:'Listen for the wide ♭6 → 7.',spec:{k:'seq',rels:[0,2,3,5,7,8,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Melodic minor, up',desc:'6 and 7: smooth.',spec:{k:'seq',rels:[0,2,3,5,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Melodic minor, down',desc:'♭7 and ♭6: natural minor.',spec:{k:'seq',rels:[12,10,8,7,5,3,2,0],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Going Up',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'hm',goal:4}]},
+  {h:'Practice: Going Down',body:'<p>Get <b>4 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'hmd',goal:4}]},
+  {h:'Check Yourself',w:['quiz',{q:'Going down, melodic minor sounds like…',opts:['harmonic minor','natural minor','major','the chromatic scale'],a:1,why:'Melodic minor comes down as <b>natural minor</b>: ♭7 and ♭6.'}]},
+ ]},
+ {id:'bvs3',skill:'scales',level:3,title:'Sound-Alikes: Lydian or Mixolydian?',after:'bvs2',steps:[
+  {h:'One Note Each Way',body:'<p>Lydian and Mixolydian are both major scales with <b>one changed note</b>, in opposite directions:</p><ul><li><b>Lydian</b> raises the 4th: <b>♯4</b>. Bright and floating: a favorite of film composers.</li><li><b>Mixolydian</b> lowers the 7th: <b>♭7</b>. Bluesy and folky.</li></ul>',w:['hxExplore',{items:[{label:'Lydian',desc:'1 2 3 ♯4 5 6 7 1',spec:{k:'seq',rels:[0,2,4,6,7,9,11,12],noCtx:true,dur:0.42},btn:'Hear it'},{label:'Mixolydian',desc:'1 2 3 4 5 6 ♭7 1',spec:{k:'seq',rels:[0,2,4,5,7,9,10,12],noCtx:true,dur:0.42},btn:'Hear it'}]}]},
+  {h:'Practice: Lydian or Mixolydian?',body:'<p>Get <b>5 in a row</b> to continue.</p>',w:['hxEar',{kind:'vs',pair:'lm',goal:5}]},
+  {h:'Show What You Know',body:'<p>Play both. Raise 4 for Lydian; lower 7 for Mixolydian.</p>',w:['sing',{items:[{label:'Lydian: 1 2 3 ♯4 5',notes:[['do',0,''],['re',2,''],['mi',4,''],['fi',6,''],['sol',7,'']],model:true},{label:'Mixolydian: 5 6 ♭7 1',notes:[['sol',7,''],['la',9,''],['te',10,''],['do',12,'high']]}]}]},
+  {h:'Check Yourself',w:['quiz',{q:'Which mode is major with a raised 4th?',opts:['Mixolydian','Dorian','Lydian','Phrygian'],a:2,why:'<b>Lydian</b> raises the 4th.'}]},
+ ]},
+];
+(function(){
+  const ins=L=>{if(!L.after){LESSONS_I.push(L);return;}const i=LESSONS_I.findIndex(l=>l.id===L.after);LESSONS_I.splice(i<0?LESSONS_I.length:i+1,0,L);};
+  HX_BAND_LESSONS.forEach(ins);
+  HX_BAND_LESSONS.forEach(L=>{const v=LESSON_FOCUS[L.id.slice(1)];if(v&&!LESSON_FOCUS[L.id])LESSON_FOCUS[L.id]=v;});
+  Object.assign(LESSON_FOCUS,{bvs1:'chrom',bssp:'pentaMaj',bvs2:'harmonic',bvs3:'major'});
+  /* band wording for the two new skills */
+  const BT={ear:['Ear Training','Hear a note, an interval or a resolution and name it by scale degree. Wide to narrow intervals, with song hooks.','Your ears',
+      '<p><b>Hear and Name.</b> The app plays I – IV – V – I in a concert key to set the key, then one note. Name its scale degree by its feeling: 1 rests, 5 stands strong, 7 pulls up to 1, 4 leans down to 3.</p><p><b>Intervals</b> start wide (octave, 5th, 4th) and work toward the small steps, each with a song hook. Descending intervals get their own practice.</p><p><b>Playing items</b> show your written pitch; the app checks the pitch that sounds.</p>'],
+    harmony:['Harmony','Hear chord qualities, inversions, cadences and progressions, and play the notes inside them.','Your ears · pitch ±25 cents',
+      '<p><b>Triads:</b> major (4 + 3 half steps), minor (3 + 4), diminished (3 + 3), augmented (4 + 4). <b>Seventh chords:</b> Major 7th, dominant 7th (V7: 5 – 7 – 2 – 4), minor 7th, half-diminished and diminished 7th.</p><p><b>Inversions:</b> the note in the bass names the position. <b>Cadences:</b> authentic (V – I), plagal (IV – I), half (ends on V), deceptive (V – vi).</p><p><b>Playing:</b> hear the chord, then play the note asked for, in any comfortable octave. Note names are your written pitch.</p>']};
+  for(const id in BT){const m=Modules[id],vt=[m.title,m.blurb,m.listens,m.learn];
+    ['title','blurb','listens','learn'].forEach((f,i)=>Object.defineProperty(m,f,{get:()=>isInst()?BT[id][i]:vt[i],configurable:true}));}
+})();
+
+/* ---------- lesson visibility by class: minLvl ---------- */
+/* (curLessons is patched in place to drop lessons whose minLvl is above the student's class level) */
+
+/* ---------- test out: a lesson's checks (or a block's) with shorter goals ---------- */
+function hxCap(st){if(!st.w)return st;const [k,o]=st.w;if(!o||typeof o!=='object')return st;const o2={...o};
+  if(o2.goal)o2.goal=Math.min(o2.goal,4);if(k==='sing'&&o2.items)o2.items=o2.items.slice(0,2);if(o2.set&&typeof o2.set==='number'&&o2.need){const f=Math.min(1,6/o2.set);o2.set=Math.max(3,Math.round(o2.set*f));o2.need=Math.max(2,Math.round(o2.need*f));}
+  return{...st,w:[k,o2]};}
+function virtLesson(id){
+  const m=/^~([tu])~(.+)$/.exec(String(id||''));if(!m||!Store.me)return null;
+  if(m[1]==='t'){const L=curLessons().find(l=>l.id===m[2])||LESSONS.find(l=>l.id===m[2]);if(!L)return null;const ch=L.steps.filter(isCheck).map(hxCap);if(!ch.length)return null;
+    return{id,skill:L.skill,level:L.level,title:'Test Out: '+L.title,track:'~virt',noPractice:true,testOutOf:[L.id],steps:[{h:'Test out of this lesson',body:`<p>Already know this? Pass every check from <b>${L.title}</b> and the lesson is marked <b>Done</b>. If you don’t pass, nothing changes: you can still take the lesson any time.</p><p>There ${ch.length>1?'are':'is'} <b>${ch.length}</b> check${ch.length>1?'s':''}, with shorter goals than in the lesson.</p>`},...ch]};}
+  const tr=m[2],done=Store.me.lessons||{};const ls=curLessons().filter(l=>trackOf(l)===tr&&!done[l.id]&&l.steps.some(isCheck));if(!ls.length)return null;
+  const steps=[],per=ls.length>5?1:2;ls.forEach(L=>{const ch=L.steps.filter(isCheck);const nq=ch.filter(s=>s.w[0]!=='quiz'),q=ch.filter(s=>s.w[0]==='quiz');
+    (per===1?[nq[nq.length-1]||q[q.length-1]]:[nq[nq.length-1],q[q.length-1]]).filter(Boolean).forEach(s=>steps.push({...hxCap(s),h:L.title+': '+s.h}));});
+  if(steps.length>12){const keep=[];const n=steps.length;for(let k=0;k<12;k++)keep.push(steps[Math.round(k*(n-1)/11)]);steps.splice(0,n,...keep);}
+  const M=Modules[tr]||Modules[ls[0].skill]||{title:tr};
+  return{id,skill:Modules[tr]?tr:ls[0].skill,level:null,title:'Test Out: '+trackTitle(tr,M),track:'~virt',noPractice:true,testOutOf:ls.map(l=>l.id),
+    steps:[{h:'Test out of this block',body:`<p>Pass every check below and these <b>${ls.length}</b> lesson${ls.length>1?'s':''} are marked <b>Done</b>:</p><ul>${ls.map(l=>`<li>${l.title}</li>`).join('')}</ul><p>The checks come from the lessons, with shorter goals. If you don’t pass, nothing changes. You can also test out of one lesson at a time from inside the lesson.</p>`},...steps]};
+}
+/* ---------- bookmarks and test-out buttons on the lesson page ---------- */
+const hxBm=()=>{const me=Store.me;if(!me)return{};me.bookmarks=me.bookmarks||{};return me.bookmarks;};
+{const ol=openLesson;openLesson=function(id,i){ol(id,i);try{hxDecorateLesson(id);}catch(e){}};}
+function hxDecorateLesson(id){
+  const me=Store.me,head=$('#viewLesson .ex-head .titles');if(!me||!head||TOOLS.some(t=>t.id===id))return;
+  if(/^~[tu]~/.test(id)){head.insertAdjacentHTML('beforeend','<span class="pill good">Test out</span>');return;}
+  const L=curLessons().find(l=>l.id===id)||LESSONS.find(l=>l.id===id);if(!L)return;const done=(me.lessons||{})[id],bm=hxBm()[id];
+  const box=document.createElement('span');box.className='row hx-lsbtns';box.style.gap='6px';
+  box.innerHTML=`${!done&&L.steps.some(isCheck)?'<button class="btn sm" type="button" data-hxto>Test out</button>':''}<button class="btn sm${bm?' primary':''}" type="button" data-hxbm aria-pressed="${!!bm}">${bm?'★ On my review list':'☆ Review later'}</button>`;
+  head.appendChild(box);
+  const to=$('[data-hxto]',box);if(to)to.onclick=()=>openLesson('~t~'+id,0);
+  $('[data-hxbm]',box).onclick=e=>{const B=hxBm();if(B[id])delete B[id];else B[id]=Date.now();Store.save();const on=!!B[id];e.currentTarget.className='btn sm'+(on?' primary':'');e.currentTarget.textContent=on?'★ On my review list':'☆ Review later';e.currentTarget.setAttribute('aria-pressed',on);toast(on?'Added to your review list on the Lessons page.':'Removed from your review list.');};
+}
+/* ---------- Lessons page: review list, test-out of a block, tested-out marks ---------- */
+{const rl=renderLearn;renderLearn=function(){rl();try{hxDecorateLearn();}catch(e){}};}
+function hxDecorateLearn(){
+  const me=Store.me,v=$('#viewLearn');if(!me||!v)return;const done=me.lessons||{},tout=me.testedOut||{},B=hxBm();
+  const all=curLessons(),bms=Object.keys(B).map(id=>all.find(l=>l.id===id)||LESSONS.find(l=>l.id===id)).filter(Boolean);
+  if(bms.length){const h=`<div class="card" id="hxReview" style="margin-bottom:18px"><h3>My review list</h3><p class="muted" style="font-size:14px;margin-top:6px">Lessons you bookmarked to come back to. Open one and press <b>★ On my review list</b> to take it off.</p><div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">${bms.map(l=>`<button class="btn" type="button" data-hxrev="${l.id}">★ ${l.title}</button>`).join('')}</div></div>`;
+    const anchor=$('.tracks',v);const lede=anchor?anchor.previousElementSibling:null;if(lede)lede.insertAdjacentHTML('afterend',h);else v.insertAdjacentHTML('afterbegin',h);$$('#hxReview [data-hxrev]',v).forEach(b=>b.onclick=()=>openLesson(b.dataset.hxrev,0));}
+  $$('.track',v).forEach(t=>{const tr=(t.id||'').replace('track-','');if(!tr||tr==='foundations')return;
+    const left=all.filter(l=>trackOf(l)===tr&&!done[l.id]&&l.steps.some(isCheck));
+    if(left.length){const h=$('.track-h',t);const b=document.createElement('button');b.type='button';b.className='btn sm';b.style.marginLeft='auto';b.textContent='Test out of this block';b.title='Pass a short set of checks to mark these lessons Done';b.onclick=()=>openLesson('~u~'+tr,0);if(h)h.appendChild(b);}
+    $$('[data-lesson]',t).forEach(btn=>{const id=btn.dataset.lesson;if(tout[id]){const p=$('.pill.good',btn);if(p)p.textContent='Tested out';}if(B[id]){const s=$('small',btn);if(s)s.insertAdjacentHTML('beforeend',' · ★ review');}});});
+}
+
+/* ---------- placement check: a listening part (and a listening-only check for the band path) ---------- */
+const HX_AREAS=[
+  {id:'deg',name:'Hearing notes in a key',kind:'deg',o:{set:[0,2,4,5,7,9,11]},mod:'ear',focus:'deg',lessons:['ear1','ear2','ear3','ear4']},
+  {id:'iv',name:'Intervals',kind:'iv',o:{set:[2,3,4,5,7,12],dir:'up'},mod:'ear',focus:'ivAny',lessons:['ear7','ear9','ear10']},
+  {id:'chord',name:'Chord qualities',kind:'quality',o:{set:['M','m','d','A']},mod:'harmony',focus:'triads',lessons:['hm1']},
+  {id:'cad',name:'Cadences',kind:'cad',o:{set:['auth','plag','half','dec']},mod:'harmony',focus:'cad',lessons:['hm5','hm6']},
+];
+async function assessEarStage(stage,state,label){
+  const items=[];HX_AREAS.forEach(a=>{for(let k=0;k<3;k++)items.push(a);});
+  const order=[];for(let k=0;k<3;k++)HX_AREAS.forEach(a=>order.push(a));
+  const res={};HX_AREAS.forEach(a=>res[a.id]=0);
+  for(let i=0;i<order.length;i++){const a=order[i];
+    stage.innerHTML=`<p class="eyebrow">${label} · Listening</p><h3>Item ${i+1} of ${order.length}: ${a.name}</h3><p class="muted" style="margin-top:6px">Press <b>Play</b>, then choose an answer. Play it again if you need to. Guessing is fine: the results tell you what to practice.</p><div id="aEar" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="aEarNext" disabled>Next →</button><button class="btn quiet" type="button" id="aEarSkip">Skip the listening part</button></div>`;
+    const r=await new Promise(done=>{wHxEar($('#aEar'),{kind:a.kind,...a.o,onResult:x=>{$('#aEarNext').disabled=false;$('#aEarNext').onclick=()=>done(x);}});$('#aEarSkip').onclick=()=>done(null);});
+    Learn.cleanup();if(r===null){state.ear=null;return;}res[a.id]+=r.score;}
+  state.ear=res;
+}
+const hxAreaWord=n=>n>=3?'strong':n>=2?'developing':'needs practice';
+function hxEarResultsHTML(ear,lvl){
+  if(!ear)return'';const weak=HX_AREAS.filter(a=>ear[a.id]<3),strong=HX_AREAS.filter(a=>ear[a.id]>=3);
+  const curIds=new Set(curLessons().map(l=>l.id)),done=(Store.me&&Store.me.lessons)||{};
+  const tlist=strong.flatMap(a=>a.lessons.map(id=>isInst()?'b'+id:id).filter(id=>curIds.has(id)&&!done[id]));
+  const title=id=>{const l=curLessons().find(l=>l.id===id)||LESSONS.find(l=>l.id===id);return l?l.title:id;};
+  return`<div class="verdict ${weak.length?'v-close':'v-good'}" style="margin-top:10px;align-items:flex-start"><div><strong>Your listening skills</strong>
+    <p>${HX_AREAS.map(a=>`${a.name}: <b>${ear[a.id]} of 3</b> (${hxAreaWord(ear[a.id])})`).join('<br>')}</p>
+    ${weak.length?`<p style="margin-top:8px"><b>Practice these first:</b></p><div class="row" style="margin-top:6px;flex-wrap:wrap;gap:8px">${weak.map(a=>`<button class="btn" type="button" data-hxprac="${a.mod}:${a.focus}">${a.name} →</button>`).join('')}</div>`:'<p style="margin-top:6px">All four listening areas are strong.</p>'}
+    ${tlist.length?`<p style="margin-top:10px"><b>Ready to test out:</b> you did well here, so you can skip ahead by passing a lesson’s checks.</p><div class="row" style="margin-top:6px;flex-wrap:wrap;gap:8px">${tlist.map(id=>`<button class="btn" type="button" data-hxto="${id}">Test out: ${title(id)}</button>`).join('')}</div>`:''}</div></div>`;
+}
+function hxBindEarResults(root){
+  $$('[data-hxprac]',root).forEach(b=>b.onclick=()=>{const [m,f]=b.dataset.hxprac.split(':');App.mode='practice';Session.start(m,undefined,f);});
+  $$('[data-hxto]',root).forEach(b=>b.onclick=()=>openLesson('~t~'+b.dataset.hxto,0));
+}
+/* vocal path: 5 parts, with the listening part before the knowledge questions */
+{const kn=assessKnowStage;assessKnowStage=function(stage,state){
+  if(state._ear===undefined){state._ear=true;assessEarStage(stage,state,'Part 4 of 5').then(()=>assessKnowStage(stage,state));return;}
+  kn(stage,state);};}
+{const fin=assessFinish;assessFinish=function(stage,state){
+  fin(stage,state);const me=Store.me;if(state.ear){me.assess.ear=state.ear;me.earCheck={ts:Date.now(),areas:state.ear};Store.save();}
+  if(state.ear){const box=$$('.verdict',stage).pop();if(box)box.insertAdjacentHTML('afterend',hxEarResultsHTML(state.ear,me.level));hxBindEarResults(stage);}};}
+/* band path: a listening-only check */
+{const ra=renderAssess;renderAssess=function(){ra();const me=Store.me;if(!me||!isInst())return;
+  const card=$('#viewAssess .card');if(!card)return;const ec=me.earCheck;
+  card.insertAdjacentHTML('afterend',`<div class="card" id="hxBandEar" style="margin-top:14px"><h3>Listening check</h3><p class="muted" style="font-size:14px;margin-top:6px">Twelve quick listening items: notes in a key, intervals, chord qualities and cadences. It shows which areas to practice first and which lessons you could test out of. Nothing is graded.</p>${ec?`<div class="notice" style="margin-top:10px">Last taken ${fmtDate(ec.ts)}.</div>`:''}<div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="hxBandGo">${ec?'Retake the listening check':'Start the listening check'}</button></div><div id="hxBandStage"></div></div>`);
+  $('#hxBandGo').onclick=async()=>{const st=$('#hxBandStage'),state={};$('#hxBandGo').hidden=true;await assessEarStage(st,state,'Listening check');
+    if(state.ear){me.earCheck={ts:Date.now(),areas:state.ear};Store.save();}
+    st.innerHTML=state.ear?hxEarResultsHTML(state.ear,me.blevel)+'<div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="hxBandDone">Go to my lessons</button></div>':'<p class="muted">Skipped. You can take it any time from here.</p>';
+    hxBindEarResults(st);const d=$('#hxBandDone');if(d)d.onclick=()=>showView('learn');};};}
+{const ac=assessCardsHTML;assessCardsHTML=function(){const me=Store.me;let h=ac();
+  if(me&&isInst()&&!me.earCheck&&!me.earSkip)h+=`<div class="card" style="margin-bottom:18px"><h3>Find your starting point</h3><p class="muted" style="font-size:14px;margin-top:6px">Take the short <b>listening check</b>: it shows which listening skills to practice first and which lessons you could test out of.</p><div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="assessStart">Start the listening check</button><button class="btn quiet" type="button" id="hxEarSkip">Not now</button></div></div>`;
+  return h;};}
+{const rl=renderLearn;renderLearn=function(){rl();const b=$('#hxEarSkip');if(b)b.onclick=()=>{Store.me.earSkip=true;Store.save();renderLearn();};};}
+
+/* listening items have nothing to record */
+{const rb=Session.recBegin;Session.recBegin=function(...a){if(this.item&&this.item.hx)return;return rb.apply(this,a);};}
 
 /* ---------- boot ---------- */
 $('#exToLessons').onclick=()=>{if(Session.mod&&Session.mod.id==='soundprops'){openLesson(isInst()?'bt0':'s0',0);return;}const id=Session.mod&&trackOf({skill:Session.mod.id});showView('learn');const t=id&&$('#track-'+id);if(t)t.scrollIntoView({block:'start'});};
