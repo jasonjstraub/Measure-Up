@@ -510,6 +510,7 @@ svg.staff.mini{max-width:420px;width:100%}
 .rec-row{display:grid;gap:6px}.rec-pick{font-weight:600;display:flex;gap:8px;align-items:center}
 .rec-card .rec-snap{overflow-x:auto;pointer-events:none;margin-top:4px}
 </style>
+<script src="https://largo-8jw9.onrender.com/games.js" charset="utf-8" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -524,6 +525,7 @@ svg.staff.mini{max-width:420px;width:100%}
     <button class="tab" data-go="progress" type="button"><span class="ti"><svg class="fa fa-chart-line" width="1em" height="1em" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64V400c0 44.2 35.8 80 80 80H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H80c-8.8 0-16-7.2-16-16V64zm406.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L320 210.7l-57.4-57.4c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L240 221.3l57.4 57.4c12.5 12.5 32.8 12.5 45.3 0l128-128z"/></svg></span>My progress</button>
     <button class="tab" data-go="hub" type="button"><span class="ti"><svg class="fa fa-microphone-lines" width="0.75em" height="1em" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><path d="M96 96V256c0 53 43 96 96 96s96-43 96-96H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80V192H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80V128H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80c0-53-43-96-96-96S96 43 96 96zM320 240v16c0 70.7-57.3 128-128 128s-128-57.3-128-128V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H120c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H216V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v24z"/></svg></span>Practice room</button>
     <button class="tab" data-go="games" type="button"><span class="ti"><svg class="fa fa-gamepad" width="1.25em" height="1em" viewBox="0 0 640 512" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M192 64C86 64 0 150 0 256S86 448 192 448H448c106 0 192-86 192-192s-86-192-192-192H192zM496 168a40 40 0 1 1 0 80 40 40 0 1 1 0-80zM392 304a40 40 0 1 1 80 0 40 40 0 1 1 -80 0zM168 200c0-13.3 10.7-24 24-24s24 10.7 24 24v32h32c13.3 0 24 10.7 24 24s-10.7 24-24 24H216v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V280H136c-13.3 0-24-10.7-24-24s10.7-24 24-24h32V200z"/></svg></span>Games</button>
+    <button class="tab" id="largoTab" type="button" title="Open Largo, the music feed, with your progress"><span class="ti"><svg width="1em" height="1em" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><path d="M5 29 C5 9 35 9 35 29" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="20" cy="25" r="4.5" fill="currentColor"/></svg></span>Largo<span style="margin-left:auto;opacity:.6;font-size:.85em">↗</span></button>
     <button class="tab" data-go="tools" type="button"><span class="ti"><svg class="fa fa-toolbox" width="1em" height="1em" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M176 88v40H336V88c0-4.4-3.6-8-8-8H184c-4.4 0-8 3.6-8 8zm-48 40V88c0-30.9 25.1-56 56-56H328c30.9 0 56 25.1 56 56v40h28.1c12.7 0 24.9 5.1 33.9 14.1l51.9 51.9c9 9 14.1 21.2 14.1 33.9V304H384V288c0-17.7-14.3-32-32-32s-32 14.3-32 32v16H192V288c0-17.7-14.3-32-32-32s-32 14.3-32 32v16H0V227.9c0-12.7 5.1-24.9 14.1-33.9l51.9-51.9c9-9 21.2-14.1 33.9-14.1H128zM0 416V336H128v16c0 17.7 14.3 32 32 32s32-14.3 32-32V336H320v16c0 17.7 14.3 32 32 32s32-14.3 32-32V336H512v80c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64z"/></svg></span>Learning Tools</button>
     <button class="tab" data-go="settings" type="button"><span class="ti"><svg class="fa fa-gear" width="1em" height="1em" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg></span>Settings</button>
   </nav>
@@ -2514,6 +2516,7 @@ function renderProgress(){
   const h=[...me.history].sort((a,b)=>b.ts-a.ts);
   v.innerHTML=`<div><p class="eyebrow">${esc(me.name)} · ${CLASSES[curClassKey()].name} · ${partName(me)}</p><h1>My Progress</h1>${me.path==='both'?`<div style="margin-top:12px">${pathSwitch()}</div>`:''}</div>
     <div class="sumgrid">${modList().map(m=>{const x=me.history.filter(e=>e.mod===m.id&&entryPath(e)===curPath());const last=x[x.length-1];const best=x.length?Math.max(...x.map(e=>e.pct)):null;return`<div class="card"><p class="eyebrow">${m.title}</p><p class="big">${best!=null?best+'%':'—'}</p><p class="muted" style="font-size:14px">${x.length?`Best of ${x.length} · latest ${last.pct}% (rubric ${last.rubric})`:'No assessments yet'}</p></div>`;}).join('')}</div>
+    ${largoCard(me)}
     ${curPath()==='vocal'?voiceCard(me):''}
     <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:12px"><h3>All Assessments</h3><div class="row"><button class="btn" type="button" id="pgCopy" ${h.length?'':'disabled'}>Copy all for my teacher</button></div></div>
     ${h.length?`<div class="tablewrap"><table class="hist"><thead><tr><th>Date</th><th>Part</th><th>Skill</th><th>Level</th><th>Score</th><th>Rubric</th><th>Items</th></tr></thead><tbody>${h.map(e=>`<tr><td>${fmtDate(e.ts)}</td><td>${partLabel(e.voice)}</td><td>${Modules[e.mod].title}${e.focus&&e.focus!=='mix'?`<br><small class="muted">${focusLabel(e.mod,e.focus)}</small>`:''}</td><td class="num">${e.level}</td><td><span class="pill ${e.pct>=85?'good':e.pct>=55?'close':'miss'}">${e.pct}%</span></td><td>${e.rubric} · ${e.rl}</td><td class="num">${e.items.join(' / ')}</td></tr>`).join('')}</tbody></table></div>`
@@ -11194,7 +11197,39 @@ $('#whoChip').onclick=()=>showView('settings');
 let rT;window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>App.redraw&&App.redraw(),120);});
 if(document.fonts){document.fonts.ready.then(()=>App.redraw&&App.redraw());document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>App.redraw&&App.redraw());}
 window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{syncThemeBtns();App.redraw&&App.redraw();});
+/* ---------- Largo: the music feed (shares progress and games with Measure Up!) ---------- */
+const LARGO_URL='https://largo-8jw9.onrender.com/';
+const lgB64=s=>{const u=new TextEncoder().encode(s);let b='';u.forEach(x=>b+=String.fromCharCode(x));return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');};
+const lgB64d=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));};
+function largoPayload(){const me=Store.me;if(!me)return null;const done=Object.keys(me.lessons||{}).filter(k=>me.lessons[k]);
+  return{v:1,name:me.name,path:me.path,active:me.active,cls:me.cls,bcls:me.bcls,level:me.level,blevel:me.blevel,voice:me.voice,inst:me.inst,done,t:Date.now()};}
+function openLargo(){const p=largoPayload();const url=LARGO_URL+(p?'#mu='+lgB64(JSON.stringify(p)):'');const w=window.open(url,'largo');if(!w)location.href=url;}
+function largoCard(me){const L=me&&me.largo,rows=L?Object.values(L.lessons||{}):[];const n=rows.length,ok=rows.reduce((a,x)=>a+(x[0]||0),0),miss=rows.reduce((a,x)=>a+(x[1]||0),0);
+  return`<div class="card"><div class="row" style="justify-content:space-between;align-items:center;gap:12px"><div><p class="eyebrow">Largo</p><h3>${L?`${n} lesson${n===1?'':'s'} practiced in Largo`:'Keep learning in Largo'}</h3><p class="muted" style="font-size:14px;margin-top:4px">${L?`${ok} right · ${miss} missed (they come back for review) · ${L.xp||0} notes earned · updated ${fmtDate(L.t)}`:'Largo is a music feed: quick lessons, games, memes and real musicians, based on the lessons you finish here.'}</p></div><button class="btn primary" type="button" id="pgLargo">Open Largo ↗</button></div></div>`;}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#pgLargo'))openLargo();});
+function lgImport(){const m=/[#&]largo=([\w-]+)/.exec(location.hash);if(!m)return;
+  try{const j=JSON.parse(lgB64d(m[1]));if(j&&j.app==='largo'){const me=Store.me;if(me){me.largo=j;Store.save();Store.flush&&Store.flush();setTimeout(()=>toast('Largo progress saved ✓'),700);}}}catch(e){}
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
+{const lt=$('#largoTab');if(lt)lt.onclick=()=>{drawer(false);openLargo();};}
+/* shared games from Largo (games.js), played with Measure Up's own recordings */
+async function lgPlay(ev){const IM={piano:'piano',choir:'voice',wood:'marimba'};const list=[];
+  ev.forEach(e=>(Array.isArray(e[0])?e[0]:[e[0]]).forEach(m=>list.push({inst:IM[e[4]]||'piano',midi:m})));
+  try{await REC.load(list);}catch(x){}const c=actx(),t0=c.currentTime+0.06;
+  ev.forEach(e=>(Array.isArray(e[0])?e[0]:[e[0]]).forEach(m=>{const inst=IM[e[4]]||'piano',v=e[3]??0.6;
+    if(REC.buf[REC.pick(inst,m).key])REC.at({inst,midi:m,dur:e[2],vol:v*1.3},t0+e[1]);else Engine.tone(m,t0+e[1],e[2],0.17*v);}));}
+const _renderGamesMU=renderGames;
+renderGames=function(){_renderGamesMU();const me=Store.me,v=$('#viewGames');if(!me||!window.LargoGames||!v)return;
+  const tr=isInst()?'inst':'vocal',lv=Math.min(3,curLevel()||1),ids=LargoGames.list({track:tr,level:lv});if(!ids.length)return;
+  const sec=document.createElement('div');sec.className='card';sec.style.marginTop='18px';
+  sec.innerHTML=`<p class="eyebrow">Shared with Largo</p><h2>Quick Challenges</h2><p class="muted" style="margin:6px 0 12px">Short theory and ear games, the same ones you see in Largo.</p><div class="row" style="flex-wrap:wrap;gap:8px">${ids.map(k=>`<button class="btn" type="button" data-lgq="${k}">${esc(LargoGames.info(k).title)}</button>`).join('')}</div><div id="lgqHost" style="margin-top:14px"></div>`;
+  v.appendChild(sec);
+  $$('[data-lgq]',sec).forEach(b=>b.onclick=()=>{$$('[data-lgq]',sec).forEach(x=>x.classList.toggle('primary',x===b));const host=$('#lgqHost',sec);host.innerHTML='';const box=document.createElement('div');host.appendChild(box);
+    LargoGames.mount(box,b.dataset.lgq,{track:tr,level:lv,inst:me.inst,play:lgPlay,onResult:r=>{const q=me.lgq||(me.lgq={});const x=q[r.game]||(q[r.game]=[0,0]);x[1]++;if(r.correct)x[0]++;Store.save();}});
+    box.scrollIntoView({behavior:'smooth',block:'nearest'});});
+};
+
 bootNav();
+setTimeout(lgImport,0);addEventListener("hashchange",lgImport);
 Sync.count().then(()=>Sync.paint());Sync.start();
 LibX.install();LibX.fetch(false);
 
